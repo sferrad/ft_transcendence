@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { FaRegArrowAltCircleRight } from "react-icons/fa";
 import { FaRegArrowAltCircleLeft } from "react-icons/fa";
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 function Carousel() {
     const modes = ["Solo", "Multijoueur", "Coop", "Paramètres"];
