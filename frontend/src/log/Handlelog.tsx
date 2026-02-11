@@ -44,7 +44,7 @@ const HandleLog = () => {
 
   return (
     <div className="fixed inset-0 bg-[url('/assets/bgLogin.jpg')] bg-cover bg-center bg-no-repeat w-full h-full overflow-auto flex flex-col items-center justify-center">
-      <div className="bg-[rgba(255,255,255,0.85)] p-8 w-96 rounded-lg shadow-2xl border border-gray-200 transition-all duration-350 transform hover:scale-105">
+      <div className="bg-[rgba(255,255,255,0.85)] p-8 w-96 rounded-lg shadow-2xl border border-gray-200">
         <h1 className="text-2xl font-bold mb-4 text-center text-gray-800">Login</h1>
         <form onSubmit={login}>
 
@@ -64,7 +64,7 @@ const HandleLog = () => {
             disabled={!email || !password}
             className={
               `${!email || !password ? "bg-gray-400 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"} 
-                  text-white p-2 rounded w-full hover:bg-blue-600 relative flex justify-center items-center h-10`}>
+                  text-white p-2 rounded w-full relative flex justify-center items-center h-10`}>
                 {loading && (
             <span className="absolute left-4 w-5 h-5 border-4 border-white border-t-transparent rounded-full animate-spin"></span>
             )}
