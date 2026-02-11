@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  WAF:
+    image: WAF
+    build:
+      context: ./waf
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - transcendence
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  frontend:
+    image: React
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    networks:
+      - transcendence
+  
+  backend:
+    image: FastAPI
+    build: ./backend
+    expose:
+      - "8000"
+    networks:
+    - transcendence
+
+
+networks:
+  transcendence
