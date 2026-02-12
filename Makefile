@@ -24,7 +24,7 @@ clean:
 
 fclean: clean
 	@docker system prune -af
-	@sudo rm -rf  $(PATH_VOLUMES)
+	rm -rf  $(PATH_VOLUMES)
 
 restart:
 	@$(DOCK_COMP) down
