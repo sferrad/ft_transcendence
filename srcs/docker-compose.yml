@@ -1,6 +1,66 @@
 version: '3.8'
 
 services:
+  db:
+    image: postgres
+    build:
+      context: ./potgres
+      dockerfile: Dockerfile
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - transcendence
+    restart: unless_stopped
+    healthcheck:
+      # test: ["executable", "arg"] a definir
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  vault:
+    image: vault
+    build:
+      context: ./vault
+      dockerfile: Dockerfile
+    ports:
+      - 8200:8200
+    volumes:
+      - vault-data:/vault/data
+    cap_add:
+      - IPC_LOCK
+    networks:
+      - transcendence
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  backend:
+    image: FastAPI
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    expose:
+      - "8000"
+    networks:
+    - transcendence
+    depends_on:
+      db:
+        condition: service_healthy
+      vault:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
   WAF:
     image: WAF
     build:
@@ -12,25 +72,41 @@ services:
     networks:
       - transcendence
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped
+
 
   frontend:
     image: React
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     ports:
       - "3000:3000"
     networks:
       - transcendence
-  
-  backend:
-    image: FastAPI
-    build: ./backend
-    expose:
-      - "8000"
-    networks:
-    - transcendence
+    restart: unless-stopped
 
 
 networks:
-  transcendence
+  transcendence:
+    name: transcendence
+    driver: bridge
+
+
+volumes:
+  vault-data:
+    name: vault-data
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/vault
+  postgres-data:
+    name: postgres-data
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/postgres
