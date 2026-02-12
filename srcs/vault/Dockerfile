@@ -1,0 +1,1 @@
+FROM hashicorp/vault:latest
