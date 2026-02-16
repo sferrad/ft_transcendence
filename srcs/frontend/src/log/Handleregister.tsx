@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-type RegisterPayload = {
-  email: string;
-  password: string;
-  confirmPassword: string;
-};
+// type RegisterPayload = {
+//   email: string;
+//   password: string;
+//   confirmPassword: string;
+// };
 
 const Handleregister = () => {
     const [email, setEmail] = useState("");
@@ -17,11 +17,11 @@ const Handleregister = () => {
     const register = (e: React.FormEvent) => {
         e.preventDefault();
         
-        const payload: RegisterPayload = {
-            email: email,
-            password: password,
-            confirmPassword: confirmPassword,
-        };
+        // const payload: RegisterPayload = {
+        //     email: email,
+        //     password: password,
+        //     confirmPassword: confirmPassword,
+        // };
 
         if (password !== confirmPassword) {
             setMessage("Passwords do not match");
@@ -65,13 +65,13 @@ const Handleregister = () => {
                         onChange={e => setConfirmPassword(e.target.value)}
                         className="border p-2 rounded mb-3 w-full"></input>
 
-                    <button type="submit" disabled={!email || !password || !confirmPassword} className={`${!email || !password || !confirmPassword ? "bg-gray-400 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"} 
+                    <button type="submit" disabled={!email || !password || !confirmPassword} className={`${!email || !password || !confirmPassword ? "bg-gray-400 cursor-not-allowed" : " bg-blue-500 cursor-pointer hover:bg-blue-600"} 
                   text-white p-2 rounded w-full relative flex justify-center items-center h-10`}>Register</button>
                 </form>
                 <p className={
                   `mt-3 text-center transition-all duration-350 ${message ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"} 
                 ${message === "Registration successful" ? "text-green-500" : "text-red-500"}`}>{message}</p>
-                <a className="text-blue-500 hover:underline mt-4 block text-center" onClick={() => navigate("/login")}>Already have an account? Login</a>
+                <a className="text-blue-500 cursor-pointer hover:underline mt-4 block text-center" onClick={() => navigate("/login")}>Already have an account? Login</a>
             </div>
         </div>
     );

@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-type LoginPayload = {
-  email: string;
-  password: string;
-};
+// type LoginPayload = {
+//   email: string;
+//   password: string;
+// };
 
 const HandleLog = () => {
   const [email, setEmail] = useState("");
@@ -18,10 +18,10 @@ const HandleLog = () => {
     e.preventDefault();
 
 
-    const payload: LoginPayload = {
-      email: email,
-      password: password,
-    };
+    // const payload: LoginPayload = {
+    //   email: email,
+    //   password: password,
+    // };
     setLoading(true);
 
     setTimeout(() => {
@@ -63,7 +63,7 @@ const HandleLog = () => {
           <button type="submit"
             disabled={!email || !password}
             className={
-              `${!email || !password ? "bg-gray-400 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"} 
+              `${!email || !password ? "bg-gray-400 cursor-not-allowed" : "bg-blue-500 cursor-pointer hover:bg-blue-600"} 
                   text-white p-2 rounded w-full relative flex justify-center items-center h-10`}>
                 {loading && (
             <span className="absolute left-4 w-5 h-5 border-4 border-white border-t-transparent rounded-full animate-spin"></span>
@@ -78,7 +78,7 @@ const HandleLog = () => {
           ${message === "Connexion Successful" ? "text-green-500" : "text-red-500"}`}>{message}</p>
 
         </form>
-        <a className="text-blue-500 hover:underline mt-4 block text-center" onClick={() => navigate("/register")}>Don't have an account? Register</a>
+        <a className="text-blue-500 cursor-pointer hover:underline mt-4 block text-center" onClick={() => navigate("/register")}>Don't have an account? Register</a>
       </div>
     </div>
   );
