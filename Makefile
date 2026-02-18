@@ -1,11 +1,7 @@
 DOCK_COMP = docker compose -p transcendence -f srcs/docker-compose.yml
 PATH_VOLUMES = ./srcs/data
 
-all: volumes up
-
-volumes:
-	mkdir -p $(PATH_VOLUMES)/vault; \
-	mkdir -p $(PATH_VOLUMES)/postgres
+all:  up
 
 up:
 	$(DOCK_COMP) up --build
@@ -30,4 +26,4 @@ restart:
 	@$(DOCK_COMP) down
 	@$(DOCK_COMP) up --build --force-recreate
 
-.PHONY: all volumes up down logs ports clean fclean restart
+.PHONY: all up down logs ports clean fclean restart
