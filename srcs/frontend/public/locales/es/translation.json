@@ -1,0 +1,22 @@
+{
+    "Solo": "Solo",
+    "Multiplayer": "Multijugador",
+    "Coop": "Cooperativo",
+    "Settings": "Configuración",
+    "Language": "Idioma",
+    "English": "Inglés",
+    "French": "Francés",
+    "Spanish": "Español",
+    "Register": "Registro",
+    "Login": "Conexión",
+    "Profile": "Perfil",
+    "Connecting...": "Conectando...",
+    "Email or password incorrect": "Correo electrónico o contraseña incorrectos",
+    "Connexion Successful": "Conexión exitosa",
+    "Don't have an account? Register": "¿No tienes una cuenta? Regístrate",
+    "Password": "Contraseña",
+    "Passwords do not match": "Las contraseñas no coinciden",
+    "Registration successful": "Registro exitoso",
+    "Already have an account? Login": "¿Ya tienes una cuenta? Inicia sesión",
+    "Confirm Password": "Confirmar contraseña"
+}
