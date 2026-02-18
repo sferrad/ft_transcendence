@@ -41,3 +41,12 @@ vite.config.ts → Config Vite
 - [Vite](https://vitejs.dev)
 - [React](https://react.dev)
 - [TypeScript](https://www.typescriptlang.org/docs/)
+
+
+## Pour lancer le projet en dev :
+```bash
+ cd srcs/frontend
+    npm run dev
+```
+
+Accès : http://localhost:5173

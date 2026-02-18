@@ -3,15 +3,18 @@ import { useNavigate } from "react-router-dom";
 import { FaRegArrowAltCircleRight } from "react-icons/fa";
 import { FaRegArrowAltCircleLeft } from "react-icons/fa";
 import { useState, useEffect, useRef } from 'react';
+import "../i18n/index.ts";
+import { useTranslation } from "react-i18next";
 
 function Carousel() {
-    const modes = ["Solo", "Multijoueur", "Coop", "Paramètres"];
+    const modes = ["Solo", "Multiplayer", "Coop", "Settings"];
     const [activeIndex, setActiveIndex] = useState(0);
     const [isPressedR, setIsPressedR] = useState(false);
     const [isPressedL, setIsPressedL] = useState(false);
     const navigate = useNavigate();
     const lastNavTime = useRef(0);
     const delay = 200;
+    const { t } = useTranslation();
 
     const canNavigate = () => {
         const now = Date.now();
@@ -25,11 +28,11 @@ function Carousel() {
     const select = (mode: string) => {
         if (mode === 'Solo')
             navigate("/login");
-        else if (mode === 'Multijoueur')
+        else if (mode === 'Multiplayer')
             navigate("/login");
         else if (mode === 'Coop')
             navigate("/login");
-        else if (mode === 'Paramètres')
+        else if (mode === 'Settings')
             navigate("/login");
     };
 
@@ -102,10 +105,10 @@ function Carousel() {
                                         : 'z-10 scale-75 bg-gray-400 text-gray-200 opacity-50'}
                 ${isPrev ? '-translate-x-35' : ''}
                 ${isNext ? 'translate-x-35' : ''}
-                ${mode === "Solo" ? "bg-green-500" : mode === "Multijoueur" ? "bg-yellow-500" : mode === "Coop" ? "bg-purple-500" : "bg-gray-500"}`}
+                ${mode === "Solo" ? "bg-green-500" : mode === "Multiplayer" ? "bg-yellow-500" : mode === "Coop" ? "bg-purple-500" : "bg-gray-500"}`}
                                 onClick={() => select(mode)}
                                 disabled={!isActive}>
-                                {mode}
+                                {t(mode)}
                             </button>
                         )
                     })}
