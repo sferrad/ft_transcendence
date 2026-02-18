@@ -1,10 +1,11 @@
 import { useState, useEffect} from 'react';
 import { BsTranslate } from "react-icons/bs";
-import { useNavigate } from 'react-router-dom';
+import { changeLanguage } from 'i18next';
+import { useTranslation } from "react-i18next";
 
 function Trad() {
-    const navigate = useNavigate();
     const [isOpen, setIsOpen] = useState(false);
+    const { t } = useTranslation();
     
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -24,9 +25,9 @@ function Trad() {
                 className='cursor-pointer translate-button'><BsTranslate /></button>
             {isOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-2 z-50 profile-menu">
-                    <button onClick={() => navigate("/fr")} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">🇫🇷 Français</button>
-                    <button onClick={() => navigate("/en")} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">🇬🇧 English</button>
-                    <button onClick={() => navigate("/sp")} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">🇪🇦 Spanish</button>
+                    <button onClick={() => changeLanguage("fr")} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">🇫🇷 {t("French")}</button>
+                    <button onClick={() => changeLanguage("en")} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">🇬🇧 {t("English")}</button>
+                    <button onClick={() => changeLanguage("es")} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">🇪🇦 {t("Spanish")}</button>
                 </div>
             )}
         </div>

@@ -1,0 +1,22 @@
+{
+    "Solo": "Solo",
+    "Multiplayer": "Multiplayer",
+    "Coop": "Coop",
+    "Settings": "Settings",
+    "Language": "Language",
+    "English": "English",
+    "French": "French",
+    "Spanish": "Spanish",
+    "Register": "Register",
+    "Login": "Login",
+    "Profile": "Profile",
+    "Connecting...": "Connecting...",
+    "Email or password incorrect": "Email or password incorrect",
+    "Connexion Successful": "Login Successful",
+    "Don't have an account? Register": "Don't have an account? Register",
+    "Password": "Password",
+    "Passwords do not match": "Passwords do not match",
+    "Registration successful": "Registration successful",
+    "Already have an account? Login": "Already have an account? Login",
+    "Confirm Password": "Confirm Password"
+}
