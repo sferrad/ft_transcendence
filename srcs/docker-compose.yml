@@ -1,15 +1,51 @@
 version: '3.8'
 
+## NETWORKS ####
+
+networks:
+  transcendence-frontend:
+    name: transcendence-frontend
+    driver: bridge
+  transcendence-backend:
+    name: transcendence-backend
+    driver: bridge
+  transcendence-database:
+    name: transcendence-database
+    driver: bridge
+
+
+## VOLUMES ####
+
+
+volumes:
+  vault-data:
+  user-db:
+  chat-db:
+  friends-db:
+  game-db:
+  analytics-db:
+  profile-db:
+
+
+
+## DATABASES ####
+
 services:
-  db:
-    image: postgres
+  user-db:
     build:
-      context: ./postgres
+      context: ./postgres-postgres-databases/user-db
       dockerfile: Dockerfile
+    image: user-db
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_DB=user_db
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - user-db:/var/lib/postgresql/data
     networks:
-      - transcendence
+      - transcendence-database
     restart: unless_stopped
     healthcheck:
       # test: ["executable", "arg"] a definir
@@ -18,11 +54,130 @@ services:
       retries: 5
       start_period: 15s
 
+
+  chat-db:
+    build:
+      context: ./postgres-postgres-databases/chat-db
+      dockerfile: Dockerfile
+    image: chat-db
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_DB=chat_db
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - chat-db:/var/lib/postgresql/data
+    networks:
+      - transcendence-database
+    restart: unless_stopped
+    healthcheck:
+      # test: ["executable", "arg"] a definir
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  friends-db:
+    build:
+      context: ./postgres-postgres-databases/friends-db
+      dockerfile: Dockerfile
+    image: friends-db
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_DB=friends_db
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - friends-db:/var/lib/postgresql/data
+    networks:
+      - transcendence-database
+    restart: unless_stopped
+    healthcheck:
+      # test: ["executable", "arg"] a definir
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  game-db:
+    build:
+      context: ./postgres-postgres-databases/game-db
+      dockerfile: Dockerfile
+    image: game-db
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_DB=game_db
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - game-db:/var/lib/postgresql/data
+    networks:
+      - transcendence-database
+    restart: unless_stopped
+    healthcheck:
+      # test: ["executable", "arg"] a definir
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  analytics-db:
+    build:
+      context: ./postgres-postgres-databases/analytics-db
+      dockerfile: Dockerfile
+    image: analytics-db
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_DB=analytics_db
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - analytics-db:/var/lib/postgresql/data
+    networks:
+      - transcendence-database
+    restart: unless_stopped
+    healthcheck:
+      # test: ["executable", "arg"] a definir
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  profile-db:
+    build:
+      context: ./postgres-postgres-databases/profile-db
+      dockerfile: Dockerfile
+    image: profile-db
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_DB=profile_db
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - profile-db:/var/lib/postgresql/data
+    networks:
+      - transcendence-database
+    restart: unless_stopped
+    healthcheck:
+      # test: ["executable", "arg"] a definir
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+
+## SECRETS ####
+
   vault:
-    image: vault
     build:
       context: ./vault
       dockerfile: Dockerfile
+    image: vault
     ports:
       - 8200:8200
     volumes:
@@ -30,7 +185,7 @@ services:
     cap_add:
       - IPC_LOCK
     networks:
-      - transcendence
+      - transcendence-backend
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "vault", "status"]
@@ -39,74 +194,198 @@ services:
       retries: 5
       start_period: 15s
 
-  backend:
-    image: FastAPI
+
+## MICRO SERVICES ####
+
+  api-gateway:
     build:
-      context: ./backend
+      context: ./backend/api-gateway
       dockerfile: Dockerfile
+    image: api-gateway
     expose:
       - "8000"
     networks:
-      - transcendence
+      - transcendence-backend
+      - transcendence-frontend
     depends_on:
-      db:
-        condition: service-healthy
       vault:
-        condition: service-healthy
-    restart: unless-stopped
+        condition: service_healthy
+    restart: unless_stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"] ## Route a ajouter dans le main.py
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
+  user-service:
+    build:
+      context: ./backend/user-service
+      dockerfile: Dockerfile
+    image: user-service
+    expose:
+      - "8001"
+    networks:
+      - transcendence-backend
+      - transcendence-database
+    depends_on:
+      user-db:
+        condition: service-healthy
+      vault:
+        condition: service-healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"] ## Route a ajouter dans le main.py
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+
+  
+  chat-service:
+    build:
+      context: ./backend/chat-service
+      dockerfile: Dockerfile
+    image: chat-service
+    expose:
+      - "8002"
+    networks:
+      - transcendence-backend
+      - transcendence-database
+    depends_on:
+      chat-db:
+        condition: service-healthy
+      vault:
+        condition: service-healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"] ## Route a ajouter dans le main.py
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+
+  analytics-service:
+    build:
+      context: ./backend/analytics-service
+      dockerfile: Dockerfile
+    image: analytics-service
+    expose:
+      - "8003"
+    networks:
+      - transcendence-backend
+      - transcendence-database
+    depends_on:
+      analytics-db:
+        condition: service-healthy
+      vault:
+        condition: service-healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"] ## Route a ajouter dans le main.py
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  friends-service:
+    build:
+      context: ./backend/friends-service
+      dockerfile: Dockerfile
+    image: friends-service
+    expose:
+      - "8004"
+    networks:
+      - transcendence-backend
+      - transcendence-database
+    depends_on:
+      friends-db:
+        condition: service-healthy
+      vault:
+        condition: service-healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"] ## Route a ajouter dans le main.py
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  game-service:
+    build:
+      context: ./backend/game-service
+      dockerfile: Dockerfile
+    image: game-service
+    expose:
+      - "8005"
+    networks:
+      - transcendence-backend
+      - transcendence-database
+    depends_on:
+      game-db:
+        condition: service-healthy
+      vault:
+        condition: service-healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"] ## Route a ajouter dans le main.py
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  profile-service:
+    build:
+      context: ./backend/profile-service
+      dockerfile: Dockerfile
+    image: profile-service
+    expose:
+      - "8006"
+    networks:
+      - transcendence-backend
+      - transcendence-database
+    depends_on:
+      profile-db:
+        condition: service-healthy
+      vault:
+        condition: service-healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8006/health"] ## Route a ajouter dans le main.py
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+## FRONTEND ####
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: React
+    ports:
+      - "3000:3000"
+    networks:
+      - transcendence-frontend
+    restart: unless-stopped
+
+## WAF ####
 
   WAF:
-    image: WAF
     build:
       context: ./waf
       dockerfile: Dockerfile
+    image: WAF
     ports:
       - "80:80"
       - "443:443"
     networks:
-      - transcendence
+      - transcendence-frontend
     depends_on:
-      backend:
+      api-gateway:
         condition: service-healthy
+      frontend:
+        condition: service_started
     restart: unless-stopped
-
-
-  frontend:
-    image: React
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
-    networks:
-      - transcendence
-    restart: unless-stopped
-
-
-networks:
-  transcendence:
-    name: transcendence
-    driver: bridge
-
-
-volumes:
-  vault-data:
-    name: vault-data
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ./data/vault
-  postgres-data:
-    name: postgres-data
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ./data/postgres
