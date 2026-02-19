@@ -407,7 +407,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    image: Frontend-React
+    image: frontend-react
     ports:
       - "3000:3000"
     networks:
