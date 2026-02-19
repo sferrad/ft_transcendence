@@ -11,23 +11,20 @@ RUN apt-get update && \
         curl \
         gcc \
         libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd -m -u 1000 -s /bin/bash appuser \
+    && mkdir -p  /app/logs \
+    && chown -R appuser:appuser /app
+    
+COPY --chown=appuser:appuser ./app /app/app
 
-RUN useradd -m -u 1000 -s /bin/bash appuser
+COPY --chown=appuser:appuser requirements.txt .
 
 WORKDIR /app
 
 USER appuser
 
-COPY --chown=appuser:appuser requirements.txt .
-
 RUN pip install --user --no-cache-dir -r requirements.txt
-
-RUN mkdir -p /app/app /app/logs && \
-    chown -R appuser:appuser /app
-
-
-COPY --chown=appuser:appuser ./app /app/app
 
 ENV PATH=/home/appuser/.local/bin:$PATH
 
