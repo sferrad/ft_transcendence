@@ -33,22 +33,23 @@ volumes:
 services:
   user-db:
     build:
-      context: ./postgres-postgres-databases/user-db
+      context: ./postgres-databases
       dockerfile: Dockerfile
+
     image: user-db
     env_file:
       - .env
     environment:
-      - POSTGRES_DB=user_db
+      - POSTGRES_DB=user-db
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - user-db:/var/lib/postgresql/data
     networks:
       - transcendence-database
-    restart: unless_stopped
+    restart: unless-stopped
     healthcheck:
-      # test: ["executable", "arg"] a definir
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d user_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -57,22 +58,22 @@ services:
 
   chat-db:
     build:
-      context: ./postgres-postgres-databases/chat-db
+      context: ./postgres-databases
       dockerfile: Dockerfile
     image: chat-db
     env_file:
       - .env
     environment:
-      - POSTGRES_DB=chat_db
+      - POSTGRES_DB=chat-db
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - chat-db:/var/lib/postgresql/data
     networks:
       - transcendence-database
-    restart: unless_stopped
+    restart: unless-stopped
     healthcheck:
-      # test: ["executable", "arg"] a definir
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d chat_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -80,22 +81,22 @@ services:
 
   friends-db:
     build:
-      context: ./postgres-postgres-databases/friends-db
+      context: ./postgres-databases
       dockerfile: Dockerfile
     image: friends-db
     env_file:
       - .env
     environment:
-      - POSTGRES_DB=friends_db
+      - POSTGRES_DB=friends-db
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - friends-db:/var/lib/postgresql/data
     networks:
       - transcendence-database
-    restart: unless_stopped
+    restart: unless-stopped
     healthcheck:
-      # test: ["executable", "arg"] a definir
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d friends_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -103,22 +104,22 @@ services:
 
   game-db:
     build:
-      context: ./postgres-postgres-databases/game-db
+      context: ./postgres-databases
       dockerfile: Dockerfile
     image: game-db
     env_file:
       - .env
     environment:
-      - POSTGRES_DB=game_db
+      - POSTGRES_DB=game-db
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - game-db:/var/lib/postgresql/data
     networks:
       - transcendence-database
-    restart: unless_stopped
+    restart: unless-stopped
     healthcheck:
-      # test: ["executable", "arg"] a definir
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d game_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -126,22 +127,22 @@ services:
 
   analytics-db:
     build:
-      context: ./postgres-postgres-databases/analytics-db
+      context: ./postgres-databases
       dockerfile: Dockerfile
     image: analytics-db
     env_file:
       - .env
     environment:
-      - POSTGRES_DB=analytics_db
+      - POSTGRES_DB=analytics-db
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - analytics-db:/var/lib/postgresql/data
     networks:
       - transcendence-database
-    restart: unless_stopped
+    restart: unless-stopped
     healthcheck:
-      # test: ["executable", "arg"] a definir
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d analytics_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -149,22 +150,22 @@ services:
 
   profile-db:
     build:
-      context: ./postgres-postgres-databases/profile-db
+      context: ./postgres-databases
       dockerfile: Dockerfile
     image: profile-db
     env_file:
       - .env
     environment:
-      - POSTGRES_DB=profile_db
+      - POSTGRES_DB=profile-db
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - profile-db:/var/lib/postgresql/data
     networks:
       - transcendence-database
-    restart: unless_stopped
+    restart: unless-stopped
     healthcheck:
-      # test: ["executable", "arg"] a definir
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d profile_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -209,8 +210,8 @@ services:
       - transcendence-frontend
     depends_on:
       vault:
-        condition: service_healthy
-    restart: unless_stopped
+        condition: service-healthy
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"] ## Route a ajouter dans le main.py
       interval: 30s
@@ -222,6 +223,13 @@ services:
       context: ./backend/user-service
       dockerfile: Dockerfile
     image: user-service
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_DB=user-db
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - DATABASE_URL=${DATABASE_URL}
     expose:
       - "8001"
     networks:
@@ -247,6 +255,13 @@ services:
       context: ./backend/chat-service
       dockerfile: Dockerfile
     image: chat-service
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_DB=chat-db
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - DATABASE_URL=${DATABASE_URL}
     expose:
       - "8002"
     networks:
@@ -271,6 +286,13 @@ services:
       context: ./backend/analytics-service
       dockerfile: Dockerfile
     image: analytics-service
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_DB=analytics-db
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - DATABASE_URL=${DATABASE_URL}
     expose:
       - "8003"
     networks:
@@ -294,6 +316,13 @@ services:
       context: ./backend/friends-service
       dockerfile: Dockerfile
     image: friends-service
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_DB=friends-db
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - DATABASE_URL=${DATABASE_URL}
     expose:
       - "8004"
     networks:
@@ -317,6 +346,13 @@ services:
       context: ./backend/game-service
       dockerfile: Dockerfile
     image: game-service
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_DB=game-db
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - DATABASE_URL=${DATABASE_URL}
     expose:
       - "8005"
     networks:
@@ -340,6 +376,13 @@ services:
       context: ./backend/profile-service
       dockerfile: Dockerfile
     image: profile-service
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_DB=profile-db
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - DATABASE_URL=${DATABASE_URL}
     expose:
       - "8006"
     networks:
@@ -364,7 +407,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    image: React
+    image: Frontend-React
     ports:
       - "3000:3000"
     networks:
