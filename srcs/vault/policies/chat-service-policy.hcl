@@ -1,5 +1,3 @@
-# CHAT SERVICE POLICY
-
 path "database/creds/chat-role" {
   capabilities = ["read"]
 }

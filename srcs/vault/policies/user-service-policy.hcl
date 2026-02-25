@@ -1,5 +1,3 @@
-# USER SERVICE POLICY
-
 path "database/creds/user-role" {
   capabilities = ["read"]
 }
