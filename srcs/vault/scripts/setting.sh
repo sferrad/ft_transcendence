@@ -74,6 +74,12 @@ else
   vault secrets enable -path=kv -version=2 kv
 fi
 
+JWT_SECRET="${JWT_SECRET_KEY:-cle_par_defaut}"
+echo "Adding secret JWT in kv/data/jwt/main"
+vault kv put kv/jwt/main \
+  secret_key="$JWT_SECRET"
+  algorithm="HS256"
+
 
 echo "Activation secrets DB..."
 if vault secrets list | grep -q '^database/'; then
