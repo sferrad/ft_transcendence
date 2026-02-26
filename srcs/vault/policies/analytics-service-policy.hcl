@@ -1,5 +1,3 @@
-# ANALYTICS SERVICE POLICY
-
 path "database/creds/analytics-role" {
   capabilities = ["read"]
 }
