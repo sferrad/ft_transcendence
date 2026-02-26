@@ -184,9 +184,9 @@ services:
     expose:
       - "8200"
     environment:
-      - VAULT_ADDR=http://vault:8200
+      - VAULT_ADDR=http://127.0.0.1:8200
     volumes:
-      - vault-data:/vault
+      - vault-data:/vault/data
     cap_add:
       - IPC_LOCK
     networks:
@@ -222,11 +222,11 @@ services:
     image: api-gateway
     environment:
       - VAULT_ADDR=http://vault:8200
-      - VAULT_TOKEN_FILE=/vault/api-gateway.token
+      - VAULT_TOKEN_FILE=/vault/data/api-gateway.token
     expose:
       - "8000"
     volumes:
-      - vault-data:/vault:ro 
+      - vault-data:/vault/data:ro 
     networks:
       - transcendence-backend
       - transcendence-frontend
@@ -249,14 +249,14 @@ services:
       - .env
     environment:
       - VAULT_ADDR=http://vault:8200
-      - VAULT_TOKEN_FILE=/vault/api-user.token
+      - VAULT_TOKEN_FILE=/vault/data/api-user.token
       - DB_HOST=user-db
       - DB_PORT=5432
       - DB_NAME=user_db
     expose:
       - "8001"
     volumes:
-      - vault-data:/vault:ro 
+      - vault-data:/vault/data:ro 
     networks:
       - transcendence-backend
       - transcendence-database
@@ -284,14 +284,14 @@ services:
       - .env
     environment:
       - VAULT_ADDR=http://vault:8200
-      - VAULT_TOKEN_FILE=/vault/api-chat.token
+      - VAULT_TOKEN_FILE=/vault/data/api-chat.token
       - DB_HOST=chat-db
       - DB_PORT=5432
       - DB_NAME=chat_db
     expose:
       - "8002"
     volumes:
-      - vault-data:/vault:ro 
+      - vault-data:/vault/data:ro 
     networks:
       - transcendence-backend
       - transcendence-database
@@ -318,14 +318,14 @@ services:
       - .env
     environment:
       - VAULT_ADDR=http://vault:8200
-      - VAULT_TOKEN_FILE=/vault/api-analytics.token
+      - VAULT_TOKEN_FILE=/vault/data/api-analytics.token
       - DB_HOST=analytics-db
       - DB_PORT=5432
       - DB_NAME=analytics_db
     expose:
       - "8003"
     volumes:
-      - vault-data:/vault:ro 
+      - vault-data:/vault/data:ro 
     networks:
       - transcendence-backend
       - transcendence-database
@@ -351,14 +351,14 @@ services:
       - .env
     environment:
       - VAULT_ADDR=http://vault:8200
-      - VAULT_TOKEN_FILE=/vault/api-friends.token
+      - VAULT_TOKEN_FILE=/vault/data/api-friends.token
       - DB_HOST=friends-db
       - DB_PORT=5432
       - DB_NAME=friends_db
     expose:
       - "8004"
     volumes:
-      - vault-data:/vault:ro 
+      - vault-data:/vault/data:ro 
     networks:
       - transcendence-backend
       - transcendence-database
@@ -384,14 +384,14 @@ services:
       - .env
     environment:
       - VAULT_ADDR=http://vault:8200
-      - VAULT_TOKEN_FILE=/vault/api-game.token
+      - VAULT_TOKEN_FILE=/vault/data/api-game.token
       - DB_HOST=game-db
       - DB_PORT=5432
       - DB_NAME=game_db
     expose:
       - "8005"
     volumes:
-      - vault-data:/vault:ro 
+      - vault-data:/vault/data:ro 
     networks:
       - transcendence-backend
       - transcendence-database
@@ -417,14 +417,14 @@ services:
       - .env
     environment:
       - VAULT_ADDR=http://vault:8200
-      - VAULT_TOKEN_FILE=/vault/api-profile.token
+      - VAULT_TOKEN_FILE=/vault/data/api-profile.token
       - DB_HOST=profile-db
       - DB_PORT=5432
       - DB_NAME=profile_db
     expose:
       - "8006"
     volumes:
-      - vault-data:/vault:ro 
+      - vault-data:/vault/data:ro 
     networks:
       - transcendence-backend
       - transcendence-database
