@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-INIT_FILE_JSON="/vault/init.json"
+INIT_FILE_JSON="/vault/data/init.json"
 
 export VAULT_ADDR="${VAULT_ADDR:-http://127.0.0.1:8200}"
 
@@ -15,11 +15,17 @@ echo "Initialisation Vault..."
 # par defaut vault n est pas initialise et est scelle
 # vault operatot init -> genere .json avec cles de deverouillage
 is_initialized(){
-  vault status 2>/dev/null | grep -q 'Initialized *true'
+  if vault status 2>/dev/null | grep -q 'Initialized *true'; then
+    return 0
+  else
+    return 1
 }
 
 is_sealed(){
-  vault status 2>/dev/null | grep -q 'Sealed *true'
+  if vault status 2>/dev/null | grep -q 'Sealed *true'; then
+    return 0
+  else
+    return 1
 }
 
 if is_initialized; then
@@ -74,7 +80,7 @@ else
   vault secrets enable -path=kv -version=2 kv
 fi
 
-JWT_SECRET="${JWT_SECRET_KEY:-cle_par_defaut}"
+JWT_SECRET="${JWT_SECRET_KEY:?key must be initialized}"
 echo "Adding secret JWT in kv/data/jwt/main"
 vault kv put kv/jwt/main \
   secret_key="$JWT_SECRET"
@@ -94,14 +100,15 @@ config_db(){
   local host="$2"
   local db_name="$3"
   local role_name="$4"
+  local sslmode="${VAULT_DB_SSLMODE:-disable}"
 
   echo "Config DB '$config_name' (host=$host, db=$db_name, role=$role_name)..."
   vault write "database/config/$config_name" \
     plugin_name=postgresql-database-plugin \
     allowed_roles="$role_name" \
-    connection_url="postgresql://{{username}}:{{password}}@$host:5432/$db_name?sslmode=disable" \
-    username="${POSTGRES_USER:-postgres}" \
-    password="${POSTGRES_PASSWORD:-postgres}"
+    connection_url="postgresql://{{username}}:{{password}}@$host:5432/$db_name?sslmode=$sslmode" \
+    username="${POSTGRES_USER:?POSTGRES_USER must be set and not empty}" \
+    password="${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set and not empty}"
 
   vault write database/roles/$role_name \
     db_name="$config_name" \
@@ -117,26 +124,24 @@ config_db "game-db" "game-db" "game_db" "game-role"
 config_db "analytics-db" "analytics-db" "analytics_db" "analytics-role"
 config_db "profile-db" "profile-db" "profile_db" "profile-role"
 
-echo "policy api-gateway-policy loading..."
-vault policy write api-gateway-policy /vault/policies/api-gateway-policy.hcl
+apply_policy() {
+  local name="$1"
+  local file="$2"
+  if vault policy list 2>/dev/null | grep -qx "$name"; then
+    echo "Updating existing policy: '$name' from '$file'..."
+  else
+    echo "Creating new policy: '$name' from '$file'..."
 
-echo "policy user-service-policy loading..."
-vault policy write user-service-policy /vault/policies/user-service-policy.hcl
+  vault policy write "$name" "$file"
+}
 
-echo "policy chat-service-policy loading..."
-vault policy write chat-service-policy /vault/policies/chat-service-policy.hcl
-
-echo "policy friends-service-policy loading..."
-vault policy write friends-service-policy /vault/policies/friends-service-policy.hcl
-
-echo "policy game-service-policy loading..."
-vault policy write game-service-policy /vault/policies/game-service-policy.hcl
-
-echo "policy analytics-service-policy loading..."
-vault policy write analytics-service-policy /vault/policies/analytics-service-policy.hcl
-
-echo "policy profile-service-policy loading..."
-vault policy write profile-service-policy /vault/policies/profile-service-policy.hcl
+apply_policy "api-gateway-policy" "/vault/policies/api-gateway-policy.hcl"
+apply_policy  "user-service-policy" "/vault/policies/user-service-policy.hcl"
+apply_policy  "chat-service-policy" "/vault/policies/chat-service-policy.hcl"
+apply_policy  "friends-service-policy" "/vault/policies/friends-service-policy.hcl"
+apply_policy  "game-service-policy" "/vault/policies/game-service-policy.hcl"
+apply_policy  "analytics-service-policy" "/vault/policies/analytics-service-policy.hcl"
+apply_policy  "profile-service-policy" "/vault/policies/profile-service-policy.hcl"
 
 create_token() {
   local policy="$1"
@@ -155,14 +160,15 @@ create_token() {
     exit 1
   fi
   echo "$token" > "$file"
+  chmod 600 "$file"
 }
 
-create_token "api-gateway-policy" "/vault/api-gateway.token"
-create_token "user-service-policy" "/vault/api-user.token"
-create_token "chat-service-policy" "/vault/api-chat.token"
-create_token "friends-service-policy" "/vault/api-friends.token"
-create_token "game-service-policy" "/vault/api-game.token"
-create_token "analytics-service-policy" "/vault/api-analytics.token"
-create_token "profile-service-policy" "/vault/api-profile.token"
+create_token "api-gateway-policy" "/vault/data/api-gateway.token"
+create_token "user-service-policy" "/vault/data/api-user.token"
+create_token "chat-service-policy" "/vault/data/api-chat.token"
+create_token "friends-service-policy" "/vault/data/api-friends.token"
+create_token "game-service-policy" "/vault/data/api-game.token"
+create_token "analytics-service-policy" "/vault/data/api-analytics.token"
+create_token "profile-service-policy" "/vault/data/api-profile.token"
 
 echo "Vault ready"

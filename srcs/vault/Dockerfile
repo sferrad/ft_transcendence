@@ -11,7 +11,6 @@ RUN apk add --no-cache jq && \
     chmod 700 /vault/data && \
     chmod 755 /vault/logs
 
-VOLUME /vault
 
 ENV VAULT_ADDR=http://127.0.0.1:8200
 

@@ -12,14 +12,23 @@ VAULT_PID=$!
 
 # attend que vault soit lance (& specifie le fd et non un file)
 echo "waiting for vault ..."
-while true; do
+max_time=60
+elapsed=0
+while [ "$elapsed" -lt "$max_time" ]; do
     if vault status >/dev/null 2>&1; then
         echo "vault OK"
         break
     fi
     echo "waiting ..."
     sleep 1
+    elapsed=$((elapsed + 1))
 done
+
+if [ "%$elapsed" -ge "$mac_time" ]; then
+    echo "Vault is not ready, failed after ${max_time}s, killing vault and exiting"
+    kill "$VAULT_PID" 2>/dev/null
+    exit 1
+fi
 
 echo "initialisation of vault"
 
@@ -29,7 +38,7 @@ if ! /vault/scripts/setting.sh; then
     exit 1
 fi
 
-echo "vault initialisazed"
+echo "vault initialisized"
 
 wait "$VAULT_PID"
 
