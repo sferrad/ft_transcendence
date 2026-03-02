@@ -1,2 +1,6 @@
 fastapi
 uvicorn
+sqlqlchemy>=2.0
+psycopg[binary]>=3.1
+hvac>=2.0
+pydantic>=2.0
