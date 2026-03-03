@@ -5,8 +5,8 @@ Base = declarative_base()
 
 # Demande d'amis
 class FriendsRequest(Base):
-    __tablename__ = "friends requests"
-    __table_args__ = UniqueConstraint("from_user_id", "to_user_id", name = "uq_friend_requests_from_to")
+    __tablename__ = "friends_requests"
+    __table_args__ = (UniqueConstraint("from_user_id", "to_user_id", name = "uq_friend_requests_from_to"),)
 
 # Ids
     id = Column(Integer, primary_key=True, index=True)
@@ -23,7 +23,7 @@ class FriendsRequest(Base):
 # liste effective
 class Friends(Base):
     __tablename__ = "friends"
-    __table_args__ = UniqueConstraint("user_id", "friend_id", name = "uq_friend_user_friend")
+    __table_args__ = (UniqueConstraint("user_id", "friend_id", name = "uq_friend_user_friend"),)
 # Ids
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, index=True, nullable=False)
@@ -36,7 +36,7 @@ class Friends(Base):
 # liste user bloques
 class Block(Base):
     __tablename__ = "blocks"
-    __table_args__ = UniqueConstraint("user_id", "blocked_user_id", name = "uq_blocks_user_blocked")
+    __table_args__ = (UniqueConstraint("user_id", "blocked_user_id", name = "uq_blocks_user_blocked"),)
 # Ids
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, index=True, nullable=False)

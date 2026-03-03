@@ -5,8 +5,8 @@ from sqlalchemy.orm import declarative_base
 Base = declarative_base()
 
 class UserStats(Base):
-    __tablename__ = "user stats"
-    __table_args__ = UniqueConstraint("user_id", name="uq_user_stats_user_id")
+    __tablename__ = "user_stats"
+    __table_args__ = (UniqueConstraint("user_id", name="uq_user_stats_user_id"),)
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, index=True, nullable=False)
@@ -16,24 +16,24 @@ class UserStats(Base):
     losses = Column(Integer, nullable=False, default=0)
     draws = Column(Integer, nullable=False, default=0)
 
-    win_rate = Column(float, nullable=False, default=0.0)
+    win_rate = Column(Float, nullable=False, default=0.0)
 
     last_match_at = Column(DateTime(timezone=True), nullable=True)
 
 
 class GlobalMetric(Base):
-    __tablename__ = "global metrics"
-    __table_args__ = UniqueConstraint("metric_name", "metric_date", name="uq_global_metrics_name_date")
+    __tablename__ = "global_metrics"
+    __table_args__ = (UniqueConstraint("metric_name", "metric_date", name="uq_global_metrics_name_date"),)
 
     id = Column(Integer, primary_key=True, index=True)
     metric_name = Column(String(100), index=True, nullable=False)
     metric_date = Column(DateTime(timezone=True), index=True, nullable=False)
 
-    value = Column(float, nullable=False, default=0.0)
+    value = Column(Float, nullable=False, default=0.0)
 
 
 class EventLog(Base):
-    __tablename__ = "events log"
+    __tablename__ = "events_log"
 
     id = Column(Integer, primary_key=True, index=True)
     event_type = Column(String(100), index=True, nullable=False)
@@ -43,4 +43,4 @@ class EventLog(Base):
 
     timestamp = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
-Index("idx_events_log__event_type_timestamp")
+Index("idx_events_log_event_type_timestamp", EventLog.event_type, EventLog.timestamp)

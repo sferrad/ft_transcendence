@@ -76,8 +76,8 @@ echo "Activation secrets engine..."
 if vault secrets list | grep -q '^kv/'; then
   echo "Secrets engine 'kv/' already enabled"
 else
-  echo "Secrets engine enabled"
   vault secrets enable -path=kv -version=2 kv
+  echo "Secrets engine enabled"
 fi
 
 JWT_SECRET="${JWT_SECRET_KEY:?key must be initialized}"
