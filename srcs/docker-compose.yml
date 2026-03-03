@@ -222,7 +222,8 @@ services:
     image: api-gateway
     environment:
       - VAULT_ADDR=http://vault:8200
-      - VAULT_TOKEN_FILE=/vault/data/api-gateway.token
+      - VAULT_TOKEN_FILE=/vault/data/api-gateway.token?
+      - JWT_SECRET_KEY=?? a definir
     expose:
       - "8000"
     volumes:
@@ -253,6 +254,7 @@ services:
       - DB_HOST=user-db
       - DB_PORT=5432
       - DB_NAME=user_db
+      - VAULT_DB_CREDS_PATH=database/creds/user-role
     expose:
       - "8001"
     volumes:
@@ -288,6 +290,7 @@ services:
       - DB_HOST=chat-db
       - DB_PORT=5432
       - DB_NAME=chat_db
+      - VAULT_DB_CREDS_PATH=database/creds/chat-role
     expose:
       - "8002"
     volumes:
@@ -322,6 +325,7 @@ services:
       - DB_HOST=analytics-db
       - DB_PORT=5432
       - DB_NAME=analytics_db
+      - VAULT_DB_CREDS_PATH=database/creds/analytics-role
     expose:
       - "8003"
     volumes:
@@ -355,6 +359,7 @@ services:
       - DB_HOST=friends-db
       - DB_PORT=5432
       - DB_NAME=friends_db
+      - VAULT_DB_CREDS_PATH=database/creds/friends-role
     expose:
       - "8004"
     volumes:
@@ -388,6 +393,7 @@ services:
       - DB_HOST=game-db
       - DB_PORT=5432
       - DB_NAME=game_db
+      - VAULT_DB_CREDS_PATH=database/creds/game-role
     expose:
       - "8005"
     volumes:
@@ -421,6 +427,7 @@ services:
       - DB_HOST=profile-db
       - DB_PORT=5432
       - DB_NAME=profile_db
+      - VAULT_DB_CREDS_PATH=database/creds/profile-role
     expose:
       - "8006"
     volumes:

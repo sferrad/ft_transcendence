@@ -12,7 +12,7 @@ class Match(Base):
     player1_id = Column(Integer, index=True, nullable=False)
     player2_id = Column(Integer, index=True, nullable=False)
     
-    winner_id = Column(Integer, index=True, nullable=False)
+    winner_id = Column(Integer, index=True, nullable=True)
     
     score_player1 = Column(Integer, nullable=False, default=0)
     score_player2 = Column(Integer, nullable=False, default=0)
@@ -24,11 +24,11 @@ class Match(Base):
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    events = relationship("MatchEvent", back_populates="match", cascade="all, delet-orphan", passive_deletes=True)
+    events = relationship("MatchEvent", back_populates="match", cascade="all, delete-orphan", passive_deletes=True)
 
 
 class MatchEvent(Base):
-    __tablename__ = "match event"
+    __tablename__ = "match_event"
 
     id = Column(Integer, primary_key=True, index=True)
 

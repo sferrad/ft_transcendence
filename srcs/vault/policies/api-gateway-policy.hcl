@@ -16,9 +16,3 @@ path "kv/data/jwt/*" {
 path "kv/data/services/api-gateway/*" {
     capabilities = ["read"]
 }
-
-# autoriser a demander des credentials DB en dynamique
-
-path "database/creds/user-role" {
-    capabilities = ["read"]
-}
