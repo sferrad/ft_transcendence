@@ -4,7 +4,7 @@ import Trad from './Buttontrad';
 
 const Home = () => {
     return (
-        <div className="flex items-center justify-center h-screen bg-gradient-to-r from-purple-400 via-pink-500 to-red-500">
+        <div className="flex items-center justify-center h-screen bg-[url('/assets/bgHome.jpg')] bg-cover bg-center bg-no-repeat">
             <Trad />
             <Profil />
             <Carousel />
