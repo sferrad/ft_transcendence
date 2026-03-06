@@ -461,8 +461,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     image: frontend-react
-    ports:
-      - "3000:3000"
+    expose:
+      - "5173"
     networks:
       - transcendence-frontend
     restart: unless-stopped
@@ -474,9 +474,17 @@ services:
       context: ./waf
       dockerfile: Dockerfile
     image: WAF
+    environment:
+      - PORT=8080
+      - SERVER_NAME=localhost
+      - BLOCKING_PARANOIA=1
+      - ANOMALY_INBOUND=5
+      - ANOMALY_OUTBOUND=4
+      - ALLOWED_METHODS=GET HEAD POST PUT PATCH DELETE OPTIONS
+      - ALLOWED_REQUEST_CONTENT_TYPE=application/json application/x-www-form-urlencoded multipart/form-data
+      - ALLOWED_HTTP_VERSIONS=1.1 2
     ports:
-      - "80:80"
-      - "443:443"
+      - "80:8080"
     networks:
       - transcendence-frontend
     depends_on:
