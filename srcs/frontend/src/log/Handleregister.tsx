@@ -9,6 +9,7 @@ import Buttontrad from "../Home/Buttontrad";
 // };
 
 const Handleregister = () => {
+    const [username, setUsername] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
@@ -33,6 +34,7 @@ const Handleregister = () => {
         //temporaire, a remplacer par une requete fetch vers le backend
         setTimeout(() => {
             setMessage(t("Registration successful"));
+            setUsername("");
             setEmail("");
             setPassword("");
             setConfirmPassword("");
@@ -46,6 +48,12 @@ const Handleregister = () => {
             <div className="bg-[rgba(255,255,255,0.85)] p-8 w-96 rounded-lg shadow-2xl border border-gray-200 ">
                 <h1 className="text-2xl font-bold mb-4 text-center text-gray-800">{t("Register")}</h1>
                 <form onSubmit={register}>
+
+                    <input type="text"
+                        placeholder={t("Username")}
+                        value={username}
+                        onChange={e => setUsername(e.target.value)}
+                        className="border p-2 rounded mb-3 w-full"></input>
 
                     <input type="email"
                         placeholder="Email"
