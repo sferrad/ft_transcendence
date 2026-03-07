@@ -18,5 +18,7 @@
     "Passwords do not match": "Passwords do not match",
     "Registration successful": "Registration successful",
     "Already have an account? Login": "Already have an account? Login",
-    "Confirm Password": "Confirm Password"
+    "Confirm Password": "Confirm Password",
+    "Username or email": "Username or email",
+    "Username": "Username"
 }

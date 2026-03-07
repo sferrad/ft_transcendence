@@ -9,6 +9,7 @@ import Buttontrad from "../Home/Buttontrad";
 // };
 
 const HandleLog = () => {
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [password, setPassword] = useState("");
@@ -33,12 +34,14 @@ const HandleLog = () => {
         setMessage(t("Connexion Successful"));
         setPassword("");
         setEmail("");
+        setUsername("");
         // localStorage.setItem("isLogged", "true");
         // navigate("/dashboard");
       }
       else {
         setMessage(t("Email or password incorrect"));
         setEmail("");
+        setUsername("");
         setPassword("");
       }
       setLoading(false);
@@ -52,10 +55,10 @@ const HandleLog = () => {
         <h1 className="text-2xl font-bold mb-4 text-center text-gray-800">{t("Login")}</h1>
         <form onSubmit={login}>
 
-          <input type="email"
-            placeholder="Email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
+          <input type="text"
+            placeholder={t("Username or email")}
+            value={username}
+            onChange={e => setUsername(e.target.value)}
             className="border p-2 rounded mb-3 w-full"></input>
 
           <input type="password"
