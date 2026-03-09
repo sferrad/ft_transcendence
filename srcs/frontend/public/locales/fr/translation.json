@@ -18,6 +18,10 @@
     "Passwords do not match": "Les mots de passe ne correspondent pas",
     "Registration successful": "Inscription réussie",
     "Already have an account? Login": "Vous avez déjà un compte ? Connectez-vous",
-    "Confirm Password": "Confirmer le mot de passe"
+    "Confirm Password": "Confirmer le mot de passe",
+    "Username or email": "Nom d'utilisateur ou adresse e-mail",
+    "Username": "Nom d'utilisateur",
+    "An error occurred. Please try again.": "Une erreur s'est produite. Veuillez réessayer.",
+    "Registration failed": "Échec de l'inscription"
 }
 
