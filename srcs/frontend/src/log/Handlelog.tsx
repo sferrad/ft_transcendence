@@ -1,52 +1,12 @@
-import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import Buttontrad from "../Home/Buttontrad";
-
-// type LoginPayload = {
-//   email: string;
-//   password: string;
-// };
+import { useLogin } from "./useAuth";
 
 const HandleLog = () => {
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
-  const [message, setMessage] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { identifier, setIdentifier, password, setPassword, message, loading, login } = useLogin();
   const navigate = useNavigate();
   const { t } = useTranslation();
-
-  const login = (e: React.FormEvent) => {
-    
-    e.preventDefault();
-
-
-    // const payload: LoginPayload = {
-    //   email: email,
-    //   password: password,
-    // };
-    setLoading(true);
-
-    setTimeout(() => {
-    //temporaire, a remplacer par une requete fetch vers le backend
-      if (email === "test@test.com" && password === "test") {
-        setMessage(t("Connexion Successful"));
-        setPassword("");
-        setEmail("");
-        setUsername("");
-        // localStorage.setItem("isLogged", "true");
-        // navigate("/dashboard");
-      }
-      else {
-        setMessage(t("Email or password incorrect"));
-        setEmail("");
-        setUsername("");
-        setPassword("");
-      }
-      setLoading(false);
-    }, 1000);
-  };
 
   return (
     <div className="fixed inset-0 bg-[url('/assets/bgLogin.jpg')] bg-cover bg-center bg-no-repeat w-full h-full overflow-auto flex flex-col items-center justify-center">
@@ -57,8 +17,8 @@ const HandleLog = () => {
 
           <input type="text"
             placeholder={t("Username or email")}
-            value={username}
-            onChange={e => setUsername(e.target.value)}
+            value={identifier}
+            onChange={e => setIdentifier(e.target.value)}
             className="border p-2 rounded mb-3 w-full"></input>
 
           <input type="password"
@@ -68,9 +28,9 @@ const HandleLog = () => {
             className="border p-2 rounded mb-3 w-full"></input>
 
           <button type="submit"
-            disabled={!email || !password}
+            disabled={!identifier || !password}
             className={
-              `${!email || !password ? "bg-gray-400 cursor-not-allowed" : "bg-blue-500 cursor-pointer hover:bg-blue-600"} 
+              `${!identifier || !password ? "bg-gray-400 cursor-not-allowed" : "bg-blue-500 cursor-pointer hover:bg-blue-600"} 
                   text-white p-2 rounded w-full relative flex justify-center items-center h-10`}>
                 {loading && (
             <span className="absolute left-4 w-5 h-5 border-4 border-white border-t-transparent rounded-full animate-spin"></span>
