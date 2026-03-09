@@ -1,16 +1,14 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, func
-from sqlalchemy.orm import declarative_base
-
-Base = declarative_base()
+from .database import Base
 
 # Table des users (login, pswd, mail etc)
 class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String(50), unique=True, index=True, nullable=False)
+    username = Column(String(50), unique=True, index=True, nullable=True)
     email = Column(String(50), unique=True, index=True, nullable=False)
-    password_hash = Column(String(255), nullable=False)
+    hashed_password = Column(String(255), nullable=False)
 
     is_active = Column(Boolean, nullable=False, server_default="true")
     is_superuser = Column(Boolean, nullable=False, server_default="false")
