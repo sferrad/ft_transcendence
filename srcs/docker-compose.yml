@@ -221,9 +221,9 @@ services:
       dockerfile: Dockerfile
     image: api-gateway
     environment:
-      - VAULT_ADDR=http://vault:8200
-      - VAULT_TOKEN_FILE=/vault/data/api-gateway.token?
-      - JWT_SECRET_KEY=?? a definir
+      - VAULT_ADDR=${VAULT_ADDR}
+      - VAULT_TOKEN_FILE=/vault/data/api-gateway.token
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY} ## a generer avec openssl rand -hex 32
     expose:
       - "8000"
     volumes:
@@ -249,10 +249,11 @@ services:
     env_file:
       - .env
     environment:
-      - VAULT_ADDR=http://vault:8200
+      - USER_SERVICE_URL=http://user-service:8001
+      - VAULT_ADDR=${VAULT_ADDR}
       - VAULT_TOKEN_FILE=/vault/data/api-user.token
       - DB_HOST=user-db
-      - DB_PORT=5432
+      - DB_PORT=${DB_PORT}
       - DB_NAME=user_db
       - VAULT_DB_CREDS_PATH=database/creds/user-role
     expose:
@@ -285,10 +286,11 @@ services:
     env_file:
       - .env
     environment:
-      - VAULT_ADDR=http://vault:8200
+      - CHAT_SERVICE_URL=http://chat-service:8002
+      - VAULT_ADDR=${VAULT_ADDR}
       - VAULT_TOKEN_FILE=/vault/data/api-chat.token
       - DB_HOST=chat-db
-      - DB_PORT=5432
+      - DB_PORT=${DB_PORT}
       - DB_NAME=chat_db
       - VAULT_DB_CREDS_PATH=database/creds/chat-role
     expose:
@@ -305,7 +307,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8002/health"] ## Route a ajouter dans le main.py
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -320,10 +322,11 @@ services:
     env_file:
       - .env
     environment:
-      - VAULT_ADDR=http://vault:8200
+      - ANALYTICS_SERVICE_URL=http://analytics-service:8003
+      - VAULT_ADDR=${VAULT_ADDR}
       - VAULT_TOKEN_FILE=/vault/data/api-analytics.token
       - DB_HOST=analytics-db
-      - DB_PORT=5432
+      - DB_PORT=${DB_PORT}
       - DB_NAME=analytics_db
       - VAULT_DB_CREDS_PATH=database/creds/analytics-role
     expose:
@@ -354,10 +357,11 @@ services:
     env_file:
       - .env
     environment:
-      - VAULT_ADDR=http://vault:8200
+      - FRIENDS_SERVICE_URL=http://friends-service:8004
+      - VAULT_ADDR=${VAULT_ADDR}
       - VAULT_TOKEN_FILE=/vault/data/api-friends.token
       - DB_HOST=friends-db
-      - DB_PORT=5432
+      - DB_PORT=${DB_PORT}
       - DB_NAME=friends_db
       - VAULT_DB_CREDS_PATH=database/creds/friends-role
     expose:
@@ -388,10 +392,11 @@ services:
     env_file:
       - .env
     environment:
-      - VAULT_ADDR=http://vault:8200
+      - GAME_SERVICE_URL=http://game-service:8005
+      - VAULT_ADDR=${VAULT_ADDR}
       - VAULT_TOKEN_FILE=/vault/data/api-game.token
       - DB_HOST=game-db
-      - DB_PORT=5432
+      - DB_PORT=${DB_PORT}
       - DB_NAME=game_db
       - VAULT_DB_CREDS_PATH=database/creds/game-role
     expose:
@@ -422,10 +427,11 @@ services:
     env_file:
       - .env
     environment:
-      - VAULT_ADDR=http://vault:8200
+      - PROFILE_SERVICE_URL=http://profile-service:8006
+      - VAULT_ADDR=${VAULT_ADDR}
       - VAULT_TOKEN_FILE=/vault/data/api-profile.token
       - DB_HOST=profile-db
-      - DB_PORT=5432
+      - DB_PORT=${DB_PORT}
       - DB_NAME=profile_db
       - VAULT_DB_CREDS_PATH=database/creds/profile-role
     expose:

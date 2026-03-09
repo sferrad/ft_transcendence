@@ -7,7 +7,7 @@
 
 # path qui contient les secrets
 
-path "kv/data/jwt/*" {
+path "kv/data/jwt/main" {
     capabilities = ["read"]
 }
 
