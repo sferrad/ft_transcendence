@@ -1,46 +1,13 @@
-import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import Buttontrad from "../Home/Buttontrad";
-// type RegisterPayload = {
-//   email: string;
-//   password: string;
-//   confirmPassword: string;
-// };
+import { useRegister } from "./useAuth";
 
 const Handleregister = () => {
-    const [username, setUsername] = useState("");
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [confirmPassword, setConfirmPassword] = useState("");
-    const [message, setMessage] = useState("");
     const navigate = useNavigate();
     const { t } = useTranslation();
 
-    const register = (e: React.FormEvent) => {
-        e.preventDefault();
-        
-        // const payload: RegisterPayload = {
-        //     email: email,
-        //     password: password,
-        //     confirmPassword: confirmPassword,
-        // };
-
-        if (password !== confirmPassword) {
-            setMessage(t("Passwords do not match"));
-            return;
-        }
-        
-        //temporaire, a remplacer par une requete fetch vers le backend
-        setTimeout(() => {
-            setMessage(t("Registration successful"));
-            setUsername("");
-            setEmail("");
-            setPassword("");
-            setConfirmPassword("");
-            navigate("/login");
-        }, 1000);
-    };
+    const { username, setUsername, email, setEmail, password, setPassword, confirmPassword, setConfirmPassword, message, register } = useRegister();
 
     return (
         <div className="fixed inset-0 bg-[url('/assets/bgLogin.jpg')] bg-cover bg-center bg-no-repeat w-full h-full overflow-auto flex flex-col items-center justify-center">

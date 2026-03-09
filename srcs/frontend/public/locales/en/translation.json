@@ -20,5 +20,7 @@
     "Already have an account? Login": "Already have an account? Login",
     "Confirm Password": "Confirm Password",
     "Username or email": "Username or email",
-    "Username": "Username"
+    "Username": "Username",
+    "An error occurred. Please try again.": "An error occurred. Please try again.",
+    "Registration failed": "Registration failed"
 }

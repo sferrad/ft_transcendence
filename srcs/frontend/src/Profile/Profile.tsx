@@ -1,7 +1,4 @@
 import { useNavigate } from "react-router-dom";
-import { FaRegArrowAltCircleRight } from "react-icons/fa";
-import { FaRegArrowAltCircleLeft } from "react-icons/fa";
-import { useState, useEffect, useRef } from 'react';
 import "../i18n/index.ts";
 import { useTranslation } from "react-i18next";
 
