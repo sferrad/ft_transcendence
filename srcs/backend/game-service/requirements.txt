@@ -4,3 +4,4 @@ sqlalchemy==2.0.28
 psycopg[binary]==3.1.18
 hvac==2.2.0
 pydantic==2.6.4
+hvac==2.2.0
