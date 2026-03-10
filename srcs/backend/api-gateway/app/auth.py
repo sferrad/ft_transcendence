@@ -13,10 +13,10 @@ JWT_SECRET_KEY, JWT_ALGORITHM = read_jwt_secret()
 # Verifie la validite du token envoye (KEY check signature, ALGO check algo accepte)
 # fonction .decode raise exception si invalid
 def check_jwt(token: str) -> dict:
-    payload = jwt.decode(token, JWT_SECRET_KEY, JWT_ALGORITHM)
+    payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
     return payload
 
-# on accepte nonepour analyser et envoyer notre propre message d erreur et ne pas laisser Fastapi faire seul
+# on accepte none pour analyser et envoyer notre propre message d erreur et ne pas laisser Fastapi faire seul
 # split (" ", 1) -> " " -> separator le format de authorization
 # est en 2 parts (bearer 42254) le 1 est explicite pour 
 # ne cut qu une fois au cas ou le token serait avec des espaces
@@ -31,7 +31,7 @@ def require_user(authorization: str | None = Header(default=None)) -> dict:
             detail="Missing Authorization header",
         )
     parts = authorization.split(" ", 1)
-    if len(parts) != 2 or parts[0].lower != "bearer":
+    if len(parts) != 2 or parts[0].lower() != "bearer":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authorization header must be : bearer <token>",
