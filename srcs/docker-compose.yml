@@ -266,7 +266,7 @@ services:
       - DB_HOST=user-db
       - DB_PORT=${DB_PORT}
       - DB_NAME=user_db
-      - VAULT_DB_CREDS_PATH=database/creds/user-role
+      - VAULT_DB_CREDS_PATH=database/creds/user-role # credentials tmp pour acces DB accessible avec vault token
     expose:
       - "8001"
     volumes:
