@@ -35,7 +35,8 @@ services:
     build:
       context: ./postgres-databases
       dockerfile: Dockerfile
-
+    expose:
+      - 5432
     image: user-db
     env_file:
       - .env
@@ -60,6 +61,8 @@ services:
     build:
       context: ./postgres-databases
       dockerfile: Dockerfile
+    expose:
+      - 5432
     image: chat-db
     env_file:
       - .env
@@ -83,6 +86,8 @@ services:
     build:
       context: ./postgres-databases
       dockerfile: Dockerfile
+    expose:
+      - 5432
     image: friends-db
     env_file:
       - .env
@@ -106,6 +111,8 @@ services:
     build:
       context: ./postgres-databases
       dockerfile: Dockerfile
+    expose:
+      - 5432
     image: game-db
     env_file:
       - .env
@@ -129,6 +136,8 @@ services:
     build:
       context: ./postgres-databases
       dockerfile: Dockerfile
+    expose:
+      - 5432
     image: analytics-db
     env_file:
       - .env
@@ -152,6 +161,8 @@ services:
     build:
       context: ./postgres-databases
       dockerfile: Dockerfile
+    expose:
+      - 5432
     image: profile-db
     env_file:
       - .env
