@@ -485,3 +485,9 @@ services:
       frontend:
         condition: service_started
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/waf-health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
