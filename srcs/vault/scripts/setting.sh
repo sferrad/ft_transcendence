@@ -83,7 +83,7 @@ fi
 JWT_SECRET="${JWT_SECRET_KEY:?key must be initialized}"
 echo "Adding secret JWT in kv/data/jwt/main"
 vault kv put kv/jwt/main \
-  secret_key="$JWT_SECRET"
+  secret_key="$JWT_SECRET" \
   algorithm="${JWT_ALGORITHM}"
 
 
