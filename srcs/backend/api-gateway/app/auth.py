@@ -34,7 +34,7 @@ def require_user(authorization: str | None = Header(default=None)) -> dict:
     if len(parts) != 2 or parts[0].lower() != "bearer":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authorization header must be : bearer <token>",
+            detail="Authorization header must be: Bearer <token>",
         )
     try:
         return check_jwt(parts[1])

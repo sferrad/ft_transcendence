@@ -8,20 +8,41 @@ from pydantic import BaseModel
 
 from .auth import require_user
 from .vault_kv import read_jwt_secret
-from .user_service_client import verify_credentials
+from .user_service_client import (
+    verify_credentials,
+    InvalidCredentialsError,
+    UserServiceUnavailableError,
+    UserServiceError
+)
 
 app = FastAPI(title="api-gateway")
 
-JWT_SECRET_KEY, JWT_ALGORITHM = read_jwt_secret()
+HOP_BY_HOP_HEADERS = {
+    "connection",
+    "keep-alive",
+    "proxy-authenticate",
+    "proxy-authorization",
+    "te",
+    "trailers",
+    "transfer-encoding",
+    "upgrade",
+    "content-length",
+    "content-encoding",
+}
+@app.on_event("startup")
+def load_jwt_secret():
+    secret_key, algorithm = read_jwt_secret()
+    app.state.jwt_secret_key = secret_key
+    app.state.jwt_algorithm = algorithm
 
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
-USER_SERVICE_URL = os.getenv("USER_SERVICE_URL")
-CHAT_SERVICE_URL = os.getenv("CHAT_SERVICE_URL")
-ANALYTICS_SERVICE_URL = os.getenv("ANALYTICS_SERVICE_URL")
-FRIENDS_SERVICE_URL = os.getenv("FRIENDS_SERVICE_URL")
-GAME_SERVICE_URL = os.getenv("GAME_SERVICE_URL")
-PROFILE_SERVICE_URL = os.getenv("PROFILE_SERVICE_URL")
+USER_SERVICE_URL = os.getenv("USER_SERVICE_URL", "http://user-service:8001")
+CHAT_SERVICE_URL = os.getenv("CHAT_SERVICE_URL", "http://chat-service:8002")
+ANALYTICS_SERVICE_URL = os.getenv("ANALYTICS_SERVICE_URL", "http://analytics-service:8003")
+FRIENDS_SERVICE_URL = os.getenv("FRIENDS_SERVICE_URL", "http://friends-service:8004")
+GAME_SERVICE_URL = os.getenv("GAME_SERVICE_URL", "http://game-service:8005")
+PROFILE_SERVICE_URL = os.getenv("PROFILE_SERVICE_URL", "http://profile-service:8006")
 
 class LoginRequest(BaseModel):
     email: str
@@ -30,20 +51,26 @@ class LoginRequest(BaseModel):
 def create_access_token(payload: dict) -> str:
     data = payload.copy()
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    data["exp"] = expire
-    return jwt.encode(data, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+    data["exp"] = int(expire.timestamp())
+    return jwt.encode(data, app.state.jwt_secret_key, algorithm=app.state.jwt_algorithm)
 
 
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "api-gateway"}
 
+# auth/login appel une route interne avec verify_credentials -> user-service
 @app.post("/auth/login")
 async def auth_login(body: LoginRequest):
     try:
         user = await verify_credentials(body.email, body.password)
-    except RuntimeError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid credentials")
+    except InvalidCredentialsError as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+    except UserServiceUnavailableError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e))
+    except UserServiceError as e:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
+
     token = create_access_token({"sub": str(user["id"]), "email": str(user["email"])})
     return {"access_token": token, "token_type": "bearer"}
 
@@ -74,7 +101,10 @@ def auth_me(payload: dict = Depends(require_user)):
 async def _proxy(request: Request, target_base: str, path: str, extra_headers: dict | None = None) -> Response:
     target_url = f"{target_base}/{path}"
     body = await request.body()
-    headers = {k: v for k, v in request.headers.items() if k.lower() not in ("host", "x-user-id")}
+    headers = {k: v for k, v in request.headers.items()
+               if k.lower() not in ("host", "x-user-id")
+               and k not in HOP_BY_HOP_HEADERS
+            }
     if extra_headers:
         headers.update(extra_headers)
     async with httpx.AsyncClient() as client:
