@@ -23,7 +23,7 @@ HOP_BY_HOP_HEADERS = {
     "proxy-authenticate",
     "proxy-authorization",
     "te",
-    "trailers",
+    "trailer",
     "transfer-encoding",
     "upgrade",
     "content-length",
@@ -49,10 +49,14 @@ class LoginRequest(BaseModel):
     password: str
 
 def create_access_token(payload: dict) -> str:
+    jwt_secret_key = getattr(app.state, "jwt_secret_key", None)
+    jwt_algorithm = getattr(app.state, "jwt_algorithm", None)
+    if not jwt_secret_key or not jwt_algorithm:
+        raise HTTPException(status_code=503, detail="JWT jwt_secret_key not initialized")
     data = payload.copy()
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     data["exp"] = int(expire.timestamp())
-    return jwt.encode(data, app.state.jwt_secret_key, algorithm=app.state.jwt_algorithm)
+    return jwt.encode(data, jwt_secret_key, algorithm=jwt_algorithm)
 
 
 @app.get("/health")
@@ -103,7 +107,7 @@ async def _proxy(request: Request, target_base: str, path: str, extra_headers: d
     body = await request.body()
     headers = {k: v for k, v in request.headers.items()
                if k.lower() not in ("host", "x-user-id")
-               and k not in HOP_BY_HOP_HEADERS
+               and k.lower() not in HOP_BY_HOP_HEADERS
             }
     if extra_headers:
         headers.update(extra_headers)
@@ -131,6 +135,7 @@ async def _proxy(request: Request, target_base: str, path: str, extra_headers: d
 
 # gateway recupere et envoi a chaque micro service prive l'ID(x-user-id) du 
 # user car ils ne verifient pas le jwt sauf a user-service qui est public
+# FastAPI sait injecter automatiquement les parametre (request, authorization ...) -> require_user
 @app.api_route("/users/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 async def proxy_users(path: str, request: Request):
     return await _proxy(request, USER_SERVICE_URL, path)
