@@ -1,7 +1,7 @@
 import os
 import httpx
 
-USER_SERVICE_URL = os.getenv("USER_SERVICE_URL")
+USER_SERVICE_URL = os.getenv("USER_SERVICE_URL", "http://user-service:8001")
 
 class InvalidCredentialsError(RuntimeError):
     """Credentials are wrong (401 from user-service)."""
@@ -24,8 +24,11 @@ async def verify_credentials(email: str, password: str) ->dict:
     if response.status_code == 401:
         raise InvalidCredentialsError("invalid credentials")
     if response.status_code != 200:
-        raise RuntimeError(f"user-service verify failed: {response.status_code} {response.text}")
-    data = response.json()
+        raise UserServiceError(f"user-service verify failed with status: {response.status_code}")
+    try :
+        data = response.json()
+    except ValueError as e:
+        raise UserServiceError("user-service returned invalid JSON") from e
     if not data.get("ok"):
-        raise RuntimeError("user-service verify returned ok=false")
+        raise UserServiceError("user-service verify returned ok=false")
     return data["user"]
