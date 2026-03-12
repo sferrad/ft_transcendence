@@ -15,17 +15,23 @@ echo "Initialisation Vault..."
 # par defaut vault n est pas initialise et est scelle
 # vault operatot init -> genere .json avec cles de deverouillage
 is_initialized(){
-  if vault status 2>/dev/null | grep -q 'Initialized *true'; then
+  local output
+  output=$(vault status 2>/dev/null || true)
+  if echo "$output" | grep -q 'Initialized *true'; then
     return 0
   else
     return 1
+  fi
 }
 
 is_sealed(){
-  if vault status 2>/dev/null | grep -q 'Sealed *true'; then
+  local output
+  output=$(vault status 2>/dev/null || true)
+  if echo "$output" | grep -q 'Sealed *true'; then
     return 0
   else
     return 1
+  fi
 }
 
 if is_initialized; then

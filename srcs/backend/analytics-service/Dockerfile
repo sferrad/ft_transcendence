@@ -16,11 +16,11 @@ RUN apt-get update && \
     && mkdir -p  /app/logs \
     && chown -R appuser:appuser /app
     
+WORKDIR /app
 COPY --chown=appuser:appuser ./app /app/app
 
 COPY --chown=appuser:appuser requirements.txt .
 
-WORKDIR /app
 
 USER appuser
 
