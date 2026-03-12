@@ -147,10 +147,12 @@ async def _proxy(request: Request, target_base: str, path: str, extra_headers: d
 # pas de dict depends car on doit rester public pour register/login
 
 # gateway recupere et envoi a chaque micro service prive l'ID(x-user-id) du 
-# user car ils ne verifient pas le jwt sauf a user-service qui est public
+# user car ils ne verifient pas le jwt sauf a user-service qui est public (sauf /users/internal)
 # FastAPI sait injecter automatiquement les parametre (request, authorization ...) -> require_user
 @app.api_route("/users/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 async def proxy_users(path: str, request: Request):
+    if path.startswith("internal/") or path.startswith("/internal/"):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
     return await _proxy(request, USER_SERVICE_URL, path)
 
 @app.api_route("/game/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])

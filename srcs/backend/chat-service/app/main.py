@@ -21,6 +21,8 @@ def ensure_user_schema() -> None:
 	try:
 		init_engine()  # lit Vault -> crée engine + SessionLocal
 		init_db() # a mettre on event("startup")???
+		if database.engine is None:
+			return
 		with database.engine.begin() as conn:
 			conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(50)"))
 			conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_username ON users (username)"))

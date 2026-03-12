@@ -1,9 +1,10 @@
 import os
-from typing import Optional, Generator, Tuple
+from typing import Optional, Generator
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.orm.session import Session
+from urllib.parse import quote_plus
 
 from .vault_client import get_vault_client
 
@@ -25,7 +26,7 @@ def get_db_creds_from_vault() -> tuple[str, str]:
         raise RuntimeError("VAULT_DB_CREDS_PATH is not set")
     client = get_vault_client()
     secret = client.read(VAULT_DB_CREDS_PATH)
-    if not secret or "data" not in secret:
+    if not secret or "data" not in secret :
         raise RuntimeError(f"Cannot read secret from; {VAULT_DB_CREDS_PATH}")
     data = secret["data"]
     username = data.get("username")
@@ -37,7 +38,11 @@ def get_db_creds_from_vault() -> tuple[str, str]:
 
 def build_db_url() -> str:
     username, password = get_db_creds_from_vault()
-    return f"postgresql+psycopg://{username}:{password}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+
+    # Important: Vault-generated passwords can contain special chars that must be URL-encoded
+    username_enc = quote_plus(username)
+    password_enc = quote_plus(password)
+    return f"postgresql+psycopg://{username_enc}:{password_enc}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 def init_engine():
     global engine, SessionLocal
@@ -47,10 +52,12 @@ def init_engine():
 
 
 def init_db() -> None:
+    if engine is None:
+        raise RuntimeError("DB engine not initialized. Call init_engine() first.")
     Base.metadata.create_all(bind=engine)
 # cette fonction est un generator qui yield des Session
 # Generator[YieldType, SendType, ReturnType]
-def get_db() ->Generator[Session, None, None]:
+def get_db() -> Generator[Session, None, None]:
     if SessionLocal is None:
         raise RuntimeError("DB session factory not initialized (startup not completed)")
 
