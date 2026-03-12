@@ -1,7 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, func, UniqueConstraint, Index
 from sqlalchemy.orm import declarative_base
-
-Base = declarative_base()
+from .database import Base
 
 # Demande d'amis
 class FriendsRequest(Base):

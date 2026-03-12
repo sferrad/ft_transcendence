@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, Text, String, DateTime, func, UniqueConstraint, Index
 from sqlalchemy.orm import declarative_base
+from .database import Base
 
-Base = declarative_base()
 # profil public / ce qui est visible des autres users
 class Profile(Base):
 
