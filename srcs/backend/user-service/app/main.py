@@ -10,7 +10,8 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from . import models
-from .database import Base, engine, get_db, init_db, init_engine
+from . import database
+from .database import Base, get_db, init_db, init_engine
 
 
 app = FastAPI()
@@ -35,7 +36,9 @@ def ensure_user_schema() -> None:
 	`create_all()` doesn't alter existing tables.
 	"""
 	try:
-		with engine.begin() as conn:
+		init_engine()  # lit Vault -> crée engine + SessionLocal
+		init_db() # a mettre on event("startup")???
+		with database.engine.begin() as conn:
 			conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(50)"))
 			conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_username ON users (username)"))
 	except Exception:
@@ -50,7 +53,7 @@ class RegisterRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-	identifier: str
+	identifier: str # email or username
 	password: str
 
 
@@ -65,7 +68,8 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 	hashed_pw_bytes = hashed_password.encode("utf-8")
 	return bcrypt.checkpw(plain_pw_bytes, hashed_pw_bytes)
 
-
+def get_user_by_identifier(db: Session, identifier: str) -> str:
+	return (db.query(models.User).filter(models.User.email == identifier) | (models.User.username == identifier)).first()
 # def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
 # 	to_encode = data.copy()
 # 	expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
@@ -113,10 +117,9 @@ async def auth_register(payload: RegisterRequest, db: Session = Depends(get_db))
 	if existing_user:
 		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
 
-	if payload.username is not None:
-		existing_username = db.query(models.User).filter(models.User.username == payload.username).first()
-		if existing_username:
-			raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already taken")
+	existing_username = db.query(models.User).filter(models.User.username == payload.username).first()
+	if existing_username:
+		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already taken")
 
 	hashed = hash_password(payload.password)
 	user = models.User(email=payload.email, hashed_password=hashed, username=payload.username)
@@ -128,7 +131,7 @@ async def auth_register(payload: RegisterRequest, db: Session = Depends(get_db))
 # Ajout
 @app.post("/internal/auth/verify")
 async def internal_auth_verify(payload: LoginRequest, db: Session = Depends(get_db)):
-	user = db.query(models.User).filter(models.User.email == payload.email).first()
+	user = get_user_by_identifier(db, payload.identifier)
 	if not user or not verify_password(payload.password, user.hashed_password):
 		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 

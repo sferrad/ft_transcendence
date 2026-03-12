@@ -24,6 +24,8 @@ Base = declarative_base()
 
 
 def get_db_creds_from_vault() -> tuple[str, str]:
+    if not VAULT_DB_CREDS_PATH:
+        raise RuntimeError("VAULT_DB_CREDS_PATH is not set")
     client = get_vault_client()
     secret = client.read(VAULT_DB_CREDS_PATH)
     if not secret or "data" not in secret:
@@ -59,8 +61,12 @@ def init_db() -> None:
     Base.metadata.create_all(bind=engine)
 ##################################
 #  
-def get_db():
-    db = SessionLocal()
+# cette fonction est un generator qui yield des Session
+# Generator[YieldType, SendType, ReturnType]
+def get_db() ->Generator[Session, None, None]:
+    if SessionLocal is None:
+        raise RuntimeError("DB session factory not initialized (startup not completed)")
+    db = SessionLocal()  # ouvre une session    
     try:
         yield db
     finally:

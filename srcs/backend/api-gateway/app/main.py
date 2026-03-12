@@ -29,6 +29,7 @@ HOP_BY_HOP_HEADERS = {
     "content-length",
     "content-encoding",
 }
+
 @app.on_event("startup")
 def load_jwt_secret():
     secret_key, algorithm = read_jwt_secret()
@@ -45,7 +46,7 @@ GAME_SERVICE_URL = os.getenv("GAME_SERVICE_URL", "http://game-service:8005")
 PROFILE_SERVICE_URL = os.getenv("PROFILE_SERVICE_URL", "http://profile-service:8006")
 
 class LoginRequest(BaseModel):
-    email: str
+    identifier: str
     password: str
 
 def create_access_token(payload: dict) -> str:
@@ -67,7 +68,7 @@ def health():
 @app.post("/auth/login")
 async def auth_login(body: LoginRequest):
     try:
-        user = await verify_credentials(body.email, body.password)
+        user = await verify_credentials(body.identifier, body.password)
     except InvalidCredentialsError as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
     except UserServiceUnavailableError as e:
@@ -75,7 +76,11 @@ async def auth_login(body: LoginRequest):
     except UserServiceError as e:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
 
-    token = create_access_token({"sub": str(user["id"]), "email": str(user["email"])})
+    token = create_access_token({
+        "sub": str(user["id"]),
+        "email": str(user["email"]),
+        "username": str(user["username"]),
+    })
     return {"access_token": token, "token_type": "bearer"}
 
 # vraiment utile ?
@@ -105,21 +110,29 @@ def auth_me(payload: dict = Depends(require_user)):
 async def _proxy(request: Request, target_base: str, path: str, extra_headers: dict | None = None) -> Response:
     target_url = f"{target_base}/{path}"
     body = await request.body()
-    headers = {k: v for k, v in request.headers.items()
-               if k.lower() not in ("host", "x-user-id")
-               and k.lower() not in HOP_BY_HOP_HEADERS
-            }
+    client_headers = {
+        k: v for k, v in request.headers.items()
+        if k.lower() not in ("host", "x-user-id")
+        and k.lower() not in HOP_BY_HOP_HEADERS
+    }
     if extra_headers:
-        headers.update(extra_headers)
-    async with httpx.AsyncClient() as client:
+        client_headers.update(extra_headers)
+    async with httpx.AsyncClient() as client: # envoi de la requete client -> gateway -> service (avec header filtre)
         response = await client.request(
             method=request.method,
             url=target_url,
             params=dict(request.query_params),
             content=body,
-            headers=headers,
+            headers=client_headers,
         )
-        return Response(content=response.content, status_code=response.status_code, headers=dict(response.headers))
+# "response" revient avec de nouveau header de la part du micro service qui doivent etre filtre
+    service_header = {
+        k: v for k, v in client_headers.items()
+        if k.lower() not in HOP_BY_HOP_HEADERS
+    }
+
+
+    return Response(content=response.content, status_code=response.status_code, headers=dict(service_header))
 
 
 
