@@ -1,6 +1,7 @@
 import os
 from typing import Optional, Generator
 from sqlalchemy import create_engine
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.orm.session import Session
 from urllib.parse import quote_plus
@@ -13,11 +14,18 @@ DB_NAME = os.getenv("DB_NAME", "user_db")
 # db_user = os.getenv("POSTGRES_USER", "postgres_user")
 # db_password = os.getenv("POSTGRES_PASSWORD", "postgres_password")
 
-DATABASE_URL = f"postgresql+psycopg://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+DB_HOST = os.getenv("DB_HOST", "user-db")
+DB_PORT = os.getenv("DB_PORT", "5432")
+DB_NAME = os.getenv("DB_NAME", "user_db")
+# db_user = os.getenv("POSTGRES_USER", "postgres_user")
+# db_password = os.getenv("POSTGRES_PASSWORD", "postgres_password")
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+# Ajout
+VAULT_DB_CREDS_PATH = os.getenv("VAULT_DB_CREDS_PATH")
 
-SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+engine: Optional[Engine] = None
+
+SessionLocal: Optional[sessionmaker] = None
 
 Base = declarative_base()
 

@@ -2,14 +2,13 @@ import os
 
 import bcrypt
 from fastapi import Depends, FastAPI, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
 from pydantic import BaseModel
 from sqlalchemy import text, or_
 from sqlalchemy.orm import Session
 
 from . import models
-from .database import Base, engine, get_db
+from . import database
+from .database import Base, get_db, init_db, init_engine
 
 
 app = FastAPI()
@@ -18,6 +17,8 @@ app = FastAPI()
 # Au startup, Docker a plus de chances d'avoir tout up.
 @app.on_event("startup")
 def ensure_user_schema() -> None:
+	init_engine()  # lit Vault -> crée engine + SessionLocal
+	init_db() # a mettre on event("startup")???
 	"""Best-effort dev migration for `username`.
 
 	`create_all()` doesn't alter existing tables.
@@ -37,11 +38,11 @@ def ensure_user_schema() -> None:
 class RegisterRequest(BaseModel):
 	email: str
 	password: str
-	username: str | None = None
+	username: str
 
 
 class LoginRequest(BaseModel):
-	email: str
+	identifier: str # email or username
 	password: str
 
 
@@ -83,10 +84,9 @@ async def auth_register(payload: RegisterRequest, db: Session = Depends(get_db))
 	if existing_user:
 		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
 
-	if payload.username is not None:
-		existing_username = db.query(models.User).filter(models.User.username == payload.username).first()
-		if existing_username:
-			raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already taken")
+	existing_username = db.query(models.User).filter(models.User.username == payload.username).first()
+	if existing_username:
+		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already taken")
 
 	hashed = hash_password(payload.password)
 	user = models.User(email=payload.email, hashed_password=hashed, username=payload.username)
@@ -95,10 +95,10 @@ async def auth_register(payload: RegisterRequest, db: Session = Depends(get_db))
 	db.refresh(user)
 	return {"id": user.id, "email": user.email, "username": user.username}
 
-
-@app.post("/auth/login")
-async def auth_login(payload: LoginRequest, db: Session = Depends(get_db)):
-	user = db.query(models.User).filter(models.User.email == payload.email).first()
+# Ajout
+@app.post("/internal/auth/verify")
+async def internal_auth_verify(payload: LoginRequest, db: Session = Depends(get_db)):
+	user = get_user_by_identifier(db, payload.identifier)
 	if not user or not verify_password(payload.password, user.hashed_password):
 		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
