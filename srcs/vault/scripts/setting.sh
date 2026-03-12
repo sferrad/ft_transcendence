@@ -83,8 +83,8 @@ fi
 JWT_SECRET="${JWT_SECRET_KEY:?key must be initialized}"
 echo "Adding secret JWT in kv/data/jwt/main"
 vault kv put kv/jwt/main \
-  secret_key="$JWT_SECRET"
-  algorithm="HS256"
+  secret_key="$JWT_SECRET" \
+  algorithm="${JWT_ALGORITHM}"
 
 
 echo "Activation secrets DB..."
@@ -131,7 +131,7 @@ apply_policy() {
     echo "Updating existing policy: '$name' from '$file'..."
   else
     echo "Creating new policy: '$name' from '$file'..."
-
+  fi
   vault policy write "$name" "$file"
 }
 
@@ -163,6 +163,7 @@ create_token() {
   chmod 600 "$file"
 }
 
+# Creation token Vault pour autoriser l'acces a la lecture des fichiers specifies dans policies
 create_token "api-gateway-policy" "/vault/data/api-gateway.token"
 create_token "user-service-policy" "/vault/data/api-user.token"
 create_token "chat-service-policy" "/vault/data/api-chat.token"
