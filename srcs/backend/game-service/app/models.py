@@ -1,8 +1,7 @@
 from sqlalchemy import Column, Integer, String, DateTime, func, ForeignKey, Index
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.dialects.postgresql import JSONB
-
-Base = declarative_base()
+from .database import Base
 
 class Match(Base):
     __tablename__ = "matches"
