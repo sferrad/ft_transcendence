@@ -1,12 +1,9 @@
-# from datetime import datetime, timedelta
 import os
 
 import bcrypt
 from fastapi import Depends, FastAPI, HTTPException, status
 from pydantic import BaseModel
-# from fastapi.security import OAuth2PasswordBearer
-# from jose import JWTError, jwt
-from sqlalchemy import text
+from sqlalchemy import text, or_
 from sqlalchemy.orm import Session
 
 from . import models
@@ -16,15 +13,6 @@ from .database import Base, get_db, init_db, init_engine
 
 app = FastAPI()
 
-
-# SECRET_KEY = os.getenv("JWT_SECRET_KEY")
-# ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
-# ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
-
-# oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
-
-
-# Modif
 # À l'import, Vault/DB peuvent ne pas être prêts -> crash.
 # Au startup, Docker a plus de chances d'avoir tout up.
 @app.on_event("startup")
@@ -38,13 +26,14 @@ def ensure_user_schema() -> None:
 	try:
 		init_engine()  # lit Vault -> crée engine + SessionLocal
 		init_db() # a mettre on event("startup")???
+		if database.engine is None:
+			return
 		with database.engine.begin() as conn:
 			conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(50)"))
 			conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_username ON users (username)"))
 	except Exception:
 		# Don't block startup if DB isn't reachable yet.
 		return
-######################################
 
 class RegisterRequest(BaseModel):
 	email: str
@@ -69,32 +58,10 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 	return bcrypt.checkpw(plain_pw_bytes, hashed_pw_bytes)
 
 def get_user_by_identifier(db: Session, identifier: str) -> str:
-	return (db.query(models.User).filter(models.User.email == identifier) | (models.User.username == identifier)).first()
-# def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
-# 	to_encode = data.copy()
-# 	expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-# 	to_encode.update({"exp": expire})
-# 	return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-
-
-# def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-# 	credentials_exception = HTTPException(
-# 		status_code=status.HTTP_401_UNAUTHORIZED,
-# 		detail="Invalid token",
-# 		headers={"WWW-Authenticate": "Bearer"},
-# 	)
-# 	try:
-# 		payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-# 		email: str | None = payload.get("sub")
-# 		if email is None:
-# 			raise credentials_exception
-# 	except JWTError:
-# 		raise credentials_exception
-
-# 	user = db.query(models.User).filter(models.User.email == email).first()
-# 	if not user:
-# 		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-# 	return user
+	return (
+		db.query(models.User)
+		.filter(or_(models.User.email == identifier),
+		  models.User.username == identifier)).first()
 
 
 @app.get("/health")
@@ -136,23 +103,3 @@ async def internal_auth_verify(payload: LoginRequest, db: Session = Depends(get_
 		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
 	return {"ok": True, "user": {"id": user.id, "email": user.email, "username": user.username}}
-##########################################################
-
-# @app.post("/auth/login")
-# async def auth_login(payload: LoginRequest, db: Session = Depends(get_db)):
-# 	user = db.query(models.User).filter(models.User.email == payload.email).first()
-# 	if not user or not verify_password(payload.password, user.hashed_password):
-# 		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-
-# 	access_token = create_access_token(data={"sub": user.email})
-# 	return {"access_token": access_token, "token_type": "bearer"}
-
-
-# @app.get("/auth/me")
-# async def auth_me(current_user=Depends(get_current_user)):
-# 	return {
-# 		"id": current_user.id,
-# 		"email": current_user.email,
-# 		"username": getattr(current_user, "username", None),
-# 		"created_at": current_user.created_at,
-# 	}
