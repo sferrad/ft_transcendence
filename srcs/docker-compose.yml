@@ -190,6 +190,7 @@ services:
       context: ./vault
       dockerfile: Dockerfile
     image: vault
+    user: "0:0"
     env_file:
       - .env
     expose:
@@ -202,6 +203,7 @@ services:
       - IPC_LOCK
     networks:
       - transcendence-backend
+      - transcendence-database
     restart: unless-stopped
     depends_on:
       user-db:
@@ -480,11 +482,11 @@ services:
 
 ## WAF ####
 
-  # WAF:
+  # waf:
   #   build:
   #     context: ./waf
   #     dockerfile: Dockerfile
-  #   image: WAF
+  #   image: waf
   #   ports:
   #     - "80:80"
   #     - "443:443"
