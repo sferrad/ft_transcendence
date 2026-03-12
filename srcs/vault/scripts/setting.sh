@@ -8,6 +8,9 @@ set -euo pipefail
 
 INIT_FILE_JSON="/vault/data/init.json"
 
+# changer les droits sur le dir vault/data car monte de base en 700
+chmod 711 /vault/data || true
+
 export VAULT_ADDR="${VAULT_ADDR:-http://127.0.0.1:8200}"
 
 echo "Initialisation Vault..."
@@ -106,21 +109,37 @@ config_db(){
   local host="$2"
   local db_name="$3"
   local role_name="$4"
+  local group_role="${config_name//-/_}_app"
   local sslmode="${VAULT_DB_SSLMODE:-disable}"
+  local max_attempts="${VAULT_DB_MAX_ATTEMPTS:-30}"
+  local sleep_seconds="${VAULT_DB_RETRY_SLEEP_SECONDS:-2}"
 
   echo "Config DB '$config_name' (host=$host, db=$db_name, role=$role_name)..."
-  vault write "database/config/$config_name" \
-    plugin_name=postgresql-database-plugin \
-    allowed_roles="$role_name" \
-    connection_url="postgresql://{{username}}:{{password}}@$host:5432/$db_name?sslmode=$sslmode" \
-    username="${POSTGRES_USER:?POSTGRES_USER must be set and not empty}" \
-    password="${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set and not empty}"
+  local attempt=1
+  while true; do
+    if vault write "database/config/$config_name" \
+      plugin_name=postgresql-database-plugin \
+      allowed_roles="$role_name" \
+      connection_url="postgresql://{{username}}:{{password}}@$host:5432/$db_name?sslmode=$sslmode" \
+      username="${POSTGRES_USER:?POSTGRES_USER must be set and not empty}" \
+      password="${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set and not empty}" \
+      && vault write "database/roles/$role_name" \
+        db_name="$config_name" \
+        creation_statements="DO \$\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${group_role}') THEN CREATE ROLE ${group_role} NOLOGIN; END IF; END \$\$; CREATE ROLE \"{{name}}\" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL '{{expiration}}'; GRANT ${group_role} TO \"{{name}}\"; GRANT CONNECT ON DATABASE \"${db_name}\" TO ${group_role}; GRANT USAGE, CREATE ON SCHEMA public TO ${group_role}; GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${group_role}; GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO ${group_role}; ALTER DEFAULT PRIVILEGES FOR ROLE \"{{name}}\" IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ${group_role}; ALTER DEFAULT PRIVILEGES FOR ROLE \"{{name}}\" IN SCHEMA public GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO ${group_role};" \
+        default_ttl="1h" \
+        max_ttl="24h"; then
+      break
+    fi
 
-  vault write database/roles/$role_name \
-    db_name="$config_name" \
-    creation_statements="CREATE ROLE \"{{name}}\" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL '{{expiration}}';" \
-    default_ttl="1h" \
-    max_ttl="24h"
+    if [ "$attempt" -ge "$max_attempts" ]; then
+      echo "ERROR: failed to configure DB '$config_name' after ${max_attempts} attempts" >&2
+      return 1
+    fi
+
+    echo "Retrying DB '$config_name' (${attempt}/${max_attempts}) in ${sleep_seconds}s..."
+    attempt=$((attempt + 1))
+    sleep "$sleep_seconds"
+  done
 }
 
 config_db "user-db" "user-db" "user_db" "user-role"
@@ -153,8 +172,14 @@ create_token() {
   local policy="$1"
   local file="$2"
 
+  local token_uid="${VAULT_TOKEN_UID:-1000}"
+  local token_gid="${VAULT_TOKEN_GID:-1000}"
+
   if [ -f "$file" ]; then
-    echo "Token already created for '$policy', skipping."
+    # Ensure permissions are usable by non-root app containers.
+    chmod 600 "$file" || true
+    chown "$token_uid:$token_gid" "$file" || true
+    echo "Token already created for '$policy', skipping creation."
     return
   fi
 
@@ -167,6 +192,7 @@ create_token() {
   fi
   echo "$token" > "$file"
   chmod 600 "$file"
+  chown "$token_uid:$token_gid" "$file" || true
 }
 
 # Creation token Vault pour autoriser l'acces a la lecture des fichiers specifies dans policies

@@ -1,4 +1,4 @@
-FROM hashicorp/vault:1.15
+FROM docker.io/hashicorp/vault:1.15
 
 COPY config/ /vault/config
 

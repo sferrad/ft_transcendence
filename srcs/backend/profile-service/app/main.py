@@ -28,3 +28,8 @@ def ensure_user_schema() -> None:
 	except Exception:
 		# Don't block startup if DB isn't reachable yet.
 		return
+
+
+@app.get("/health")
+async def health():
+	return {"status": "ok"}
