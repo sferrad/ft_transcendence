@@ -14,11 +14,11 @@ class UserServiceUnavailableError(RuntimeError):
 class UserServiceError(RuntimeError):
     """Unexpected non-401 response from user-service (5xx/4xx)."""
 
-async def verify_credentials(email: str, password: str) ->dict:
+async def verify_credentials(identifier: str, password: str) ->dict:
     url = f"{USER_SERVICE_URL}/internal/auth/verify"
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.post(url, json={"email": email, "password": password})
+            response = await client.post(url, json={"identifier": identifier, "password": password})
     except httpx.RequestError as e:
         raise UserServiceUnavailableError("user-service unavailable") from e
     if response.status_code == 401:
