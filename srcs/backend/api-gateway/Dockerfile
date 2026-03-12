@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM docker.io/python:3.11-slim
 
 LABEL service="api-gateway"
 
