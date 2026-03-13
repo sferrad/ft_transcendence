@@ -461,8 +461,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     image: frontend-react
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     networks:
       - transcendence-frontend
     restart: unless-stopped
