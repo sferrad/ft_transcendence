@@ -80,8 +80,8 @@ function Carousel() {
 
     return (
         <div className="flex items-end justify-center h-screen pb-20 text-2xl">
-            <div className="flex items-center justify-center border-2 border-gray-300 bg-gradient-to-r from-blue-500 to-red-500 rounded-xl px-8 py-6 gap-4">
-                <button className={`mx-2 cursor-pointer text-5xl hover:scale-110 ${isPressedL ? 'scale-125' : ""} transition-transform text-blue-300 border-2 border-gray-300 rounded-lg p-2`} onClick={prev}><FaRegArrowAltCircleLeft /></button>
+            <div className="flex items-center justify-center border-2 border-gray-300 bg-green-700 rounded-xl px-8 py-6 gap-4">
+                <button className={`mx-2 cursor-pointer text-5xl hover:scale-110 ${isPressedL ? 'scale-125' : ""} transition-transform text-white border-2 border-gray-300 rounded-lg p-2`} onClick={prev}><FaRegArrowAltCircleLeft /></button>
 
                 <div className="relative w-96 h-24 flex items-center justify-center">
                     {modes.map((mode, index) => {
@@ -114,7 +114,7 @@ function Carousel() {
                     })}
                 </div>
 
-                <button className={`mx-2 text-5xl hover:scale-110 ${isPressedR ? 'scale-125' : ""} cursor-pointer transition-transform text-blue-300 border-2 border-gray-300 rounded-lg p-2`} onClick={next}><FaRegArrowAltCircleRight /></button>
+                <button className={`mx-2 text-5xl hover:scale-110 ${isPressedR ? 'scale-125' : ""} cursor-pointer transition-transform text-white border-2 border-gray-300 rounded-lg p-2`} onClick={next}><FaRegArrowAltCircleRight /></button>
             </div>
         </div>
     );
