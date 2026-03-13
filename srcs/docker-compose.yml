@@ -474,27 +474,28 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     image: frontend-react
-    ports:
-      - "3000:5173"
+    expose:
+      - "3000"
     networks:
       - transcendence-frontend
     restart: unless-stopped
 
 ## WAF ####
 
-  # waf:
-  #   build:
-  #     context: ./waf
-  #     dockerfile: Dockerfile
-  #   image: waf
-  #   ports:
-  #     - "80:80"
-  #     - "443:443"
-  #   networks:
-  #     - transcendence-frontend
-  #   depends_on:
-  #     api-gateway:
-  #       condition: service_healthy
-  #     frontend:
-  #       condition: service_started
-  #   restart: unless-stopped
+  waf:
+    build:
+      context: ./waf
+      dockerfile: Dockerfile
+    image: waf
+    user: "0:0"
+    ports:
+      - "8080:80"
+      - "8443:443"
+    networks:
+      - transcendence-frontend
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+    restart: unless-stopped
