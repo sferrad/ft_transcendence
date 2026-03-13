@@ -1,4 +1,4 @@
-FROM hashicorp/vault:1.15
+FROM docker.io/hashicorp/vault:1.15
 
 COPY config/ /vault/config
 
@@ -6,7 +6,7 @@ COPY policies/ /vault/policies/
 
 COPY --chmod=775 scripts /vault/scripts
 
-RUN apk add --no-cache jq && \
+RUN apk add --no-cache bash jq && \
     mkdir -p /vault/data /vault/logs && \
     chmod 700 /vault/data && \
     chmod 755 /vault/logs

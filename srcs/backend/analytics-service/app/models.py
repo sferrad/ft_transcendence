@@ -1,8 +1,7 @@
 from sqlalchemy import Column, Integer, String, DateTime, Float, func, UniqueConstraint, Index
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import declarative_base
-
-Base = declarative_base()
+from .database import Base
 
 class UserStats(Base):
     __tablename__ = "user_stats"

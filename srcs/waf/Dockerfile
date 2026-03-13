@@ -1,4 +1,4 @@
-FROM owasp/modsecurity-crs:nginx-alpine
+FROM docker.io/owasp/modsecurity-crs:nginx-alpine
 
 # Créer le répertoire de logs ModSecurity
 RUN mkdir -p /var/log/modsecurity && \
