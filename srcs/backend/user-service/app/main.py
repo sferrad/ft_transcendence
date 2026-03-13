@@ -60,8 +60,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def get_user_by_identifier(db: Session, identifier: str) -> str:
 	return (
 		db.query(models.User)
-		.filter(or_(models.User.email == identifier),
-		  models.User.username == identifier)).first()
+		.filter(or_(models.User.email == identifier, models.User.username == identifier))).first()
 
 
 @app.get("/health")
