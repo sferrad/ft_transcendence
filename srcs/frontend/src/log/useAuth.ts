@@ -16,7 +16,7 @@ export const useLogin = () => {
     setMessage("");
 
     try {
-      const response = await fetch("http://localhost:3000/api/auth/local", {
+      const response = await fetch("/api/auth/local", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -68,7 +68,7 @@ export const useRegister = () => {
       return;
     }
     try{
-        const response = await fetch("http://localhost:3000/api/auth/local/register", {
+      const response = await fetch("/api/auth/local/register", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
