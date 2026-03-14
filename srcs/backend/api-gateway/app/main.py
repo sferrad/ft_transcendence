@@ -3,6 +3,7 @@ import httpx
 import jwt
 from datetime import datetime, timedelta, timezone
 from fastapi import FastAPI, Request, Depends, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel
 
@@ -16,6 +17,14 @@ from .user_service_client import (
 )
 
 app = FastAPI(title="api-gateway")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 HOP_BY_HOP_HEADERS = {
     "connection",

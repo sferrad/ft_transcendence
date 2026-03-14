@@ -4,10 +4,12 @@ COPY config/ /vault/config
 
 COPY policies/ /vault/policies/
 
-COPY --chmod=775 scripts /vault/scripts
+COPY scripts /vault/scripts
 
 RUN apk add --no-cache bash jq && \
     mkdir -p /vault/data /vault/logs && \
+    chmod 775 /vault/scripts && \
+    chmod 755 /vault/scripts/*.sh && \
     chmod 700 /vault/data && \
     chmod 755 /vault/logs
 
