@@ -3,28 +3,76 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 
+/**
+ * FICHIER: useAuth.ts
+ *
+ * Rôle:
+ * - Centralise la logique d'authentification côté frontend sous forme de hooks React:
+ *   - useLogin(): connexion
+ *   - useRegister(): inscription
+ *
+ * Où c'est utilisé ?
+ * - useLogin() est utilisé par le composant Handlelog.tsx (page /login)
+ * - useRegister() est utilisé par le composant Handleregister.tsx (page /register)
+ *   Les routes sont déclarées dans App.tsx.
+ *
+ * Architecture réseau (IMPORTANT pour comprendre les URLs):
+ * - Le navigateur ouvre l'UI via le WAF: http://localhost:8080
+ * - Le WAF (nginx) reverse-proxy:
+ *     - /           -> frontend:3000 (dev server Vite)
+ *     - /api/*      -> api-gateway:8000
+ * - L'API Gateway expose notamment:
+ *     - POST /auth/login  (login)
+ *     - GET  /auth/me     (récupère le payload du JWT)
+ *     - et proxy /users/* vers le user-service
+ *
+ * Donc, depuis le frontend on appelle une URL relative:
+ * - /api/auth/login, /api/auth/me, /api/users/auth/register
+ * pour rester en "same-origin" (même origine) et éviter les problèmes CORS.
+ */
+
 export const useLogin = () => {
+  // Champs du formulaire ("identifier" = username OU email) + mot de passe
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
+
+  // message = feedback UI (succès/erreur), loading = spinner pendant le fetch
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // navigate = redirection (React Router), t() = traduction i18n
   const navigate = useNavigate();
   const { t } = useTranslation();
+
+  // Base d'API "same-origin": tout passe par le WAF.
+  // - Le navigateur parle uniquement à http://localhost:8080 ou https://localhost:8443 
+  // - Le WAF forward /api/* vers api-gateway
+  // => évite CORS (sinon 8080 -> 8000 serait cross-origin).
+  const API_BASE_URL = "/api";
   
+  // Handler du submit du formulaire de login.
   const login = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Reset état UI
     setLoading(true);
     setMessage("");
     
+    // Une fois le token récupéré, on appelle /auth/me pour récupérer le payload (username, email, sub)
+    // et on stocke dans localStorage pour l'utiliser ailleurs (ex: page /profile).
     const getUserInfo = async (token: string) => {
         try {
-            const response = await fetch("http://localhost:8000/auth/me", {
+            // Appel same-origin; /api/* est proxifié par le WAF vers l'api-gateway.
+        const response = await fetch(`${API_BASE_URL}/auth/me`, {
                 headers: {
                     "Authorization": `Bearer ${token}`,
                 },
             });
             const data = await response.json();
             if (response.ok) {
+                // On stocke le token et quelques infos utiles localement.
+                // NOTE: c'est un choix d'implémentation; côté sécurité, il faut garder en tête
+                // que localStorage est accessible via JS (XSS => risque).
                 localStorage.setItem("access_token", token);
           const payload = data?.payload;
           if (payload?.username) {
@@ -45,7 +93,9 @@ export const useLogin = () => {
     };
   
     try {
-      const response = await fetch("http://localhost:8000/auth/login", {
+      // Appel same-origin; correspond à POST /auth/login côté api-gateway.
+      // Le body { identifier, password } est validé côté api-gateway puis user-service.
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -56,15 +106,19 @@ export const useLogin = () => {
       const data = await response.json();
 
       if (response.ok) {
+        // Succès: on récupère data.access_token, puis on charge /auth/me.
         setMessage(t("Connexion Successful"));
         getUserInfo(data.access_token);
         setTimeout(() => {
+          // Redirection vers /profile (route définie dans App.tsx).
           navigate("/profile");
         }, 2000);
       } else {
+        // Erreur: message API si présent, sinon fallback.
         setMessage(data.error?.message || t("Login failed"));
       }
     } catch (error) {
+      // Erreur réseau / exception fetch
       setMessage(t("An error occurred. Please try again."));
     }
     setLoading(false);
@@ -82,23 +136,33 @@ export const useLogin = () => {
 };
 
 export const useRegister = () => {
+  // Champs du formulaire d'inscription
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState("");
+
+  // navigate = redirection vers /login après succès
   const navigate = useNavigate();
   const { t } = useTranslation();
   
 
   const register = async (e: React.FormEvent) => {
     e.preventDefault();
+
+  // Vérification simple côté client avant l'appel API.
     if (password !== confirmPassword) {
       setMessage(t("Passwords do not match"));
       return;
     }
     try{
-        const response = await fetch("http://localhost:8000/users/auth/register", {
+    // Appel same-origin: on passe par l'api-gateway via /api.
+    // Chemin complet:
+    //   Browser -> WAF (/api/users/auth/register)
+    //   WAF -> api-gateway (/users/auth/register)
+    //   api-gateway -> user-service (proxy /users/*)
+      const response = await fetch(`${API_BASE_URL}/users/auth/register`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -106,15 +170,18 @@ export const useRegister = () => {
             body: JSON.stringify({username, email, password}),})
 
             if (response.ok) {
+        // Succès: message puis redirection vers /login.
                 setMessage(t("Registration successful"));
                 setTimeout(() => {
                     navigate("/login");
                 }, 2000);
             }
             else {                const data = await response.json();
+        // Erreur: message API si présent, sinon fallback.
                 setMessage(data.error?.message || t("Registration failed"));
             }
     } catch (error) {
+    // Erreur réseau / exception fetch
         setMessage(t("An error occurred. Please try again."));
 
     }
