@@ -6,13 +6,20 @@
 
 set -euo pipefail
 
-INIT_FILE_JSON="/vault/data/init.json"
+# On stocke les secrets de private (unseal key + root token) hors du volume
+# partagé avec les autres services.
+PRIVATE_DIR="/vault/private"
+INIT_FILE_JSON="${PRIVATE_DIR}/init.json"
 
 # changer les droits sur le dir /vault/data : quand il est monté via un volume,
 # les permissions du Dockerfile ne suffisent pas toujours (volume déjà existant).
 # 711 = traverse ok (x) sans lister (r) pour les autres conteneurs non-root.
 mkdir -p /vault/data
 chmod 711 /vault/data || true
+
+# Dossier private: accessible uniquement au conteneur Vault.
+mkdir -p "$PRIVATE_DIR"
+chmod 700 "$PRIVATE_DIR" || true
 
 export VAULT_ADDR="${VAULT_ADDR:-http://127.0.0.1:8200}"
 
@@ -43,7 +50,10 @@ is_sealed(){
 if is_initialized; then
   echo "vault already initialized"
 else
+  # Empêche la création d'un init.json world-readable.
+  umask 077
   vault operator init -format=json -key-shares=1 -key-threshold=1 > "$INIT_FILE_JSON"
+  chmod 600 "$INIT_FILE_JSON" || true
   echo "vault initialized"
 fi
 
@@ -51,6 +61,10 @@ if [ ! -f "$INIT_FILE_JSON" ]; then
   echo "json file init does not exist after initialisation, exit..."
   exit 1
 fi
+
+# Si le fichier existe déjà (volume persistant), on (re)verrouille les perms.
+chmod 600 "$INIT_FILE_JSON" || true
+
 
 # Le JSON ressemble à :
 # {
