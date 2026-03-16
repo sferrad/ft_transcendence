@@ -3,6 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 
+// Base d'API "same-origin": tout passe par le WAF via /api/*.
+// Important: évite CORS et évite le "mixed content" en HTTPS.
+const API_BASE_URL = "/api";
+
+
 /**
  * FICHIER: useAuth.ts
  *
@@ -44,12 +49,6 @@ export const useLogin = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
-  // Base d'API "same-origin": tout passe par le WAF.
-  // - Le navigateur parle uniquement à http://localhost:8080 ou https://localhost:8443 
-  // - Le WAF forward /api/* vers api-gateway
-  // => évite CORS (sinon 8080 -> 8000 serait cross-origin).
-  const API_BASE_URL = "/api";
-  
   // Handler du submit du formulaire de login.
   const login = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -176,9 +175,10 @@ export const useRegister = () => {
                     navigate("/login");
                 }, 2000);
             }
-            else {                const data = await response.json();
-        // Erreur: message API si présent, sinon fallback.
-                setMessage(data.error?.message || t("Registration failed"));
+            else {
+              const data = await response.json().catch(() => ({}));
+              // FastAPI renvoie souvent {"detail": "..."}
+              setMessage(data?.detail || data?.error?.message || t("Registration failed"));
             }
     } catch (error) {
     // Erreur réseau / exception fetch
