@@ -22,6 +22,7 @@ networks:
 
 volumes:
   vault-data:
+  vault-private:
   user-db:
   chat-db:
   friends-db:
@@ -202,6 +203,7 @@ services:
       - VAULT_ADDR=http://127.0.0.1:8200
     volumes:
       - vault-data:/vault/data
+      - vault-private:/vault/private
     cap_add:
       - IPC_LOCK
     networks:
