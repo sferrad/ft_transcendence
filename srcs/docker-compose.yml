@@ -6,6 +6,9 @@ networks:
   transcendence-frontend:
     name: transcendence-frontend
     driver: bridge
+  transcendence-edge:
+    name: transcendence-edge
+    driver: bridge
   transcendence-backend:
     name: transcendence-backend
     driver: bridge
@@ -245,7 +248,7 @@ services:
       - vault-data:/vault/data:ro 
     networks:
       - transcendence-backend
-      - transcendence-frontend
+      - transcendence-edge
     depends_on:
       vault:
         condition: service_healthy
@@ -495,6 +498,7 @@ services:
       - "8443:443"
     networks:
       - transcendence-frontend
+      - transcendence-edge
     depends_on:
       api-gateway:
         condition: service_healthy

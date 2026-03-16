@@ -8,7 +8,10 @@ set -euo pipefail
 
 INIT_FILE_JSON="/vault/data/init.json"
 
-# changer les droits sur le dir vault/data car monte de base en 700
+# changer les droits sur le dir /vault/data : quand il est monté via un volume,
+# les permissions du Dockerfile ne suffisent pas toujours (volume déjà existant).
+# 711 = traverse ok (x) sans lister (r) pour les autres conteneurs non-root.
+mkdir -p /vault/data
 chmod 711 /vault/data || true
 
 export VAULT_ADDR="${VAULT_ADDR:-http://127.0.0.1:8200}"
