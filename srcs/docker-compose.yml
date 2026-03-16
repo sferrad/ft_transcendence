@@ -4,16 +4,12 @@ version: '3.8'
 
 networks:
   transcendence-frontend:
-    name: transcendence-frontend
     driver: bridge
   transcendence-edge:
-    name: transcendence-edge
     driver: bridge
   transcendence-backend:
-    name: transcendence-backend
     driver: bridge
   transcendence-database:
-    name: transcendence-database
     driver: bridge
 
 
@@ -238,8 +234,6 @@ services:
       context: ./backend/api-gateway
       dockerfile: Dockerfile
     image: api-gateway
-    ports:
-      - "8000:8000"
     environment:
       - VAULT_ADDR=${VAULT_ADDR}
       - VAULT_TOKEN_FILE=/vault/data/api-gateway.token
