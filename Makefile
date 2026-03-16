@@ -4,10 +4,13 @@ PATH_VOLUMES = ./srcs/data
 all:  up
 
 up:
+	$(DOCK_COMP) up -d --build
+
+upfg:
 	$(DOCK_COMP) up --build
 
 down:
-	$(DOCK_COMP) down
+	$(DOCK_COMP) down --remove-orphans
 
 logs:
 	$(DOCK_COMP) logs -f
@@ -16,14 +19,14 @@ ports:
 	$(DOCK_COMP) ps
 
 clean:
-	$(DOCK_COMP) down --volumes
+	$(DOCK_COMP) down --volumes --remove-orphans
 
 fclean: clean
 	@docker system prune -af
 	rm -rf  $(PATH_VOLUMES)
 
 restart:
-	@$(DOCK_COMP) down
-	@$(DOCK_COMP) up --build --force-recreate
+	@$(DOCK_COMP) down --remove-orphans
+	@$(DOCK_COMP) up -d --build --force-recreate
 
-.PHONY: all up down logs ports clean fclean restart
+.PHONY: all up upfg down logs ports clean fclean restart
