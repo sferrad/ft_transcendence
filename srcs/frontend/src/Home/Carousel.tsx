@@ -7,7 +7,7 @@ import "../i18n/index.ts";
 import { useTranslation } from "react-i18next";
 
 function Carousel() {
-    const modes = ["Solo", "Multiplayer", "Coop", "Settings"];
+    const modes = ["Solo", "Online", "Local", "Settings"];
     const [activeIndex, setActiveIndex] = useState(0);
     const [isPressedR, setIsPressedR] = useState(false);
     const [isPressedL, setIsPressedL] = useState(false);
@@ -28,9 +28,13 @@ function Carousel() {
     const select = (mode: string) => {
         if (mode === 'Solo')
             navigate("/login");
-        else if (mode === 'Multiplayer')
-            navigate("/login");
-        else if (mode === 'Coop')
+        else if (mode === 'Online'){
+            if (localStorage.getItem("access_token"))
+                navigate("/lobby");
+            else
+                navigate("/login");
+        }
+        else if (mode === 'Local')
             navigate("/login");
         else if (mode === 'Settings')
             navigate("/login");
@@ -105,7 +109,7 @@ function Carousel() {
                                         : 'z-10 scale-75 bg-gray-400 text-gray-200 opacity-50'}
                 ${isPrev ? '-translate-x-35' : ''}
                 ${isNext ? 'translate-x-35' : ''}
-                ${mode === "Solo" ? "bg-green-500" : mode === "Multiplayer" ? "bg-yellow-500" : mode === "Coop" ? "bg-purple-500" : "bg-gray-500"}`}
+                ${mode === "Solo" ? "bg-green-500" : mode === "Online" ? "bg-yellow-500" : mode === "Local" ? "bg-blue-500" : "bg-gray-500"}`}
                                 onClick={() => select(mode)}
                                 disabled={!isActive}>
                                 {t(mode)}
