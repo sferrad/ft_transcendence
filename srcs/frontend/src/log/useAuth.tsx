@@ -114,7 +114,7 @@ export const useLogin = () => {
         }, 2000);
       } else {
         // Erreur: message API si présent, sinon fallback.
-        setMessage(data.error?.message || t("Login failed"));
+        setMessage(data.error?.message || data.detail || "Username or password is incorrect");
       }
     } catch (error) {
       // Erreur réseau / exception fetch
@@ -178,7 +178,7 @@ export const useRegister = () => {
             else {
               const data = await response.json().catch(() => ({}));
               // FastAPI renvoie souvent {"detail": "..."}
-              setMessage(data?.detail || data?.error?.message || t("Registration failed"));
+              setMessage(data?.detail ||data?.error?.message || "Registration failed");
             }
     } catch (error) {
     // Erreur réseau / exception fetch

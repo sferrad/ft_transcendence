@@ -10,6 +10,7 @@ set -euo pipefail
 # partagé avec les autres services.
 PRIVATE_DIR="/vault/private"
 INIT_FILE_JSON="${PRIVATE_DIR}/init.json"
+FALLBACK_INIT_FILE_JSON="/vault/data/init.json"
 
 # changer les droits sur le dir /vault/data : quand il est monté via un volume,
 # les permissions du Dockerfile ne suffisent pas toujours (volume déjà existant).
@@ -37,6 +38,36 @@ is_initialized(){
   fi
 }
 
+if is_initialized; then
+  echo "vault already initialized"
+
+  if [ ! -f "$INIT_FILE_JSON" ] && [ -f "$FALLBACK_INIT_FILE_JSON" ]; then
+    echo "init.json found in /vault/data (fallback). Migrating to /vault/private..."
+    umask 077
+    cp -f "$FALLBACK_INIT_FILE_JSON" "$INIT_FILE_JSON"
+  fi
+
+  if [ ! -f "$INIT_FILE_JSON" ]; then
+    echo "init.json is missing. Vault is already initialized, but unseal keys/root token are not available." >&2
+    echo "Fix: restore init.json into /vault/private, or reset Vault by removing both volumes (vault-data + vault-private)." >&2
+    exit 1
+  fi
+else
+  # Empêche la création d'un init.json world-readable.
+  umask 077
+  vault operator init -format=json -key-shares=1 -key-threshold=1 > "$INIT_FILE_JSON"
+  chmod 600 "$INIT_FILE_JSON" || true
+  echo "vault initialized"
+fi
+
+# Si le fichier existe déjà (volume persistant), on (re)verrouille les perms.
+chmod 600 "$INIT_FILE_JSON" || true
+
+# S'assure qu'une éventuelle copie dans /vault/data ne soit pas lisible par les autres conteneurs.
+if [ -f "$FALLBACK_INIT_FILE_JSON" ]; then
+  chmod 600 "$FALLBACK_INIT_FILE_JSON" || true
+  chown root:root "$FALLBACK_INIT_FILE_JSON" || true
+fi
 is_sealed(){
   local output
   output=$(vault status 2>/dev/null || true)
@@ -47,23 +78,7 @@ is_sealed(){
   fi
 }
 
-if is_initialized; then
-  echo "vault already initialized"
-else
-  # Empêche la création d'un init.json world-readable.
-  umask 077
-  vault operator init -format=json -key-shares=1 -key-threshold=1 > "$INIT_FILE_JSON"
-  chmod 600 "$INIT_FILE_JSON" || true
-  echo "vault initialized"
-fi
 
-if [ ! -f "$INIT_FILE_JSON" ]; then
-  echo "json file init does not exist after initialisation, exit..."
-  exit 1
-fi
-
-# Si le fichier existe déjà (volume persistant), on (re)verrouille les perms.
-chmod 600 "$INIT_FILE_JSON" || true
 
 
 # Le JSON ressemble à :
@@ -110,7 +125,7 @@ JWT_SECRET="${JWT_SECRET_KEY:?key must be initialized}"
 echo "Adding secret JWT in kv/data/jwt/main"
 vault kv put kv/jwt/main \
   secret_key="$JWT_SECRET" \
-  algorithm="${JWT_ALGORITHM}"
+  algorithm="${JWT_ALGORITHM:-HS256}"
 
 
 echo "Activation secrets DB..."
