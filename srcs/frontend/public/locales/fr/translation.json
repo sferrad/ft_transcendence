@@ -22,6 +22,11 @@
     "Username or email": "Nom d'utilisateur ou adresse e-mail",
     "Username": "Nom d'utilisateur",
     "An error occurred. Please try again.": "Une erreur s'est produite. Veuillez réessayer.",
-    "Registration failed": "Échec de l'inscription"
+    "Registration failed": "Échec de l'inscription",
+    "Email or username is already in use": "L'adresse e-mail ou le nom d'utilisateur est déjà utilisé",
+    "Username or password is incorrect": "Le nom d'utilisateur ou le mot de passe est incorrect",
+    "Username already taken": "Le nom d'utilisateur est déjà pris",
+    "Email already registered": "L'adresse e-mail est déjà utilisée",
+    "Invalid credentials": "Identifiants invalides"
 }
 

@@ -41,8 +41,8 @@ const HandleLog = () => {
           </button>
 
           <p className={
-            `mt-3 text-center transition-all duration-350 ${message ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"} 
-          ${message === t("Connexion Successful") ? "text-green-500" : "text-red-500"}`}>{message}</p>
+            `mt-3 text-center transition-all duration-350 ${t(message) ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"} 
+          ${message === t("Connexion Successful") ? "text-green-500" : "text-red-500"}`}>{t(message)}</p>
 
         </form>
         <a className="text-blue-500 cursor-pointer hover:underline mt-4 block text-center" onClick={() => navigate("/register")}>{t("Don't have an account? Register")}</a>

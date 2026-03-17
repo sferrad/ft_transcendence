@@ -22,5 +22,10 @@
     "Username or email": "Username or email",
     "Username": "Username",
     "An error occurred. Please try again.": "An error occurred. Please try again.",
-    "Registration failed": "Registration failed"
+    "Registration failed": "Registration failed",
+    "Email or username is already in use": "Email or username is already in use",
+    "Username or password is incorrect": "Username or password is incorrect",
+    "Username already taken": "Username already taken",
+    "Email already registered": "Email already registered",
+    "Invalid credentials": "Invalid credentials"
 }

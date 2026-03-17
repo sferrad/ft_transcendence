@@ -22,7 +22,7 @@ async def verify_credentials(identifier: str, password: str) ->dict:
     except httpx.RequestError as e:
         raise UserServiceUnavailableError("user-service unavailable") from e
     if response.status_code == 401:
-        raise InvalidCredentialsError("invalid credentials")
+        raise InvalidCredentialsError("Invalid credentials")
     if response.status_code != 200:
         raise UserServiceError(f"user-service verify failed with status: {response.status_code}")
     try :

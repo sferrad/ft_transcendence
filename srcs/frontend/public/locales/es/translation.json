@@ -22,5 +22,10 @@
     "Username or email": "Nombre de usuario o correo electrónico",
     "Username": "Nombre de usuario",
     "An error occurred. Please try again.": "Ocurrió un error. Por favor, inténtalo de nuevo.",
-    "Registration failed": "Registro fallido"
+    "Registration failed": "Registro fallido",
+    "Email or username is already in use": "El correo electrónico o nombre de usuario ya está en uso",
+    "Username or password is incorrect": "El nombre de usuario o la contraseña son incorrectos",
+    "Username already taken": "El nombre de usuario ya está tomado",
+    "Email already registered": "El correo electrónico ya está registrado",
+    "Invalid credentials": "Credenciales inválidas"
 }

@@ -47,8 +47,8 @@ const Handleregister = () => {
                   text-white p-2 rounded w-full relative flex justify-center items-center h-10`}>{t("Register")}</button>
                 </form>
                 <p className={
-                  `mt-3 text-center transition-all duration-350 ${message ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"} 
-                ${message === t("Registration successful") ? "text-green-500" : "text-red-500"}`}>{message}</p>
+                  `mt-3 text-center transition-all duration-350 ${t(message) ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"} 
+                ${message === t("Registration successful") ? "text-green-500" : "text-red-500"}`}>{t(message)}</p>
                 <a className="text-blue-500 cursor-pointer hover:underline mt-4 block text-center" onClick={() => navigate("/login")}>{t("Already have an account? Login")}</a>
             </div>
         </div>
