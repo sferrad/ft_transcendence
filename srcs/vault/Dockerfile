@@ -6,7 +6,7 @@ COPY policies/ /vault/policies/
 
 COPY scripts /vault/scripts
 
-RUN apk add --no-cache bash jq && \
+RUN apk update && apk add --no-cache bash jq && \
     mkdir -p /vault/data /vault/logs /vault/private && \
     chmod 775 /vault/scripts && \
     chmod 755 /vault/scripts/*.sh && \
