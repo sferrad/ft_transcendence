@@ -6,8 +6,8 @@ import { useTranslation } from "react-i18next";
 const Home = () => {
     const { t } = useTranslation();
     return (
-        <div className="flex items-center justify-center h-screen bg-[url('/assets/bgHome.jpg')] bg-cover bg-center bg-no-repeat">
-            <div className="absolute top-0 left-0 right-0 flex justify-between items-center p-6">
+        <div className="relative h-screen bg-[url('/assets/bgHome.png')] bg-cover bg-center bg-no-repeat">
+            <div className="absolute top-0 left-0 right-0 flex justify-between items-center p-6 z-10">
                 <Trad />
                 {localStorage.getItem("access_token") ? (
                     <Profil />
@@ -18,7 +18,12 @@ const Home = () => {
                     </div>
                 )}
             </div>
-            <Carousel />
+            <div className="absolute inset-0 flex items-center justify-center">
+                <img src="/assets/logo.png" alt="Logo" className="w-2/3 h-auto" />
+            </div>
+            <div className="absolute bottom-0 left-0 right-0">
+                <Carousel />
+            </div>
         </div>
     )
 }
