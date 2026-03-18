@@ -1,23 +1,46 @@
 #!/bin/bash
 
-# e -> exit si cmd echoue
-# u -> exit si var non init
-# -o | -> si erreur dans une pipe exit
+# =============================================================================
+# FICHIER: setting.sh (bootstrap Vault)
+#
+# Ce script fait le "setup" de Vault:
+# - init (si Vault n'est pas initialisé)
+# - unseal (si Vault est scellé)
+# - login root
+# - enable KV v2 + écrire le secret JWT
+# - enable database engine + configurer des rôles Postgres (dynamic creds)
+# - écrire les policies Vault
+# - générer des tokens de service, écrits dans /vault/data/*.token
+#
+# Notes sécurité :
+# - `init.json` contient l'UNSEAL KEY + ROOT TOKEN (super sensible).
+# - On le stocke dans `/vault/private` (volume séparé) avec perms strictes.
+# =============================================================================
+
+# Bash strict mode :
+# -e : stop dès qu'une commande échoue
+# -u : stop si une variable est utilisée mais non définie
+# -o pipefail : si une commande dans un pipe échoue, le pipe échoue
 
 set -euo pipefail
 
-# On stocke les secrets de private (unseal key + root token) hors du volume
+# On stocke les secrets bootstrap (unseal key + root token) hors du volume
 # partagé avec les autres services.
 PRIVATE_DIR="/vault/private"
 INIT_FILE_JSON="${PRIVATE_DIR}/init.json"
 
-# changer les droits sur le dir /vault/data : quand il est monté via un volume,
-# les permissions du Dockerfile ne suffisent pas toujours (volume déjà existant).
-# 711 = traverse ok (x) sans lister (r) pour les autres conteneurs non-root.
+# `/vault/data` est un volume persistant.
+# Quand un volume existe déjà, les permissions définies dans le Dockerfile
+# peuvent ne pas s'appliquer (car le volume "remplace" le dossier).
+#
+# 711 = traverse OK (x) sans pouvoir lister le contenu (r) pour les autres.
+# Ça réduit l'exposition tout en permettant à des conteneurs non-root d'accéder
+# à un fichier précis si on leur donne le chemin (ex: /vault/data/api-xxx.token).
 mkdir -p /vault/data
 chmod 711 /vault/data || true
 
 # Dossier private: accessible uniquement au conteneur Vault.
+# 700 = seulement propriétaire (Vault/root).
 mkdir -p "$PRIVATE_DIR"
 chmod 700 "$PRIVATE_DIR" || true
 
@@ -25,8 +48,8 @@ export VAULT_ADDR="${VAULT_ADDR:-http://127.0.0.1:8200}"
 
 echo "Initialisation Vault..."
 
-# par defaut vault n est pas initialise et est scelle
-# vault operatot init -> genere .json avec cles de deverouillage
+# Par défaut, un Vault n'est pas initialisé et est scellé.
+# `vault operator init` crée les clés de déverrouillage (unseal keys) + root token en format .json.
 is_initialized(){
   local output
   output=$(vault status 2>/dev/null || true)
@@ -50,7 +73,8 @@ is_sealed(){
 if is_initialized; then
   echo "vault already initialized"
 else
-  # Empêche la création d'un init.json world-readable.
+  # Empêche la création d'un init.json world-readable .
+  # Avec umask 077, les nouveaux fichiers seront en 600 (rw-------) par défaut.
   umask 077
   vault operator init -format=json -key-shares=1 -key-threshold=1 > "$INIT_FILE_JSON"
   chmod 600 "$INIT_FILE_JSON" || true
@@ -66,18 +90,18 @@ fi
 chmod 600 "$INIT_FILE_JSON" || true
 
 
-# Le JSON ressemble à :
+# Le JSON ressemble à (exemple simplifié):
 # {
 #   "unseal_keys_b64": ["clé_base64_1", ...],
 #   "root_token": "hvs.xxxx"
 # }
-# jq -> cmd pour lire json, -r -> raw output (sans les guillemets)
-# '.' -> chemin du tableau json, [0] -> premier element
-# 2e arg -> var contenant le path json
+# `jq` = outil pour lire du JSON en shell.
+# `-r` = raw output (sans guillemets).
+# `.unseal_keys_b64[0]` = premier élément du tableau `unseal_keys_b64`.
 UNSEAL_KEY=$(jq -r '.unseal_keys_b64[0]' "$INIT_FILE_JSON")
 ROOT_TOKEN=$(jq -r '.root_token' "$INIT_FILE_JSON")
 
-# -z -> check est ce que la chaine est vide
+# `-z` -> la chaîne est vide ?
 
 if [ -z "$UNSEAL_KEY" ] || [ -z "$ROOT_TOKEN" ]; then
   echo "unseal key or root token empty" >&2
@@ -96,7 +120,7 @@ fi
 echo "login with root token..."
 
 vault login "$ROOT_TOKEN"
-# logger en tant que root a partir d ici
+# Loggé en tant que root à partir d'ici.
 
 echo "Activation secrets engine..."
 if vault secrets list | grep -q '^kv/'; then
@@ -212,7 +236,10 @@ create_token() {
   chown "$token_uid:$token_gid" "$file" || true
 }
 
-# Creation token Vault pour autoriser l'acces a la lecture des fichiers specifies dans policies
+# Création des tokens Vault.
+#
+# Chaque service va lire "son" token (fichier *.token) depuis `/vault/data`.
+# Les policies limitent ce qu'il peut lire (read-only sur quelques paths).
 create_token "api-gateway-policy" "/vault/data/api-gateway.token"
 create_token "user-service-policy" "/vault/data/api-user.token"
 create_token "chat-service-policy" "/vault/data/api-chat.token"
