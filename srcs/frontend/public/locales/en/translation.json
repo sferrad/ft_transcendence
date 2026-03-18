@@ -27,5 +27,8 @@
     "Username or password is incorrect": "Username or password is incorrect",
     "Username already taken": "Username already taken",
     "Email already registered": "Email already registered",
-    "Invalid credentials": "Invalid credentials"
+    "Invalid credentials": "Invalid credentials",
+    "Local": "Local",
+    "Online": "Online",
+    "Logout": "Logout"
 }
