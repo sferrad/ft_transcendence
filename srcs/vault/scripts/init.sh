@@ -1,16 +1,42 @@
 #!/bin/bash
-#  si une commande echoue -> exit
+
+# =============================================================================
+# FICHIER: init.sh (entrypoint du conteneur Vault)
+#
+# But :
+# 1) Lancer `vault server ...` en arrière-plan
+# 2) Attendre que le serveur réponde à `vault status`
+# 3) Exécuter `setting.sh` (init/unseal/policies/tokens)
+# 4) Attendre le process Vault (pour que le conteneur reste vivant)
+#
+# Pourquoi c'est séparé en 2 scripts ?
+# - `vault server` doit tourner en continu.
+# - La configuration (init/unseal/enable engines) est un "bootstrap" à faire au démarrage.
+# =============================================================================
+
+# Si une commande échoue -> exit immédiat.
 set -e
 
 echo "launching vault: vault $@"
 
-# lance vault avec argument ($@) en arriere plan (&)
+# Lance Vault avec les arguments passés au conteneur.
+# - `$@` = tous les arguments du script.
+# - `&`  = arrière-plan (sinon on ne pourrait pas exécuter setting.sh).
 vault "$@" &
 
-# recupere le pid du dernier process (vault) lance ($!) -> pour wait
+# Récupère le PID du dernier process lancé en arrière-plan (Vault).
+# On s'en sert pour:
+# - tuer Vault si le bootstrap échoue
+# - `wait` à la fin
 VAULT_PID=$!
 
-# attend que vault soit lance (& specifie le fd et non un file)
+# Attendre que Vault réponde.
+#
+# `vault status` peut renvoyer:
+# - code 0 : Vault OK et unsealed
+# - code 2 : Vault OK mais sealed (il répond, donc prêt)
+#
+# On attend max 60s pour éviter un conteneur "bloqué" à l'infini.
 echo "waiting for vault ..."
 max_time=60
 elapsed=0
@@ -42,4 +68,5 @@ fi
 
 echo "vault initialisized"
 
+# On attend le process Vault (sinon le conteneur s'arrête).
 wait "$VAULT_PID"
