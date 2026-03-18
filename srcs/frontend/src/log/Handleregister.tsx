@@ -11,7 +11,9 @@ const Handleregister = () => {
 
     return (
         <div className="fixed inset-0 bg-[url('/assets/bgLogin.jpg')] bg-cover bg-center bg-no-repeat w-full h-full overflow-auto flex flex-col items-center justify-center">
-            <Buttontrad />
+          <div className="absolute top-0 left-0 right-0 p-6">
+              <Buttontrad />
+            </div>
             <div className="bg-[rgba(255,255,255,0.85)] p-8 w-96 rounded-lg shadow-2xl border border-gray-200 ">
                 <h1 className="text-2xl font-bold mb-4 text-center text-gray-800">{t("Register")}</h1>
                 <form onSubmit={register}>

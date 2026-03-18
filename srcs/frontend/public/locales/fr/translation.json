@@ -27,6 +27,9 @@
     "Username or password is incorrect": "Le nom d'utilisateur ou le mot de passe est incorrect",
     "Username already taken": "Le nom d'utilisateur est déjà pris",
     "Email already registered": "L'adresse e-mail est déjà utilisée",
-    "Invalid credentials": "Identifiants invalides"
+    "Invalid credentials": "Identifiants invalides",
+    "Local": "Local",
+    "Online": "En ligne",
+    "Logout": "Déconnexion"
 }
 
