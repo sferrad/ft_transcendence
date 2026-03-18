@@ -1,35 +1,34 @@
-import os
-
-from fastapi import Depends, FastAPI, HTTPException, status
-from pydantic import BaseModel
+from fastapi import Depends, FastAPI, Header, HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from . import models
-from . import database
-from .database import Base, get_db, init_db, init_engine
+from . import models  # ensure SQLAlchemy models are imported before create_all()
+from . import crud, schemas
+from .database import get_db, init_db, init_engine
 
-app = FastAPI()
+app = FastAPI(title="profile-service")
+
 
 @app.on_event("startup")
-def ensure_user_schema() -> None:
-	"""Best-effort dev migration for `username`.
-
-	`create_all()` doesn't alter existing tables.
-	"""
+def on_startup() -> None:
+	"""Initialize DB engine (Vault creds) and create this service's tables."""
 	try:
-		init_engine()  # lit Vault -> crée engine + SessionLocal
-		init_db() # a mettre on event("startup")???
-		if database.engine is None:
-			return
-		with database.engine.begin() as conn:
-			conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(50)"))
-			conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_username ON users (username)"))
+		init_engine()
+		init_db()
 	except Exception:
-		# Don't block startup if DB isn't reachable yet.
+		# Don't block startup if DB/Vault isn't reachable yet.
 		return
 
 
 @app.get("/health")
 async def health():
-	return {"status": "ok"}
+	return {"status": "ok", "service": "profile-service"}
+
+
+@app.get("/db/ping")
+async def db_ping(db: Session = Depends(get_db)):
+	try:
+		db.execute(text("SELECT 1"))
+		return {"status": "ok"}
+	except Exception as e:
+		raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

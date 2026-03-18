@@ -8,9 +8,9 @@ from urllib.parse import quote_plus
 
 from .vault_client import get_vault_client
 
-DB_HOST = os.getenv("DB_HOST", "user-db")
+DB_HOST = os.getenv("DB_HOST", "friends-db")
 DB_PORT = os.getenv("DB_PORT", "5432")
-DB_NAME = os.getenv("DB_NAME", "user_db")
+DB_NAME = os.getenv("DB_NAME", "friends_db")
 
 VAULT_DB_CREDS_PATH = os.getenv("VAULT_DB_CREDS_PATH")
 
