@@ -1,5 +1,6 @@
 from fastapi import Depends, FastAPI, Header, HTTPException, status
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from . import models  # ensure SQLAlchemy models are imported before create_all()
@@ -67,8 +68,25 @@ async def put_me(payload: schemas.ProfileUpdate, user_id: int = Depends(_current
 	if not profile:
 		if not payload.display_name:
 			raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="display_name is required")
-		profile = crud.create_profile(db, user_id, schemas.ProfileCreate(**payload.model_dump()))
+		try:
+			profile = crud.create_profile(db, user_id, schemas.ProfileCreate(**payload.model_dump(exclude_unset=True)))
+			# SQLAlchemyError: catch large pour rollback systematique
+			# vs
+			# IntegrityError: catch apeecifique (unique constraint...) 
+		except IntegrityError:
+			# Race condition:possible que 2 requetes se chevauchent et que entre
+			# le SELECT(get_profile_by_user_id) et le INSERT(create_profile) un
+			# user b ait cree egalement un user avec ce id unique avant user a
+			profile = crud.get_profile_by_user_id(db, user_id)
+			if not profile:
+				# si profil n existe toujours pas ca veut dire transaction foireuse, rollback ailleurs, lecture pas possible, etc.
+				raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Profile creation conflict, please retry")
+			# si profile existe on ne le cree plus on l'update
+			profile = crud.update_profile(db, profile, payload)
 	else:
+		data = payload.model_dump(exclude_unset=True)
+		if "display_name" in data and data["display_name"] is None:
+			raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="display_name cannot be null")
 		profile = crud.update_profile(db, profile, payload)
 	return schemas.ProfileOut(
 		id=profile.id,

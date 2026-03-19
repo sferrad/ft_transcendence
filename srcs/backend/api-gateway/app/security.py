@@ -8,7 +8,7 @@ from fastapi import FastAPI, HTTPException, status
 from .vault_kv import read_jwt_secret
 
 
-def _load_jwt_secret(app: FastAPI) -> None:
+def load_jwt_secret(app: FastAPI) -> None:
     try:
         secret_key, algorithm = read_jwt_secret()
     except Exception as exc:
@@ -21,7 +21,7 @@ def _load_jwt_secret(app: FastAPI) -> None:
     app.state.jwt_algorithm = algorithm
 
 
-def _create_access_token(app: FastAPI, payload: dict, *, expires_minutes: int) -> str:
+def create_access_token(app: FastAPI, payload: dict, *, expires_minutes: int) -> str:
     jwt_secret_key = getattr(app.state, "jwt_secret_key", None)
     jwt_algorithm = getattr(app.state, "jwt_algorithm", None)
     if not jwt_secret_key or not jwt_algorithm:
