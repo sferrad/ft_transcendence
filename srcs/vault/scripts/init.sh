@@ -66,7 +66,7 @@ if ! /vault/scripts/setting.sh; then
     exit 1
 fi
 
-echo "vault initialisized"
+echo "vault initialized"
 
 # On attend le process Vault (sinon le conteneur s'arrête).
 wait "$VAULT_PID"
