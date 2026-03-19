@@ -1,14 +1,12 @@
 import os
 import httpx
-import jwt
-from datetime import datetime, timedelta, timezone
 from fastapi import FastAPI, Request, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
+from .security import _load_jwt_secret, _create_access_token
 from .auth import require_user
 from .schemas import LoginRequest
-from .vault_kv import read_jwt_secret
 from .user_service_client import (
     verify_credentials,
     InvalidCredentialsError,
@@ -41,10 +39,8 @@ HOP_BY_HOP_HEADERS = {
 
 
 @app.on_event("startup")
-def load_jwt_secret():
-    secret_key, algorithm = read_jwt_secret()
-    app.state.jwt_secret_key = secret_key
-    app.state.jwt_algorithm = algorithm
+def on_startup() -> None:
+    _load_jwt_secret(app)
 
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
@@ -54,17 +50,6 @@ ANALYTICS_SERVICE_URL = os.getenv("ANALYTICS_SERVICE_URL", "http://analytics-ser
 FRIENDS_SERVICE_URL = os.getenv("FRIENDS_SERVICE_URL", "http://friends-service:8004")
 GAME_SERVICE_URL = os.getenv("GAME_SERVICE_URL", "http://game-service:8005")
 PROFILE_SERVICE_URL = os.getenv("PROFILE_SERVICE_URL", "http://profile-service:8006")
-
-
-def create_access_token(payload: dict) -> str:
-    jwt_secret_key = getattr(app.state, "jwt_secret_key", None)
-    jwt_algorithm = getattr(app.state, "jwt_algorithm", None)
-    if not jwt_secret_key or not jwt_algorithm:
-        raise HTTPException(status_code=503, detail="JWT jwt_secret_key not initialized")
-    data = payload.copy()
-    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    data["exp"] = int(expire.timestamp())
-    return jwt.encode(data, jwt_secret_key, algorithm=jwt_algorithm)
 
 
 @app.get("/health")
@@ -83,11 +68,11 @@ async def auth_login(body: LoginRequest):
     except UserServiceError as e:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
 
-    token = create_access_token({
+    token = _create_access_token(app, {
         "sub": str(user["id"]),
         "email": str(user["email"]),
         "username": str(user["username"]),
-    })
+    }, expires_minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     return {"access_token": token, "token_type": "bearer"}
 
 # Le frontend l’appelle souvent pour savoir “qui je suis ? est-ce que je suis connecté ?”
