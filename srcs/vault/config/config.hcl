@@ -42,8 +42,10 @@ listener "tcp" {
 ui = true
 
 // Adresse que Vault annonce dans certaines réponses (redirections, etc.).
-// `0.0.0.0` marche en conteneur, mais en prod on met souvent un hostname stable.
-api_addr = "http://0.0.0.0:8200"
+// IMPORTANT: `0.0.0.0` est une adresse de bind-all, pas une adresse joignable.
+// Si tu la mets ici, l'UI/CLI peut générer des URLs/redirects invalides.
+// En docker-compose, préfère le DNS interne du service.
+api_addr = "http://vault:8200"
 
 // `mlock` empêche le swap des secrets en RAM vers disque.
 // En conteneur, c'est souvent non autorisé -> on désactive pour éviter un crash.

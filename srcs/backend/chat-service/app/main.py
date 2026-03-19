@@ -10,12 +10,11 @@ app = FastAPI(title="chat-service")
 
 @app.on_event("startup")
 def on_startup() -> None:
-	"""Initialize DB engine (Vault creds) and create this service's tables."""
 	try:
 		init_engine()
 		init_db()
 	except Exception as e:
-    		print(f"[startup] DB init failed: {e}")
+		print(f"[startup] DB init failed: {e}")
 
 
 @app.get("/health")
