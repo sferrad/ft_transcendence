@@ -1,5 +1,6 @@
 from . import models
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import text, or_
 
 def get_user_by_identifier(db: Session, identifier: str) -> models.User | None:
@@ -21,6 +22,6 @@ def add_user(db: Session, user: models.User):
 		db.commit() # si email ou username existe deja il leve une exception car ils sont en UniqueConstraint
 		db.refresh(user)
 		return user
-	except Exception:
+	except SQLAlchemyError:
 		db.rollback()
 		raise

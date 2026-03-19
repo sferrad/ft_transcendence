@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
-from .security import _load_jwt_secret, _create_access_token
+from .security import load_jwt_secret, create_access_token
 from .auth import require_user
 from .schemas import LoginRequest
 from .user_service_client import (
@@ -40,7 +40,7 @@ HOP_BY_HOP_HEADERS = {
 
 @app.on_event("startup")
 def on_startup() -> None:
-    _load_jwt_secret(app)
+    load_jwt_secret(app)
 
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
@@ -68,7 +68,7 @@ async def auth_login(body: LoginRequest):
     except UserServiceError as e:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
 
-    token = _create_access_token(app, {
+    token = create_access_token(app, {
         "sub": str(user["id"]),
         "email": str(user["email"]),
         "username": str(user["username"]),

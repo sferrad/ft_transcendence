@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from . import models
 from . import schemas, crud
 
-from .password import _hash_password, _verify_password
+from .password import hash_password, verify_password
 from .database import get_db, init_db, init_engine
 
 
@@ -38,7 +38,7 @@ async def db_ping(db: Session = Depends(get_db)):
 
 @app.post("/auth/register", response_model=schemas.OutputLogin)
 async def auth_register(payload: schemas.RegisterRequest, db: Session = Depends(get_db)):
-	hashed = _hash_password(payload.password)
+	hashed = hash_password(payload.password)
 	user = models.User(email=payload.email, hashed_password=hashed, username=payload.username)
 	try:
 		user = crud.add_user(db, user)
@@ -54,7 +54,7 @@ async def auth_register(payload: schemas.RegisterRequest, db: Session = Depends(
 @app.post("/internal/auth/verify")
 async def internal_auth_verify(payload: schemas.LoginRequest, db: Session = Depends(get_db)):
 	user = crud.get_user_by_identifier(db, payload.identifier)
-	if not user or not _verify_password(payload.password, user.hashed_password):
+	if not user or not verify_password(payload.password, user.hashed_password):
 		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
 	return {"ok": True, "user": schemas.OutputLogin(id=user.id, email=user.email, username=user.username)}
