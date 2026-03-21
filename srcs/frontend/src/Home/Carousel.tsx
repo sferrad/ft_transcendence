@@ -27,7 +27,7 @@ function Carousel() {
 
     const select = (mode: string) => {
         if (mode === 'Solo')
-            navigate("/login");
+            navigate("/solo-select");
         else if (mode === 'Online'){
             if (localStorage.getItem("access_token"))
                 navigate("/lobby");
