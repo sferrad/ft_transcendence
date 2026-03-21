@@ -1,71 +1,30 @@
-import os
-
-import bcrypt
+from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from fastapi import Depends, FastAPI, HTTPException, status
-from pydantic import BaseModel
-from sqlalchemy import text, or_
 from sqlalchemy.orm import Session
-
 from . import models
-from . import database
-from .database import Base, get_db, init_db, init_engine
+from . import schemas, crud
+
+from .password import hash_password, verify_password
+from .database import get_db, init_db, init_engine
 
 
-app = FastAPI()
+app = FastAPI(title="user-service")
 
 # À l'import, Vault/DB peuvent ne pas être prêts -> crash.
 # Au startup, Docker a plus de chances d'avoir tout up.
 @app.on_event("startup")
-def ensure_user_schema() -> None:
-	init_engine()  # lit Vault -> crée engine + SessionLocal
-	init_db() # a mettre on event("startup")???
-	"""Best-effort dev migration for `username`.
-
-	`create_all()` doesn't alter existing tables.
-	"""
+def on_startup() -> None:
 	try:
 		init_engine()  # lit Vault -> crée engine + SessionLocal
 		init_db() # a mettre on event("startup")???
-		if database.engine is None:
-			return
-		with database.engine.begin() as conn:
-			conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(50)"))
-			conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_username ON users (username)"))
-	except Exception:
-		# Don't block startup if DB isn't reachable yet.
-		return
-
-class RegisterRequest(BaseModel):
-	email: str
-	password: str
-	username: str
-
-
-class LoginRequest(BaseModel):
-	identifier: str # email or username
-	password: str
-
-
-def hash_password(password: str) -> str:
-	password_bytes = password.encode("utf-8")
-	hashed = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
-	return hashed.decode("utf-8")
-
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-	plain_pw_bytes = plain_password.encode("utf-8")
-	hashed_pw_bytes = hashed_password.encode("utf-8")
-	return bcrypt.checkpw(plain_pw_bytes, hashed_pw_bytes)
-
-def get_user_by_identifier(db: Session, identifier: str) -> str:
-	return (
-		db.query(models.User)
-		.filter(or_(models.User.email == identifier, models.User.username == identifier))).first()
+	except Exception as e:
+		print(f"[startup] DB init failed: {e}")
 
 
 @app.get("/health")
 async def health():
-	return {"status": "ok"}
+	return {"status": "ok", "service": "user-service"}
 
 
 @app.get("/db/ping")
@@ -77,28 +36,25 @@ async def db_ping(db: Session = Depends(get_db)):
 		raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
-@app.post("/auth/register")
-async def auth_register(payload: RegisterRequest, db: Session = Depends(get_db)):
-	existing_user = db.query(models.User).filter(models.User.email == payload.email).first()
-	if existing_user:
-		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
-
-	existing_username = db.query(models.User).filter(models.User.username == payload.username).first()
-	if existing_username:
-		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already taken")
-
+@app.post("/auth/register", response_model=schemas.OutputLogin)
+async def auth_register(payload: schemas.RegisterRequest, db: Session = Depends(get_db)):
 	hashed = hash_password(payload.password)
 	user = models.User(email=payload.email, hashed_password=hashed, username=payload.username)
-	db.add(user)
-	db.commit()
-	db.refresh(user)
-	return {"id": user.id, "email": user.email, "username": user.username}
+	try:
+		user = crud.add_user(db, user)
+	except IntegrityError:
+		if crud.existing_user(db, payload.email):
+			raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
+		if crud.existing_username(db, payload.username):
+			raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already taken")
+		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User already exists")
+	return schemas.OutputLogin(id=user.id, email=user.email, username=user.username)
 
 # Ajout
 @app.post("/internal/auth/verify")
-async def internal_auth_verify(payload: LoginRequest, db: Session = Depends(get_db)):
-	user = get_user_by_identifier(db, payload.identifier)
+async def internal_auth_verify(payload: schemas.LoginRequest, db: Session = Depends(get_db)):
+	user = crud.get_user_by_identifier(db, payload.identifier)
 	if not user or not verify_password(payload.password, user.hashed_password):
 		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
-	return {"ok": True, "user": {"id": user.id, "email": user.email, "username": user.username}}
+	return {"ok": True, "user": schemas.OutputLogin(id=user.id, email=user.email, username=user.username)}
