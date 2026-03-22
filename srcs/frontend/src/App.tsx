@@ -3,6 +3,7 @@ import Home from './Home/Home'
 import Handleregister from './log/Handleregister'
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Profile from './Profile/Profile';
+import Charselectsolo from './Solo/Charselect';
 
 const App = () => {
   return (
@@ -12,6 +13,7 @@ const App = () => {
         <Route path="/register" element={<Handleregister />} />
         <Route path="/" element={<Home />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/solo-select" element={<Charselectsolo />} />
       </Routes>
     </BrowserRouter>
   );

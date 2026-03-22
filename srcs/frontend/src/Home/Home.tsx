@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 const Home = () => {
     const { t } = useTranslation();
     return (
-        <div className="relative h-screen bg-[url('/assets/bgHome.png')] bg-cover bg-center bg-no-repeat">
+        <div className="fixed inset-0 bg-[url('/assets/bgHome.png')] bg-cover bg-center bg-no-repeat">
             <div className="absolute top-0 left-0 right-0 flex justify-between items-center p-6 z-10">
                 <Trad />
                 {localStorage.getItem("access_token") ? (
