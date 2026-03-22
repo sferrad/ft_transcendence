@@ -1,1 +1,10 @@
+@font-face {
+    font-family: arcade;
+    src: url(./assets/fonts/8-bit-arcade-in.ttf) format("truetype");
+}
+
 @import "tailwindcss";
+
+.font-arcade {
+    font-family: arcade;
+}
