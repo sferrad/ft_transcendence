@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
+import enum
+from pydantic import BaseModel, EmailStr
 
-from pydantic import BaseModel
-
+from .models import languageEnum
 
 class ProfileCreate(BaseModel):
 	display_name: str
@@ -32,3 +33,16 @@ class ProfileOut(BaseModel):
 	language: Optional[str]
 	created_at: Optional[datetime]
 	updated_at: Optional[datetime]
+
+class UserSettingIn(BaseModel):
+	language: Optional[languageEnum] = None
+	sound: Optional[bool] = None
+	music: Optional[bool] = None
+
+class UserSettingOut(UserSettingIn):
+	id: int
+	user_id: int
+
+class UserUpdateRequest(BaseModel):
+	email: EmailStr | None = None
+	password: str | None = None

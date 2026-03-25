@@ -1,5 +1,4 @@
 DOCK_COMP = docker compose -p transcendence -f srcs/docker-compose.yml
-PATH_VOLUMES = ./srcs/data
 
 all:  up
 
@@ -23,10 +22,12 @@ clean:
 
 fclean: clean
 	@docker system prune -af
-	rm -rf  $(PATH_VOLUMES)
+	docker volume rm -rf  $(docker volume ls -q)
 
 restart:
 	@$(DOCK_COMP) down --remove-orphans
 	@$(DOCK_COMP) up -d --build --force-recreate
+
+re: fclean all
 
 .PHONY: all up upfg down logs ports clean fclean restart

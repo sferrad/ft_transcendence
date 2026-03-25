@@ -1,6 +1,7 @@
-from sqlalchemy import Column, Integer, Text, String, DateTime, func, UniqueConstraint, Index
+from sqlalchemy import Column, Integer, Text, String, DateTime, func, UniqueConstraint, Index, Enum, Boolean
 from sqlalchemy.orm import declarative_base
 from .database import Base
+import enum
 
 # profil public / ce qui est visible des autres users
 class Profile(Base):
@@ -21,14 +22,16 @@ class Profile(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-# preferences user key=value (theme = dark, notif = false, ....)
+class languageEnum(str, enum.Enum):
+    en = "en"
+    fr = "fr"
+    es = "es"
+
 class UserSetting(Base):
     __tablename__ = "user_settings"
-    __table_args__ = (UniqueConstraint("user_id", "key", name="uq_user_settings_user_id_key"),)
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, index=True)
 
-    key = Column(String(100), index=True, nullable=False)
-    value = Column(String(255), nullable=False)
-    
-Index("idx_user_settings_user_id_key", UserSetting.user_id, UserSetting.key)
+    sound = Column(Boolean, nullable=False, default=False)
+    music = Column(Boolean, nullable=False, default=False)
+    language = Column(Enum(languageEnum), nullable=False, default=languageEnum.fr)

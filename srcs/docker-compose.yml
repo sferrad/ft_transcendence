@@ -12,23 +12,22 @@ networks:
   transcendence-database:
     driver: bridge
 
-
 ## VOLUMES ####
 
 
 volumes:
-  vault-data:
-  vault-private:
   user-db:
   chat-db:
   friends-db:
   game-db:
   analytics-db:
   profile-db:
+  vault-data:
+  vault-private:
+  vault-logs:
+  vault-file:
 
-
-
-## DATABASES ####
+    ## DATABASES ####
 
 services:
   user-db:
@@ -50,12 +49,11 @@ services:
       - transcendence-database
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d user_db"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d user_db" ]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 15s
-
 
   chat-db:
     build:
@@ -76,7 +74,7 @@ services:
       - transcendence-database
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d chat_db"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d chat_db" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -101,7 +99,7 @@ services:
       - transcendence-database
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d friends_db"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d friends_db" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -126,7 +124,7 @@ services:
       - transcendence-database
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d game_db"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d game_db" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -151,7 +149,7 @@ services:
       - transcendence-database
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d analytics_db"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d analytics_db" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -176,14 +174,13 @@ services:
       - transcendence-database
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d profile_db"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d profile_db" ]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 15s
 
-
-## SECRETS ####
+  ## SECRETS ####
 
   vault:
     build:
@@ -200,6 +197,8 @@ services:
     volumes:
       - vault-data:/vault/data
       - vault-private:/vault/private
+      - vault-logs:/vault/logs
+      - vault-file:/vault/file
     cap_add:
       - IPC_LOCK
     networks:
@@ -220,14 +219,13 @@ services:
       profile-db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "vault", "status"]
+      test: [ "CMD", "vault", "status" ]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 15s
 
-
-## MICRO SERVICES ####
+  ## MICRO SERVICES ####
 
   api-gateway:
     build:
@@ -241,7 +239,7 @@ services:
     expose:
       - "8000"
     volumes:
-      - vault-data:/vault/data:ro 
+      - vault-data:/vault/data:ro
     networks:
       - transcendence-backend
       - transcendence-edge
@@ -250,7 +248,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"] ## Route a ajouter dans le main.py
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -273,7 +271,7 @@ services:
     expose:
       - "8001"
     volumes:
-      - vault-data:/vault/data:ro 
+      - vault-data:/vault/data:ro
     networks:
       - transcendence-backend
       - transcendence-database
@@ -284,14 +282,12 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health"] ## Route a ajouter dans le main.py
+      test: [ "CMD", "curl", "-f", "http://localhost:8001/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
 
-
-  
   chat-service:
     build:
       context: ./backend/chat-service
@@ -310,7 +306,7 @@ services:
     expose:
       - "8002"
     volumes:
-      - vault-data:/vault/data:ro 
+      - vault-data:/vault/data:ro
     networks:
       - transcendence-backend
       - transcendence-database
@@ -321,12 +317,11 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8002/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
-
 
   analytics-service:
     build:
@@ -346,7 +341,7 @@ services:
     expose:
       - "8003"
     volumes:
-      - vault-data:/vault/data:ro 
+      - vault-data:/vault/data:ro
     networks:
       - transcendence-backend
       - transcendence-database
@@ -357,7 +352,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8003/health"] ## Route a ajouter dans le main.py
+      test: [ "CMD", "curl", "-f", "http://localhost:8003/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -381,7 +376,7 @@ services:
     expose:
       - "8004"
     volumes:
-      - vault-data:/vault/data:ro 
+      - vault-data:/vault/data:ro
     networks:
       - transcendence-backend
       - transcendence-database
@@ -392,7 +387,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8004/health"] ## Route a ajouter dans le main.py
+      test: [ "CMD", "curl", "-f", "http://localhost:8004/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -416,7 +411,7 @@ services:
     expose:
       - "8005"
     volumes:
-      - vault-data:/vault/data:ro 
+      - vault-data:/vault/data:ro
     networks:
       - transcendence-backend
       - transcendence-database
@@ -427,7 +422,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8005/health"] ## Route a ajouter dans le main.py
+      test: [ "CMD", "curl", "-f", "http://localhost:8005/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -451,7 +446,7 @@ services:
     expose:
       - "8006"
     volumes:
-      - vault-data:/vault/data:ro 
+      - vault-data:/vault/data:ro
     networks:
       - transcendence-backend
       - transcendence-database
@@ -462,13 +457,13 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8006/health"] ## Route a ajouter dans le main.py
+      test: [ "CMD", "curl", "-f", "http://localhost:8006/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
 
-## FRONTEND ####
+  ## FRONTEND ####
 
   frontend:
     build:
@@ -481,7 +476,7 @@ services:
       - transcendence-frontend
     restart: unless-stopped
 
-## WAF ####
+  ## WAF ####
 
   waf:
     build:
