@@ -2,8 +2,10 @@ import { useState } from 'react';
 import "../i18n/index.ts";
 import { Carouselplayer1 } from "./Carouselplayer1";
 import { Carouselplayer2 } from "./Carouselplayer2";
+import { useTranslation } from "react-i18next";
 
 const Charselectsolo = () => {
+    const { t } = useTranslation();
     const [player, setPlayer] = useState("Algeria");
     const [ai, setAi] = useState("Algeria");
 
@@ -23,7 +25,7 @@ const Charselectsolo = () => {
             <button onClick={() => {
                 console.log("Player:", player, "AI:", ai);
                 // window.location.href = "/";
-            }} className='absolute bottom-35 left-1/2 transform -translate-x-1/2 px-15 py-10 text-xl text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors duration-200'>Start Game</button>
+            }} className='font-arcade absolute bottom-35 left-1/2 transform -translate-x-1/2 px-15 py-10 text-5xl text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors duration-200'>{t("Start Game")}</button>
         </div>
     );
 }
