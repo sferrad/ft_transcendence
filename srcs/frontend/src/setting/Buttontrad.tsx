@@ -1,14 +1,15 @@
-import { useState, useEffect} from 'react';
+import { useEffect } from 'react';
 import { changeLanguage } from 'i18next';
 import { useTranslation } from "react-i18next";
 
-function Trad() {
+function Trad({ onClose }: { onClose: () => void }) {
     const { t } = useTranslation();
     
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             const target = event.target as HTMLElement;
             if (!target.closest('.profile-menu') && !target.closest('.translate-button')) {
+                onClose();
             }
         };
         window.addEventListener('click', handleClickOutside);
