@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Profile from './Profile/Profile';
 import Charselectsolo from './Solo/Charselect';
 import NotFound from './error/404';
+import Settingpage from './setting/Settingpage';
 
 const App = () => {
   return (
@@ -15,6 +16,7 @@ const App = () => {
         <Route path="/" element={<Home />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/solo-select" element={<Charselectsolo />} />
+        <Route path="/settings" element={<Settingpage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
