@@ -25,3 +25,21 @@ def add_user(db: Session, user: models.User):
 	except SQLAlchemyError:
 		db.rollback()
 		raise
+
+def update_user(db: Session, user: models.User):
+	try:
+		db.add(user)
+		db.commit()
+		db.refresh(user)
+	except SQLAlchemyError:
+		db.rollback()
+		raise		
+
+
+def delete_user(db: Session, user: models.User):
+	try:
+		db.delete(user)
+		db.commit()
+	except SQLAlchemyError:
+		db.rollback()
+		raise

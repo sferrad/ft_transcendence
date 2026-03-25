@@ -3,8 +3,10 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from . import user_service_client
 from . import models  # ensure SQLAlchemy models are imported before create_all()
 from . import crud, schemas
+from . import schemas
 from .database import get_db, init_db, init_engine
 
 app = FastAPI(title="profile-service")
@@ -101,7 +103,7 @@ async def put_me(payload: schemas.ProfileUpdate, user_id: int = Depends(_current
 	)
 
 # consulte le profile d un autre user
-@app.get("/{user_id}", response_model=schemas.ProfileOut)
+@app.get("/profiles/{user_id}", response_model=schemas.ProfileOut)
 async def get_profile(user_id: int, db: Session = Depends(get_db)):
 	profile = crud.get_profile_by_user_id(db, user_id)
 	if not profile:
@@ -117,3 +119,28 @@ async def get_profile(user_id: int, db: Session = Depends(get_db)):
 		created_at=profile.created_at,
 		updated_at=profile.updated_at,
 	)
+
+@app.get("/me/settings", response_model = schemas.UserSettingOut)
+async def get_settings(user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)) -> schemas.UserSettingOut:
+	settings = crud.get_user_settings(db, user_id)
+	return settings
+
+@app.put("/me/settings", response_model=schemas.UserSettingOut)
+async def create_or_update_settings(new_settings: schemas.UserSettingIn, user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)) -> schemas.UserSettingOut:
+	return crud.update_user_settings(user_id, db, new_settings)
+
+@app.put("/me/settings/user")
+async def update_user_settings(payload: schemas.UserUpdateRequest, user_id: int = Depends(_current_user_id)):
+	try:
+		res = await user_service_client.update_user_in_user_service(user_id, payload)
+		return res
+	except Exception as e:
+		raise HTTPException(status_code=500, detail=str(e))
+	
+@app.delete("/me/settings/user")
+async def delete_user(user_id: int = Depends(_current_user_id)):
+	try:
+		res = await user_service_client.delete_user_in_user_service(user_id)
+		return res
+	except Exception as e:
+		raise HTTPException(status_code=500, detail=str(e))

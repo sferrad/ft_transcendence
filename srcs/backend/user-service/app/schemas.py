@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Optional
 
 
 class RegisterRequest(BaseModel):
@@ -15,3 +16,18 @@ class OutputLogin(BaseModel):
     id: int
     email: str
     username: str
+
+class UpdateUserRequest(BaseModel):
+    user_id: int
+    email: Optional[str]
+    password: Optional[str]
+    username: Optional[str]
+
+class InternalUserUpdate(BaseModel):
+    user_id: int
+    email: Optional[str] = None
+    nickname: Optional[str] = None
+    password: Optional[str] = None
+
+class InternalUserDelete(BaseModel):
+    user_id: int

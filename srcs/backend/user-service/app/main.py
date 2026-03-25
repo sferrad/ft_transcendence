@@ -1,5 +1,6 @@
+
 from sqlalchemy import text
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from fastapi import Depends, FastAPI, HTTPException, status
 from sqlalchemy.orm import Session
 from . import models
@@ -56,5 +57,34 @@ async def internal_auth_verify(payload: schemas.LoginRequest, db: Session = Depe
 	user = crud.get_user_by_identifier(db, payload.identifier)
 	if not user or not verify_password(payload.password, user.hashed_password):
 		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-
 	return {"ok": True, "user": schemas.OutputLogin(id=user.id, email=user.email, username=user.username)}
+
+
+@app.post("/internal/user/update")
+async def internal_update_user(user_update: schemas.InternalUserUpdate, db: Session = Depends(get_db)):
+	user = db.query(models.User).filter(models.User.id == user_update.user_id).first()
+	if not user:
+		raise HTTPException(status_code=404, detail="User not found")
+	if user_update.email is not None:
+		user.email = user_update.email
+	if user_update.nickname is not None:
+		user.nickname = user_update.nickname
+	if user_update.password is not None:
+		user.hashed_password = hash_password(user_update.password)
+	try:
+		crud.update_user(db, user)
+	except SQLAlchemyError:
+		raise HTTPException(status_code=500, detail="Update failed")
+		
+	return {"ok": True, "user_id": user.id}
+
+@app.post("/internal/user/delete")
+async def internal_delete_user(user_delete: schemas.InternalUserDelete, db: Session = Depends(get_db)):
+	user = db.query(models.User).filter(models.User.id == user_delete.user_id).first()
+	if not user:
+		raise HTTPException(status_code=404, detail="User not found")
+	try:
+		crud.delete_user(db, user)
+	except SQLAlchemyError:
+		raise HTTPException(status_code=500, detail="Database error")	
+	return {"ok": True, "deleted_user_id": user_delete.user_id}
