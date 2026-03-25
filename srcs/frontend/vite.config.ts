@@ -11,7 +11,7 @@ export default defineConfig({
     allowedHosts: ['frontend', 'localhost'],
     hmr: {
       host: 'localhost',
-      clientPort: 8080,
+      port: 3000,
       protocol: 'ws',
     },
   },

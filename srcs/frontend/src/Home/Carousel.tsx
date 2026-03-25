@@ -37,7 +37,7 @@ function Carousel() {
         else if (mode === 'Local')
             navigate("/login");
         else if (mode === 'Settings')
-            navigate("/login");
+            navigate("/settings");
     };
 
     const next = () => {
