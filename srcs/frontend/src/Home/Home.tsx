@@ -11,8 +11,8 @@ const Home = () => {
                     <Profil />
                 ) : (
                     <div className="flex gap-4 items-center">
-                        <button onClick={() => window.location.href = "/login"} className='absolute right-6 cursor-pointer px-6 py-2 text-lg text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors duration-200'>{t("Login")}</button>
-                        <button onClick={() => window.location.href = "/register"} className='absolute right-45 cursor-pointer px-6 py-2 text-lg text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors duration-200'>{t("Register")}</button>
+                        <button onClick={() => window.location.href = "/login"} className='absolute right-38 cursor-pointer px-6 py-2 text-lg text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors duration-200'>{t("Login")}</button>
+                        <button onClick={() => window.location.href = "/register"} className='absolute right-6 cursor-pointer px-6 py-2 text-lg text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors duration-200'>{t("Register")}</button>
                     </div>
                 )}
             </div>
