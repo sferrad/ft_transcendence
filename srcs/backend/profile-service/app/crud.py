@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 
 from . import models
-from .schemas import ProfileCreate, ProfileUpdate
+from .schemas import ProfileCreate, ProfileUpdate, UserSettingIn
 
 
 def get_profile_by_user_id(db: Session, user_id: int) -> models.Profile | None:
@@ -40,6 +41,37 @@ def update_profile(db: Session, profile: models.Profile, payload: ProfileUpdate)
 		db.commit()
 		db.refresh(profile)
 		return profile
+	except SQLAlchemyError:
+		db.rollback()
+		raise
+
+
+def get_user_settings(db: Session, user_id: int) -> models.UserSetting:
+	return db.query(models.UserSetting).filter(models.UserSetting.user_id == user_id).first()
+
+def create_user_settings(db: Session, user_id:int) ->models.UserSetting:
+	settings = models.UserSetting(user_id=user_id)
+	try:
+		db.add()
+		db.commit()
+		db.refresh()
+		return settings
+	except SQLAlchemyError:
+		db.rollback()
+		raise
+
+def update_user_settings(user_id: int, db: Session, updates: UserSettingIn) -> models.UserSetting:
+	settings = get_user_settings(db, user_id)
+	if not settings:
+		create_user_settings(db, user_id)
+	updates_data = updates.dict(exclude_unset=True)
+	for field, value in updates_data.items():
+		setattr(settings, field, value)
+	try:
+		db.add()
+		db.commit()
+		db.refresh()
+		return settings
 	except SQLAlchemyError:
 		db.rollback()
 		raise
