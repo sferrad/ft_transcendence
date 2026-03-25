@@ -2,7 +2,7 @@
     "Solo": "Solo",
     "Multiplayer": "Multijoueur",
     "Coop": "Coop",
-    "Settings": "Paramètres",
+    "Settings": "Parametres",
     "Language": "Langue",
     "English": "Anglais",
     "French": "Français",
@@ -30,6 +30,16 @@
     "Invalid credentials": "Identifiants invalides",
     "Local": "Local",
     "Online": "En ligne",
-    "Logout": "Déconnexion"
+    "Logout": "Deconnexion",
+    "Start Game": "Demarrer le jeu",
+    "Account": "Compte",
+    "Change Password": "Changer le mot de passe",
+    "Change Email": "Changer l'adresse e-mail",
+    "Delete Account": "Supprimer le compte",
+    "Sound": "Son",
+    "Music": "Musique",
+    "Back": "Retour",
+    "Page Not Found": "Page non trouvee",
+    "Go Home": "Aller a l'accueil"
 }
 

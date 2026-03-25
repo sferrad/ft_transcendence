@@ -30,5 +30,15 @@
     "Invalid credentials": "Invalid credentials",
     "Local": "Local",
     "Online": "Online",
-    "Logout": "Logout"
+    "Logout": "Logout",
+    "Start Game": "Start Game",
+    "Account": "Account",
+    "Change Password": "Change Password",
+    "Change Email": "Change Email",
+    "Delete Account": "Delete Account",
+    "Sound": "Sound",
+    "Music": "Music",
+    "Back": "Back",
+    "Page Not Found": "Page Not Found",
+    "Go Home": "Go Home"
 }
