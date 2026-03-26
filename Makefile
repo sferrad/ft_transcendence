@@ -22,7 +22,7 @@ clean:
 
 fclean: clean
 	@docker system prune -af
-	docker volume rm -rf  $(docker volume ls -q)
+	docker volume rm $(docker volume ls -q) || true
 
 restart:
 	@$(DOCK_COMP) down --remove-orphans

@@ -21,4 +21,4 @@ async def delete_user_in_user_service(user_id: int):
         url = f"{USER_SERVICE_URL}/internal/user/delete"
         response = await client.post(url, json={"user_id": user_id})
     response.raise_for_status()
-    return response
+    return response.json()
