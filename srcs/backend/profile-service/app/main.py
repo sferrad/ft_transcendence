@@ -130,7 +130,7 @@ async def create_or_update_settings(new_settings: schemas.UserSettingIn, user_id
 	return crud.update_user_settings(user_id, db, new_settings)
 
 @app.put("/me/settings/user")
-async def update_user_settings(payload: schemas.UserUpdateRequest, user_id: int = Depends(_current_user_id)):
+async def update_user_infos(payload: schemas.UserUpdateRequest, user_id: int = Depends(_current_user_id)):
 	try:
 		res = await user_service_client.update_user_in_user_service(user_id, payload)
 		return res
