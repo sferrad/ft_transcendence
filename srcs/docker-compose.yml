@@ -236,6 +236,8 @@ services:
       - VAULT_ADDR=${VAULT_ADDR}
       - VAULT_TOKEN_FILE=/vault/data/api-gateway.token
       - JWT_SECRET_KEY=${JWT_SECRET_KEY} ## a generer avec openssl rand -hex 32
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     expose:
       - "8000"
     volumes:
@@ -245,6 +247,8 @@ services:
       - transcendence-edge
     depends_on:
       vault:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
@@ -475,6 +479,12 @@ services:
     networks:
       - transcendence-frontend
     restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:3000" ]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
   ## WAF ####
 
@@ -494,5 +504,28 @@ services:
       api-gateway:
         condition: service_healthy
       frontend:
-        condition: service_started
+        condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:80" ]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  redis:
+    build:
+      context: ./backend/redis
+      dockerfile: Dockerfile
+    image: redis
+    expose:
+      - "6379"
+    networks:
+      - transcendence-backend
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s

@@ -4,3 +4,4 @@ hvac==2.4.0
 pydantic==2.12.5
 PyJWT==2.11.0
 uvicorn[standard]==0.34.3
+redis
