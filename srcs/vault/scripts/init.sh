@@ -29,7 +29,10 @@ vault "$@" &
 # - tuer Vault si le bootstrap échoue
 # - `wait` à la fin
 VAULT_PID=$!
-
+# Trap pour forward les signaux d'arrêt :
+# si il recoit TERM ou INT il le 'trap' (qui arrete le script a la base,
+#  donc vault n est pas arrete correctement) et exec ce qui se trouve entre apostrophe
+trap 'kill -TERM $VAULT_PID && wait $VAULT_PID' TERM INT
 # Attendre que Vault réponde.
 #
 # `vault status` peut renvoyer:
@@ -68,5 +71,5 @@ fi
 
 echo "vault initialized"
 
-# On attend le process Vault (sinon le conteneur s'arrête).
+# On attend le process Vault (sinon le conteneur s'arrête) car le PID 1 est le script shell.
 wait "$VAULT_PID"

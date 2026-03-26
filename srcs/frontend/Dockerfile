@@ -6,8 +6,7 @@ WORKDIR /app
 COPY package*.json ./
 
 #Installation de Dependance
-RUN npm install
-
+RUN npm install && apk add --no-cache curl
 #Copie de tous les fichier
 COPY . .
 
