@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 const ChangeMail = () => {
+    const { t } = useTranslation();
     const [currentEmail, setCurrentEmail] = useState(localStorage.getItem("email") || "");
     const [currentPassword, setCurrentPassword] = useState("");
     const [newEmail, setNewEmail] = useState("");
@@ -22,7 +24,7 @@ const ChangeMail = () => {
     const verifyPassword = async (): Promise<boolean> => {
         const identifier = currentEmail.trim() || localStorage.getItem("email") || localStorage.getItem("username") || "";
         if (!identifier) {
-            setMessage("Not connected: missing identifier.");
+            setMessage(t("Not connected: missing identifier."));
             setIsError(true);
             return false;
         }
@@ -39,13 +41,13 @@ const ChangeMail = () => {
             });
             const data = await response.json().catch(() => ({}));
             if (!response.ok) {
-                setMessage(data?.detail || data?.message || "Current password is incorrect.");
+                setMessage(data?.detail || data?.message || t("Current password is incorrect."));
                 setIsError(true);
                 return false;
             }
             return true;
         } catch (error) {
-            setMessage("An error occurred while verifying password.");
+            setMessage(t("An error occurred while verifying password."));
             setIsError(true);
             return false;
         }
@@ -60,26 +62,26 @@ const ChangeMail = () => {
         const trimmedConfirm = confirmEmail.trim();
 
         if (!trimmedCurrent || !trimmedNew || !trimmedConfirm || !currentPassword) {
-            setMessage("Please fill all fields");
+            setMessage(t("Please fill all fields"));
             setIsError(true);
             return;
         }
 
         if (trimmedNew !== trimmedConfirm) {
-            setMessage("New email and confirmation do not match.");
+            setMessage(t("New email and confirmation do not match."));
             setIsError(true);
             return;
         }
 
         if (trimmedNew === trimmedCurrent) {
-            setMessage("New email must be different from current email.");
+            setMessage(t("New email must be different from current email."));
             setIsError(true);
             return;
         }
 
         const token = localStorage.getItem("access_token") || "";
         if (!token) {
-            setMessage("Not connected: missing access token.");
+            setMessage(t("Not connected: missing access token."));
             setIsError(true);
             return;
         }
@@ -100,7 +102,7 @@ const ChangeMail = () => {
             });
 
             if (response.ok) {
-                setMessage("Email updated successfully");
+                setMessage(t("Email updated successfully"));
                 setIsError(false);
                 setCurrentEmail(trimmedNew);
                 setNewEmail("");
@@ -112,13 +114,13 @@ const ChangeMail = () => {
 
             const data = await response.json().catch(() => ({}));
             if (isEmailAlreadyTakenError(response.status, data)) {
-                setMessage("Email already taken");
+                setMessage(t("Email already taken"));
             } else {
-                setMessage(data?.detail || data?.message || "Failed to update email");
+                setMessage(data?.detail || data?.message || t("Failed to update email"));
             }
             setIsError(true);
         } catch (error) {
-            setMessage("An error occurred while updating email.");
+            setMessage(t("An error occurred while updating email."));
             setIsError(true);
         }
     };
@@ -128,56 +130,56 @@ const ChangeMail = () => {
             <div className="fixed inset-0 bg-[url('/assets/bgHome.png')] bg-cover bg-center bg-no-repeat blur-sm"></div>
             <div className="absolute inset-0 flex justify-center items-center z-10">
                 <div className="bg-[#f5f0e8]/90 border-4 border-[#2b2b2b] px-10 py-12 text-center shadow-[6px_6px_0_#2b2b2b] w-110 flex flex-col items-center">
-                    <h1 className="text-7xl font-arcade tracking-widest text-[#1f2937] mb-6">Change Email</h1>
+                    <h1 className="text-7xl font-arcade tracking-widest text-[#1f2937] mb-6">{t("Change Email")}</h1>
                     <form className="bg-white p-6 rounded-lg shadow-md w-80 mx-auto flex flex-col justify-center gap-4">
                         <div className="mb-4">
                             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="current-email">
-                                Current Email
+                                {t("Current Email")}
                             </label>
                             <input
                                 className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                                 id="current-email"
                                 type="email"
-                                placeholder="Current Email"
+                                placeholder={t("Current Email")}
                                 value={currentEmail}
                                 onChange={(e) => setCurrentEmail(e.target.value)}
                             />
                         </div>
                         <div className="mb-6">
                             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="current-password">
-                                Current Password
+                                {t("Current Password")}
                             </label>
                             <input
                                 className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                                 id="current-password"
                                 type="password"
-                                placeholder="Current Password"
+                                placeholder={t("Current Password")}
                                 value={currentPassword}
                                 onChange={(e) => setCurrentPassword(e.target.value)}
                             />
                         </div>
                         <div className="mb-4">
                             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="new-email">
-                                New Email
+                                {t("New Email")}
                             </label>
                             <input
                                 className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                                 id="new-email"
                                 type="email"
-                                placeholder="New Email"
+                                placeholder={t("New Email")}
                                 value={newEmail}
                                 onChange={(e) => setNewEmail(e.target.value)}
                             />
                         </div>
                         <div className="mb-6">
                             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="confirm-email">
-                                Confirm New Email
+                                {t("Confirm New Email")}
                             </label>
                             <input
                                 className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                                 id="confirm-email"
                                 type="email"
-                                placeholder="Confirm New Email"
+                                placeholder={t("Confirm New Email")}
                                 value={confirmEmail}
                                 onChange={(e) => setConfirmEmail(e.target.value)}
                             />
@@ -188,7 +190,7 @@ const ChangeMail = () => {
                                 type="button"
                                 onClick={handleChangeEmail}
                             >
-                                Change Email
+                                {t("Change Email")}
                             </button>
                         </div>
                     </form>
