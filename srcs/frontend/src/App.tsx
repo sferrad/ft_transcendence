@@ -6,6 +6,9 @@ import Profile from './Profile/Profile';
 import Charselectsolo from './Solo/Charselect';
 import NotFound from './error/404';
 import Settingpage from './setting/Settingpage';
+import ChangePass from './setting/Acc/Changepass';
+import ChangeMail from './setting/Acc/Changemail';
+import DeleteAcc from './setting/Acc/Deleteacc';
 
 const App = () => {
   return (
@@ -17,6 +20,9 @@ const App = () => {
         <Route path="/profile" element={<Profile />} />
         <Route path="/solo-select" element={<Charselectsolo />} />
         <Route path="/settings" element={<Settingpage />} />
+        <Route path="/settings/change-password" element={<ChangePass />} />
+        <Route path="/settings/change-email" element={<ChangeMail />} />
+        <Route path="/settings/delete-account" element={<DeleteAcc />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
