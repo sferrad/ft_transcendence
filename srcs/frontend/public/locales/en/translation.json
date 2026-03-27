@@ -40,5 +40,37 @@
     "Music": "Music",
     "Back": "Back",
     "Page Not Found": "Page Not Found",
-    "Go Home": "Go Home"
+    "Go Home": "Go Home",
+    "Delete Account": "Delete Account",
+
+    "Current Password": "Current Password",
+    "New Password": "New Password",
+    "Confirm New Password": "Confirm New Password",
+
+    "Current Email": "Current Email",
+    "New Email": "New Email",
+    "Confirm New Email": "Confirm New Email",
+
+    "Please fill all fields": "Please fill all fields",
+    "Not connected: missing access token.": "Not connected: missing access token.",
+    "Not connected: missing identifier.": "Not connected: missing identifier.",
+    "Current password is incorrect.": "Current password is incorrect.",
+    "An error occurred while verifying password.": "An error occurred while verifying password.",
+    "Error verifying password": "Error verifying password",
+
+    "New password and confirmation do not match.": "New password and confirmation do not match.",
+    "Password changed successfully!": "Password changed successfully!",
+    "Error changing password": "Error changing password",
+
+    "New email and confirmation do not match.": "New email and confirmation do not match.",
+    "New email must be different from current email.": "New email must be different from current email.",
+    "Email updated successfully": "Email updated successfully",
+    "Email already taken": "Email already taken",
+    "Failed to update email": "Failed to update email",
+    "An error occurred while updating email.": "An error occurred while updating email.",
+
+    "Failed to delete account": "Failed to delete account",
+    "Account deleted successfully": "Account deleted successfully",
+    "An error occurred while deleting the account.": "An error occurred while deleting the account."
+    
 }
