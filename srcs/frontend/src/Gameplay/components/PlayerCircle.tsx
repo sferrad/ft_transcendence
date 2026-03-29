@@ -12,18 +12,18 @@ export function PlayerCircle({ x, y, radius, color, isKicking = false, facingRig
   const footH = 13
   const side = facingRight ? 1 : -1
 
-  // Repos : pied centré sous le cercle, légèrement décalé vers l'avant
-  const restOffsetX = side * 6
-  const restOffsetY = radius - 2
+  const restOffsetX = side * 2
+  const restOffsetY = radius + 4
+  const restRotation = side * 8
 
-  // Frappe : pied part loin vers l'avant-bas avec rotation franche
-  const kickOffsetX = side * (radius * 0.7)
-  const kickOffsetY = radius + 10
-  const kickRotation = side * 45
+  const kickOffsetX = side * (radius * 0.85)
+  const kickOffsetY = 4
+  const kickRotation = side * 5
+
 
   const offsetX = isKicking ? kickOffsetX : restOffsetX
   const offsetY = isKicking ? kickOffsetY : restOffsetY
-  const rotation = isKicking ? kickRotation : side * 5  // légère inclinaison au repos
+  const rotation = isKicking ? kickRotation : restRotation
 
   const footCenterX = x + offsetX
   const footCenterY = y + offsetY

@@ -6,12 +6,11 @@ import { createInputHandler } from './inputHandler'
 // isSolo = true → player2 est l'IA, false → local 2 joueurs
 export function useGameLoop(player1Name: string, player2Name: string, isSolo: boolean = false) {
   const [gameState, setGameState] = useState<GameState>(() => createInitialState())
-  // goalFlash : nom du buteur à afficher, null si pas de but en cours
   const [goalFlash, setGoalFlash] = useState<string | null>(null)
 
   const stateRef      = useRef<GameState>(gameState)
   const animFrameRef  = useRef<number>(0)
-  const goalFlashRef  = useRef<boolean>(false)   // bloque la boucle pendant le flash
+  const goalFlashRef  = useRef<boolean>(false)
   const inputHandler  = useRef(createInputHandler())
 
   const showGoalFlash = useCallback((scorer: string) => {
@@ -20,27 +19,27 @@ export function useGameLoop(player1Name: string, player2Name: string, isSolo: bo
     setTimeout(() => {
       goalFlashRef.current = false
       setGoalFlash(null)
-    }, 2000) // 2 secondes d'écran BUUUT!
+    }, 2000)
   }, [])
 
   const startLoop = useCallback(() => {
     const input = inputHandler.current
     input.attach()
 
-    // On garde une copie du score pour détecter quand un but vient d'être marqué
     let prevScore1 = stateRef.current.player1.score
     let prevScore2 = stateRef.current.player2.score
 
     const loop = () => {
-      // Si un but vient d'être affiché, on pause la boucle
       if (goalFlashRef.current) {
         animFrameRef.current = requestAnimationFrame(loop)
         return
       }
 
+      // ← ICI : transférer les pulses G/M dans keys avant updateGame
+      input.consumePulses()
+
       const newState = updateGame(stateRef.current, input.keys, isSolo)
 
-      // Détecter un nouveau but
       if (newState.player1.score > prevScore1) {
         prevScore1 = newState.player1.score
         showGoalFlash(player1Name)
