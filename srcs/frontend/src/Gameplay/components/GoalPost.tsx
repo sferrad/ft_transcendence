@@ -8,7 +8,7 @@ export function GoalPost({ goal }: GoalPostProps) {
   const isLeft = goal.side === 'left'
 
   return (
-    <>
+    <div style={{ position: 'absolute', left: 0, top: 0 }}>
       {/* Poteau vertical */}
       <div style={{
         position: 'absolute',
@@ -22,12 +22,12 @@ export function GoalPost({ goal }: GoalPostProps) {
       {/* Barre transversale */}
       <div style={{
         position: 'absolute',
-        left: isLeft ? goal.x : goal.x - 30,
+        left: isLeft ? goal.x : goal.x - goal.innerWidth,
         top: goal.crossbarY,
-        width: goal.postWidth + 30,
+        width: goal.postWidth + goal.innerWidth,
         height: goal.crossbarHeight,
         backgroundColor: '#ffffff',
       }} />
-    </>
+    </div>
   )
 }
