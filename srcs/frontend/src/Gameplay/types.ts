@@ -22,6 +22,7 @@ export interface Goal {
   x: number 
   postWidth: number
   postHeight: number
+  innerWidth: number   // largeur intérieure de la cage
   crossbarY: number  
   crossbarHeight: number
   side: 'left' | 'right'

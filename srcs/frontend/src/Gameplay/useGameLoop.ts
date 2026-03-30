@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { type GameState } from './types'
-import { createInitialState, updateGame, resetBall } from './gameEngine'
+import { createInitialState, updateGame } from './gameEngine'
 import { createInputHandler } from './inputHandler'
 
 // isSolo = true → player2 est l'IA, false → local 2 joueurs
@@ -35,7 +35,7 @@ export function useGameLoop(player1Name: string, player2Name: string, isSolo: bo
         return
       }
 
-      // ← ICI : transférer les pulses G/M dans keys avant updateGame
+      // Transférer les pulses G/M dans keys avant updateGame
       input.consumePulses()
 
       const newState = updateGame(stateRef.current, input.keys, isSolo)
@@ -70,6 +70,7 @@ export function useGameLoop(player1Name: string, player2Name: string, isSolo: bo
 
   const restart = useCallback(() => {
     cancelAnimationFrame(animFrameRef.current)
+    inputHandler.current.detach() // ← détache les listeners avant de les re-attacher
     goalFlashRef.current = false
     setGoalFlash(null)
     const fresh = createInitialState()

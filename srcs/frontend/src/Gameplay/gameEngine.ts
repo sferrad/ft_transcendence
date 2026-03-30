@@ -8,6 +8,7 @@ const WINNING_SCORE = 5
 const PLAYER_RADIUS = 30
 const GOAL_POST_WIDTH = 15
 const GOAL_HEIGHT = 195
+export const GOAL_INNER_WIDTH = 80
 const CROSSBAR_HEIGHT = 10
 
 const GRAVITY_BALL = 0.35
@@ -28,6 +29,7 @@ function createGoals(): { goal1: Goal; goal2: Goal } {
     x: 0,
     postWidth: GOAL_POST_WIDTH,
     postHeight: GOAL_HEIGHT,
+    innerWidth: GOAL_INNER_WIDTH,
     crossbarY: CANVAS_HEIGHT - GOAL_HEIGHT - CROSSBAR_HEIGHT,
     crossbarHeight: CROSSBAR_HEIGHT,
     side: 'left',
@@ -36,6 +38,7 @@ function createGoals(): { goal1: Goal; goal2: Goal } {
     x: CANVAS_WIDTH - GOAL_POST_WIDTH,
     postWidth: GOAL_POST_WIDTH,
     postHeight: GOAL_HEIGHT,
+    innerWidth: GOAL_INNER_WIDTH,
     crossbarY: CANVAS_HEIGHT - GOAL_HEIGHT - CROSSBAR_HEIGHT,
     crossbarHeight: CROSSBAR_HEIGHT,
     side: 'right',
@@ -59,7 +62,7 @@ export function createInitialState(): GameState {
       vx: 0,
       vy: 0,
       radius: PLAYER_RADIUS,
-      speed: 5,
+      speed: 7,
       score: 0,
       isKicking: false,
       kickTimer: 0,
@@ -70,7 +73,7 @@ export function createInitialState(): GameState {
       vx: 0,
       vy: 0,
       radius: PLAYER_RADIUS,
-      speed: 5,
+      speed: 7,
       score: 0,
       isKicking: false,
       kickTimer: 0,
@@ -105,7 +108,7 @@ function resetPlayers(state: GameState): void {
   state.player2.kickTimer = 0
 }
 
-function checkWinner(state: GameState, scorer: 'player1' | 'player2'): void {
+function checkWinner(state: GameState): void {
   if (state.player1.score >= WINNING_SCORE) {
     state.status = 'finished'
     state.winner = 'player1'
@@ -259,26 +262,28 @@ function checkCrossbarCollision(ball: Ball, goal: Goal): void {
 }
 
 function checkGoal(state: GameState): void {
+  // ← Guard en premier : on n'entre dans aucun bloc si la partie est déjà finie
+  if (state.status !== 'playing') return
+
   const ball = state.ball
   const g1 = state.goal1
   const g2 = state.goal2
 
   if (ball.x - ball.radius <= g1.postWidth && ball.y > g1.crossbarY + g1.crossbarHeight) {
     state.player2.score += 1
-    checkWinner(state, 'player2')
-    if (state.status === 'playing') {
-      resetBall(state)
-      resetPlayers(state)
-    }
+    checkWinner(state)
+    resetBall(state)
+    resetPlayers(state)
   }
+
+  // Re-vérifier après le premier but éventuel (partie peut être finie)
+  if (state.status !== 'playing') return
 
   if (ball.x + ball.radius >= g2.x && ball.y > g2.crossbarY + g2.crossbarHeight) {
     state.player1.score += 1
-    checkWinner(state, 'player1')
-    if (state.status === 'playing') {
-      resetBall(state)
-      resetPlayers(state)
-    }
+    checkWinner(state)
+    resetBall(state)
+    resetPlayers(state)
   }
 }
 
@@ -337,12 +342,10 @@ function updateAI(state: GameState): void {
   const floor = CANVAS_HEIGHT - PLAYER_RADIUS - 10
 
   const AI_SPEED_NORMAL = 4.5
-  const AI_SPEED_DEFEND = 7.5  // rush défensif quand la balle fonce vers les cages IA
+  const AI_SPEED_DEFEND = 7.5
 
-  // La balle fonce-t-elle vers les cages de l'IA (vx négatif fort) ?
   const ballHeadingToAIGoal = ball.vx < -2
 
-  // En mode défense, l'IA se place entre la balle et sa cage
   const aiGoalX = CANVAS_WIDTH - GOAL_POST_WIDTH
   const defendX = Math.min(aiGoalX - ai.radius - 10, ball.x + 80)
 
@@ -352,7 +355,6 @@ function updateAI(state: GameState): void {
   if (ai.x < targetX - 10) ai.x += speed
   else if (ai.x > targetX + 10) ai.x -= speed
 
-  // Saut : seulement si la balle est dans le camp de l'IA, haute, et monte
   const ballOnAISide  = ball.x > CANVAS_WIDTH * 0.55
   const ballRising    = ball.vy < -1 && ball.y < CANVAS_HEIGHT * 0.5
   const ballHighAbove = ball.y < ai.y - ai.radius * 2.5
@@ -365,7 +367,6 @@ function updateAI(state: GameState): void {
   if (ai.y >= floor) { ai.y = floor; ai.vy = 0 }
   ai.x = Math.max(PLAYER_RADIUS, Math.min(CANVAS_WIDTH - PLAYER_RADIUS, ai.x))
 
-  // Tir : portée réduite, probabilité un peu plus basse
   const dx = ball.x - ai.x
   const dy = ball.y - ai.y
   const dist = Math.sqrt(dx * dx + dy * dy)
@@ -387,7 +388,7 @@ export function updateGame(state: GameState, keys: Keys, isSolo: boolean = false
     p1.y += p1.vy
     if (p1.y >= floor) { p1.y = floor; p1.vy = 0 }
     p1.x = Math.max(PLAYER_RADIUS, Math.min(CANVAS_WIDTH - PLAYER_RADIUS, p1.x))
-    tryShoot(p1, state.ball, true, keys.g)  // ← G en solo (corrigé)
+    tryShoot(p1, state.ball, true, keys.g)
     updateAI(state)
   } else {
     updatePlayers(state, keys)
