@@ -34,6 +34,11 @@ class ProfileOut(BaseModel):
 	created_at: Optional[datetime]
 	updated_at: Optional[datetime]
 
+
+class InternalProfileCreate(BaseModel):
+	user_id: int
+	display_name: str
+
 class UserSettingIn(BaseModel):
 	language: Optional[languageEnum] = None
 	sound: Optional[bool] = None
