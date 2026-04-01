@@ -5,3 +5,4 @@ bcrypt==4.2.1
 SQLAlchemy==2.0.48
 psycopg[binary]
 uvicorn[standard]==0.34.3
+httpx

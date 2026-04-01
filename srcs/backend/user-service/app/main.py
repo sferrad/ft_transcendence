@@ -8,6 +8,7 @@ from . import schemas, crud
 
 from .password import hash_password, verify_password
 from .database import get_db, init_db, init_engine
+from .profile_service_client import create_profile
 
 
 app = FastAPI(title="user-service")
@@ -37,7 +38,7 @@ async def db_ping(db: Session = Depends(get_db)):
 		raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
-@app.post("/auth/register", response_model=schemas.OutputLogin)
+@app.post("/auth/register", response_model=schemas.OutputLogin, status_code=status.HTTP_201_CREATED)
 async def auth_register(payload: schemas.RegisterRequest, db: Session = Depends(get_db)):
 	hashed = hash_password(payload.password)
 	user = models.User(email=payload.email, hashed_password=hashed, username=payload.username)
@@ -49,6 +50,20 @@ async def auth_register(payload: schemas.RegisterRequest, db: Session = Depends(
 		if crud.existing_username(db, payload.username):
 			raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already taken")
 		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User already exists")
+
+	# Crée un profil par défaut dès l'inscription.
+	# - display_name = username (modifiable ensuite par l'utilisateur)
+	# - si profile-service est KO, on échoue le register (et on tente de supprimer le user)
+	try:
+		await create_profile(user_id=user.id, display_name=user.username)
+	except HTTPException:
+		# Compensation best-effort: éviter un user "sans profil" si l'étape profil échoue.
+		try:
+			crud.delete_user(db, user)
+		except Exception:
+			pass
+		raise
+
 	return schemas.OutputLogin(id=user.id, email=user.email, username=user.username)
 
 # Ajout
@@ -67,24 +82,23 @@ async def internal_update_user(user_update: schemas.InternalUserUpdate, db: Sess
 		raise HTTPException(status_code=404, detail="User not found")
 	if user_update.email is not None:
 		user.email = user_update.email
-	if user_update.nickname is not None:
-		user.nickname = user_update.nickname
 	if user_update.password is not None:
 		user.hashed_password = hash_password(user_update.password)
 	try:
 		crud.update_user(db, user)
+	except IntegrityError:
+		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already exist")
 	except SQLAlchemyError:
-		raise HTTPException(status_code=500, detail="Update failed")
-		
+		raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Database error")	
 	return {"ok": True, "user_id": user.id}
 
 @app.post("/internal/user/delete")
 async def internal_delete_user(user_delete: schemas.InternalUserDelete, db: Session = Depends(get_db)):
 	user = db.query(models.User).filter(models.User.id == user_delete.user_id).first()
 	if not user:
-		raise HTTPException(status_code=404, detail="User not found")
+		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 	try:
 		crud.delete_user(db, user)
 	except SQLAlchemyError:
-		raise HTTPException(status_code=500, detail="Database error")	
+		raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Database error")	
 	return {"ok": True, "deleted_user_id": user_delete.user_id}
