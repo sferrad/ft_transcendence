@@ -2,12 +2,14 @@
 import { useNavigate } from "react-router-dom";
 import { FaRegArrowAltCircleRight } from "react-icons/fa";
 import { FaRegArrowAltCircleLeft } from "react-icons/fa";
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import "../i18n/index.ts";
 import { useTranslation } from "react-i18next";
 
+const MODES = ["Solo", "Online", "Local", "Settings"] as const;
+
 function Carousel() {
-    const modes = ["Solo", "Online", "Local", "Settings"];
+    const modes = MODES;
     const [activeIndex, setActiveIndex] = useState(0);
     const [isPressedR, setIsPressedR] = useState(false);
     const [isPressedL, setIsPressedL] = useState(false);
@@ -16,16 +18,16 @@ function Carousel() {
     const delay = 200;
     const { t } = useTranslation();
 
-    const canNavigate = () => {
+    const canNavigate = useCallback(() => {
         const now = Date.now();
         if (now - lastNavTime.current >= delay) {
             lastNavTime.current = now;
             return true;
         }
         return false;
-    };
+    }, [delay]);
 
-    const select = (mode: string) => {
+    const select = useCallback((mode: string) => {
         if (mode === 'Solo')
             navigate("/solo-select");
         else if (mode === 'Online'){
@@ -38,19 +40,19 @@ function Carousel() {
             navigate("/login");
         else if (mode === 'Settings')
             navigate("/settings");
-    };
+    }, [navigate]);
 
-    const next = () => {
+    const next = useCallback(() => {
         if (canNavigate()) {
             setActiveIndex((i) => (i + 1) % modes.length);
         }
-    };
+    }, [canNavigate, modes.length]);
 
-    const prev = () => {
+    const prev = useCallback(() => {
         if (canNavigate()) {
             setActiveIndex((i) => (i - 1 + modes.length) % modes.length);
         }
-    };
+    }, [canNavigate, modes.length]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -80,14 +82,23 @@ function Carousel() {
             window.removeEventListener('keydown', handleKeyDown);
             window.removeEventListener('wheel', handleMouseWheel);
         };
-    }, [activeIndex]);
+    }, [activeIndex, modes, next, prev, select]);
 
     return (
-        <div className="flex items-end justify-center h-screen pb-20 text-2xl">
-            <div className="flex items-center justify-center border-2 border-gray-300 bg-green-700 rounded-xl px-8 py-6 gap-4">
-                <button className={`mx-2 cursor-pointer text-5xl hover:scale-110 ${isPressedL ? 'scale-125' : ""} transition-transform text-white border-2 border-gray-300 rounded-lg p-2`} onClick={prev}><FaRegArrowAltCircleLeft /></button>
+        <div className="flex items-end justify-center min-h-[100dvh] pb-6 min-[481px]:pb-10 min-[769px]:pb-20 px-3 text-base min-[481px]:text-xl">
+            <div className="flex items-center justify-center border-2 border-gray-300 bg-green-700 rounded-xl px-4 py-4 min-[481px]:px-8 min-[481px]:py-6 gap-3 min-[481px]:gap-4 w-[min(92vw,48rem)]">
+                <button
+                    className={`hb-tap mx-1 min-[481px]:mx-2 cursor-pointer text-4xl min-[481px]:text-5xl hover:scale-110 ${isPressedL ? 'scale-125' : ""} transition-transform text-white border-2 border-gray-300 rounded-lg p-2`}
+                    onClick={prev}
+                >
+                    <FaRegArrowAltCircleLeft />
+                </button>
 
-                <div className="relative w-96 h-24 flex items-center justify-center">
+                {/*
+                  4) Grilles/sections: ici on garde une zone "relative" qui s'adapte à la largeur
+                  pour éviter le débordement sur mobile.
+                */}
+                <div className="relative w-[min(22rem,70vw)] min-[481px]:w-[min(26rem,70vw)] h-20 min-[481px]:h-24 flex items-center justify-center">
                     {modes.map((mode, index) => {
                         let offset = index - activeIndex;
 
@@ -103,12 +114,12 @@ function Carousel() {
                         return (
                             <button type='submit'
                                 key={mode}
-                                className={`absolute transition-all duration-250 ease-in-out px-6 py-3 rounded-lg font-semibold
+                                className={`absolute transition-all duration-200 ease-in-out px-4 py-2 min-[481px]:px-6 min-[481px]:py-3 rounded-lg font-semibold
                 ${isActive
                                         ? 'z-20 scale-125 text-white shadow-xl transition-transform cursor-pointer'
                                         : 'z-10 scale-75 bg-gray-400 text-gray-200 opacity-50'}
-                ${isPrev ? '-translate-x-35' : ''}
-                ${isNext ? 'translate-x-35' : ''}
+                ${isPrev ? '-translate-x-[6.5rem] min-[481px]:-translate-x-[8.75rem]' : ''}
+                ${isNext ? 'translate-x-[6.5rem] min-[481px]:translate-x-[8.75rem]' : ''}
                 ${mode === "Solo" ? "bg-green-500" : mode === "Online" ? "bg-yellow-500" : mode === "Local" ? "bg-blue-500" : "bg-gray-500"}`}
                                 onClick={() => select(mode)}
                                 disabled={!isActive}>
@@ -118,7 +129,12 @@ function Carousel() {
                     })}
                 </div>
 
-                <button className={`mx-2 text-5xl hover:scale-110 ${isPressedR ? 'scale-125' : ""} cursor-pointer transition-transform text-white border-2 border-gray-300 rounded-lg p-2`} onClick={next}><FaRegArrowAltCircleRight /></button>
+                <button
+                    className={`hb-tap mx-1 min-[481px]:mx-2 text-4xl min-[481px]:text-5xl hover:scale-110 ${isPressedR ? 'scale-125' : ""} cursor-pointer transition-transform text-white border-2 border-gray-300 rounded-lg p-2`}
+                    onClick={next}
+                >
+                    <FaRegArrowAltCircleRight />
+                </button>
             </div>
         </div>
     );
