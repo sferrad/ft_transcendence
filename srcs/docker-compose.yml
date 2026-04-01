@@ -474,6 +474,14 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     image: frontend-react
+    # Dev only: mount the source so Vite sees changes immediately.
+    environment:
+      # Podman/Docker detect file changes more reliably with polling here.
+      - CHOKIDAR_USEPOLLING=true
+    volumes:
+      # Source monté en live, mais node_modules reste dans le conteneur.
+      - ./frontend:/app
+      - /app/node_modules
     expose:
       - "3000"
     networks:
