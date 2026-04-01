@@ -1,10 +1,11 @@
 from fastapi import Depends, FastAPI, Header, HTTPException, status
 from sqlalchemy import text
+from fastapi.responses import Response
+import httpx
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from . import user_service_client
-from . import models  # ensure SQLAlchemy models are imported before create_all()
 from . import crud, schemas
 from . import schemas
 from .database import get_db, init_db, init_engine
@@ -26,6 +27,7 @@ async def health():
 	return {"status": "ok", "service": "profile-service"}
 
 
+
 @app.get("/db/ping")
 async def db_ping(db: Session = Depends(get_db)):
 	try:
@@ -44,6 +46,12 @@ def _current_user_id(x_user_id: str | None = Header(default=None, alias="X-User-
 	if user_id <= 0:
 		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid X-User-Id header")
 	return user_id
+
+
+
+
+
+
 
 # consulte son profile
 @app.get("/me", response_model=schemas.ProfileOut)
@@ -134,13 +142,72 @@ async def update_user_infos(payload: schemas.UserUpdateRequest, user_id: int = D
 	try:
 		res = await user_service_client.update_user_in_user_service(user_id, payload)
 		return res
-	except Exception as e:
-		raise HTTPException(status_code=500, detail=str(e))
+	except httpx.HTTPStatusError as e:
+		return Response(
+            content=e.response.content,
+            status_code=e.response.status_code,
+            media_type="application/json"
+        )
 	
 @app.delete("/me/settings/user")
 async def delete_user(user_id: int = Depends(_current_user_id)):
 	try:
 		res = await user_service_client.delete_user_in_user_service(user_id)
 		return res
+	except httpx.HTTPStatusError as e:
+		return Response(
+            content=e.response.content,
+            status_code=e.response.status_code,
+            media_type="application/json"
+        )
 	except Exception as e:
 		raise HTTPException(status_code=500, detail=str(e))
+	
+
+# Crée un profil par défaut pour un user.
+
+# Cas d'usage:
+# - juste après un register dans user-service, on veut un profil minimal.
+
+# Comportement:
+# - idempotent: si le profil existe déjà pour ce user_id, on le renvoie.
+@app.post("/internal/profile/create", response_model=schemas.ProfileOut, status_code=status.HTTP_201_CREATED)
+async def internal_create_profile(payload: schemas.InternalProfileCreate, db: Session = Depends(get_db)):
+	if payload.user_id <= 0:
+		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid user_id")
+	if not payload.display_name:
+		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="display_name is required")
+
+	existing = crud.get_profile_by_user_id(db, payload.user_id)
+	if existing:
+		return schemas.ProfileOut(
+			id=existing.id,
+			user_id=existing.user_id,
+			display_name=existing.display_name,
+			avatar_url=existing.avatar_url,
+			bio=existing.bio,
+			country=existing.country,
+			language=existing.language,
+			created_at=existing.created_at,
+			updated_at=existing.updated_at,
+		)
+
+	try:
+		profile = crud.create_profile(db, payload.user_id, schemas.ProfileCreate(display_name=payload.display_name))
+	except IntegrityError:
+		# Si une course crée le profil juste avant nous, on relit.
+		profile = crud.get_profile_by_user_id(db, payload.user_id)
+		if not profile:
+			raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Profile creation conflict")
+
+	return schemas.ProfileOut(
+		id=profile.id,
+		user_id=profile.user_id,
+		display_name=profile.display_name,
+		avatar_url=profile.avatar_url,
+		bio=profile.bio,
+		country=profile.country,
+		language=profile.language,
+		created_at=profile.created_at,
+		updated_at=profile.updated_at,
+	)
