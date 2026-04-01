@@ -14,19 +14,25 @@ down:
 logs:
 	$(DOCK_COMP) logs -f
 
-ports:
-	$(DOCK_COMP) ps
+ps:
+	@docker ps -a --format "table {{.Names}}\t{{.Ports}}\t{{.Status}}"
 
 clean:
 	$(DOCK_COMP) down --volumes --remove-orphans
 
 fclean: clean
 	@docker system prune -af
-	docker volume rm $(docker volume ls -q) || true
+	@docker volume prune -f
 
 restart:
 	@$(DOCK_COMP) down --remove-orphans
+	@$(DOCK_COMP) up -d --build
+
+
+rebuild:
+	@$(DOCK_COMP) down --remove-orphans
 	@$(DOCK_COMP) up -d --build --force-recreate
+	@docker image prune -f
 
 re: fclean all
 
