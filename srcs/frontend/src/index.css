@@ -8,3 +8,100 @@
 .font-arcade {
     font-family: arcade;
 }
+
+/*
+  Responsive baseline (mobile/tablet/desktop)
+  ------------------------------------------------
+  Objectifs:
+  - Images/vidéos fluides
+  - Typo lisible + pas de zoom étrange sur mobile
+  - Cibles tactiles plus confortables sur petits écrans
+  - Helpers réutilisables via classes CSS, sans casser Tailwind
+*/
+
+@layer base {
+    /* IMPORTANT: évite les débordements surprises quand on utilise des widths fixes */
+    *,
+    *::before,
+    *::after {
+        box-sizing: border-box;
+    }
+
+    html {
+        /* Empêche Safari/Chrome mobile d'auto-agrandir le texte de façon imprévisible */
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+    }
+
+    body {
+        margin: 0;
+        min-height: 100dvh;
+    }
+
+    /* 3) Images et médias: fluides, sans déformation */
+    img,
+    video {
+        max-width: 100%;
+        height: auto;
+    }
+
+    /* Les médias inline peuvent laisser un petit espace sous l'élément */
+    img,
+    video,
+    svg {
+        display: block;
+    }
+
+    button,
+    [role='button'] {
+        touch-action: manipulation;
+    }
+}
+
+@layer utilities {
+    /* 5) Typographie: tailles adaptatives (à utiliser sur les gros titres) */
+    .hb-title {
+        font-size: clamp(1.75rem, 5vw, 4.5rem); /* ~28px → 72px */
+        line-height: 1.05;
+    }
+
+    /* 6) Boutons: cible tactile confortable sur mobile (appliqué via classe) */
+    .hb-tap {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    /* Landscape (hauteur faible): compacte sans changer l'UX */
+    @media (orientation: landscape) and (max-height: 520px) {
+        .hb-landscape-compact {
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+            gap: 1.25rem;
+        }
+
+        .hb-landscape-grid-compact {
+            gap: 1rem;
+        }
+
+        .hb-landscape-btn {
+            padding: 0.75rem 1.5rem;
+        }
+    }
+}
+
+/* 7) Media queries explicites demandées (320–480 / 481–768 / 769+) */
+@media (max-width: 480px) {
+    /* Sur mobile, on force des tailles minimales de clic sur les boutons principaux */
+    button {
+        min-height: 44px; /* Apple HIG / Android guidelines */
+    }
+}
+
+@media (min-width: 481px) and (max-width: 768px) {
+    /* Tablette: pas de règle agressive, mais on garde les médias fluides */
+    img,
+    video {
+        max-width: 100%;
+        height: auto;
+    }
+}

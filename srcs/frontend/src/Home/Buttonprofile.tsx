@@ -23,13 +23,13 @@ function Profil() {
         };
     }, []);
     return (
-        <div className="absolute top-5 right-5 text-6xl text-zinc-700">
+        <div className="absolute top-4 right-4 min-[481px]:top-5 min-[481px]:right-5 text-4xl min-[481px]:text-6xl text-zinc-700">
             <button onClick={() => setIsOpen(!isOpen)} 
-                className='cursor-pointer profile-button'><CgProfile /></button>
+                className='hb-tap cursor-pointer profile-button inline-flex items-center justify-center'><CgProfile /></button>
             {isOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-2 z-50 profile-menu">
-                    <button onClick={() => navigate("/profile")} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{t("Profile")}</button>
-                    <button onClick={disconnect} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{t("Logout")}</button>
+                    <button onClick={() => navigate("/profile")} className="hb-tap block w-full text-left px-4 py-3 text-base text-gray-700 hover:bg-gray-100">{t("Profile")}</button>
+                    <button onClick={disconnect} className="hb-tap block w-full text-left px-4 py-3 text-base text-gray-700 hover:bg-gray-100">{t("Logout")}</button>
                 </div>
             )}
         </div>

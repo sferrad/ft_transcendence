@@ -8,10 +8,8 @@ const HandleLog = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="fixed inset-0 bg-[url('/assets/bgLogin.jpg')] bg-cover bg-center bg-no-repeat w-full h-full overflow-auto flex flex-col items-center justify-center">
-      <div className="absolute top-0 left-0 right-0 p-6">
-      </div>
-      <div className="bg-[rgba(255,255,255,0.85)] p-8 w-96 rounded-lg shadow-2xl border border-gray-200">
+    <div className="relative min-h-[100dvh] w-full bg-[url('/assets/bgLogin.jpg')] bg-cover bg-center bg-no-repeat overflow-auto flex flex-col items-center justify-center px-4 py-8">
+      <div className="bg-[rgba(255,255,255,0.85)] p-6 min-[481px]:p-8 w-full max-w-sm rounded-lg shadow-2xl border border-gray-200">
         <h1 className="text-2xl font-bold mb-4 text-center text-gray-800">{t("Login")}</h1>
         <form onSubmit={login}>
 
@@ -31,7 +29,7 @@ const HandleLog = () => {
             disabled={!identifier || !password}
             className={
               `${!identifier || !password ? "bg-gray-400 cursor-not-allowed" : "bg-blue-500 cursor-pointer hover:bg-blue-600"} 
-                  text-white p-2 rounded w-full relative flex justify-center items-center h-10`}>
+                  text-white p-3 rounded w-full relative flex justify-center items-center`}>
                 {loading && (
             <span className="absolute left-4 w-5 h-5 border-4 border-white border-t-transparent rounded-full animate-spin"></span>
             )}
