@@ -6,7 +6,11 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores([
+    'dist',
+    // Sous-projet CRA non utilisé par l'app Vite (lint JS/JSX casse ici)
+    'my-react-app/**',
+  ]),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

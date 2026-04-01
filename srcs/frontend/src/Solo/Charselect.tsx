@@ -12,20 +12,46 @@ const Charselectsolo = () => {
     const [ai, setAi] = useState("Algeria");
 
     return (
-        <div className="fixed inset-0 bg-[url('/assets/bgSoloselect.jpg')] bg-cover bg-center bg-no-repeat ">
-            {/* Joueur 1 - Bleu */}
-            <div className="absolute top-1/2 left-1/10 transform -translate-x-12 -translate-y-1/2">
-                <Carouselplayer1 onChange={setPlayer} />
-            </div>
+        <div className="relative min-h-[100dvh] w-full bg-[url('/assets/bgSoloselect.jpg')] bg-cover bg-center bg-no-repeat overflow-auto">
+            {/*
+              4) Grilles et sections
+              - Mobile: empilement (1 colonne)
+              - Desktop (>=769px): 3 colonnes (P1 / VS / P2)
+            */}
+            <div className="min-h-[100dvh] w-full px-4 py-8 flex flex-col items-center justify-center gap-8 hb-landscape-compact">
+                <div className="grid grid-cols-1 min-[769px]:grid-cols-3 items-center gap-10 min-[769px]:gap-6 w-full max-w-5xl hb-landscape-grid-compact">
+                    <div className="flex justify-center">
+                        <Carouselplayer1 onChange={setPlayer} />
+                    </div>
 
-            <img src="./assets/perso/versus.png" alt="VS" className="absolute top-1/4  left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-225 h-auto drop-shadow-lg" />
+                    <div className="flex justify-center">
+                        <img
+                            src="/assets/perso/versus.png"
+                            alt="VS"
+                            className="w-[min(10rem,34vh)] min-[481px]:w-[min(14rem,38vh)] min-[769px]:w-[min(16rem,42vh)] h-auto drop-shadow-lg"
+                        />
+                    </div>
 
-            {/* Joueur 2 - Orange */}
-            <div className="absolute top-1/2 right-1/10 transform translate-x-12 -translate-y-1/2">
-                <Carouselplayer2 onChange={setAi} />
+                    <div className="flex justify-center">
+                        <Carouselplayer2 onChange={setAi} />
+                    </div>
+                </div>
+
+                <button
+                    onClick={() => {
+                        console.log("Player:", player, "AI:", ai);
+                        // window.location.href = "/";
+                    }}
+                    className="hb-tap hb-landscape-btn font-arcade px-8 py-4 min-[481px]:px-12 min-[481px]:py-6 text-[clamp(1.25rem,3vw,3rem)] text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors duration-200 w-full max-w-md"
+                >
+                    {t("Start Game")}
+                </button>
             </div>
-            <button onClick={() => navigate(`/solo-gameplay?player=${encodeURIComponent(player)}&ai=${encodeURIComponent(ai)}`)}
-                className='font-arcade absolute bottom-35 left-1/2 transform -translate-x-1/2 px-15 py-10 text-5xl text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors duration-200'>{t("Start Game")}</button>
+          <button
+              onClick={() => navigate(`/solo-gameplay?player=${encodeURIComponent(player)}&ai=${encodeURIComponent(ai)}`)}
+                className="hb-tap hb-landscape-btn font-arcade px-8 py-4 min-[481px]:px-12 min-[481px]:py-6 text-[clamp(1.25rem,3vw,3rem)] text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors duration-200 w-full max-w-md">
+                  {t("Start Game")}
+                  </button>
         </div>
     );
 }
