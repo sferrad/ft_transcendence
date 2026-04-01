@@ -3,9 +3,11 @@ import "../i18n/index.ts";
 import { Carouselplayer1 } from "./Carouselplayer1";
 import { Carouselplayer2 } from "./Carouselplayer2";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from 'react-router-dom';
 
 const Charselectsolo = () => {
     const { t } = useTranslation();
+    const navigate = useNavigate();
     const [player, setPlayer] = useState("Algeria");
     const [ai, setAi] = useState("Algeria");
 
@@ -22,10 +24,8 @@ const Charselectsolo = () => {
             <div className="absolute top-1/2 right-1/10 transform translate-x-12 -translate-y-1/2">
                 <Carouselplayer2 onChange={setAi} />
             </div>
-            <button onClick={() => {
-                console.log("Player:", player, "AI:", ai);
-                // window.location.href = "/";
-            }} className='font-arcade absolute bottom-35 left-1/2 transform -translate-x-1/2 px-15 py-10 text-5xl text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors duration-200'>{t("Start Game")}</button>
+            <button onClick={() => navigate(`/solo-gameplay?player=${encodeURIComponent(player)}&ai=${encodeURIComponent(ai)}`)}
+                className='font-arcade absolute bottom-35 left-1/2 transform -translate-x-1/2 px-15 py-10 text-5xl text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors duration-200'>{t("Start Game")}</button>
         </div>
     );
 }
