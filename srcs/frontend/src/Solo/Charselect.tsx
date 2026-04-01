@@ -39,19 +39,13 @@ const Charselectsolo = () => {
 
                 <button
                     onClick={() => {
-                        console.log("Player:", player, "AI:", ai);
-                        // window.location.href = "/";
+                        navigate(`/solo-gameplay?player=${encodeURIComponent(player)}&ai=${encodeURIComponent(ai)}`);
                     }}
                     className="hb-tap hb-landscape-btn font-arcade px-8 py-4 min-[481px]:px-12 min-[481px]:py-6 text-[clamp(1.25rem,3vw,3rem)] text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors duration-200 w-full max-w-md"
                 >
                     {t("Start Game")}
                 </button>
             </div>
-          <button
-              onClick={() => navigate(`/solo-gameplay?player=${encodeURIComponent(player)}&ai=${encodeURIComponent(ai)}`)}
-                className="hb-tap hb-landscape-btn font-arcade px-8 py-4 min-[481px]:px-12 min-[481px]:py-6 text-[clamp(1.25rem,3vw,3rem)] text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors duration-200 w-full max-w-md">
-                  {t("Start Game")}
-                  </button>
         </div>
     );
 }
