@@ -15,7 +15,7 @@ const Settingpage = () => {
     const arcadeSettingsButton =
         `${arcadeButtonBase} w-full h-14 min-[481px]:h-16 px-6 min-[481px]:px-7 text-xl min-[481px]:text-4xl`;
     const arcadeBackButton =
-        `${arcadeButtonBase} normal-case tracking-normal h-12 min-[481px]:h-14 px-4 min-[481px]:px-5 text-lg min-[481px]:text-2xl`;
+        `${arcadeButtonBase} normal-case tracking-normal whitespace-nowrap h-11 min-[481px]:h-12 min-[769px]:h-14 px-3 min-[481px]:px-4 min-[769px]:px-5 text-base min-[481px]:text-lg min-[769px]:text-xl`;
 
     return (
         <div className="relative min-h-[100dvh] w-full overflow-auto">
@@ -24,7 +24,7 @@ const Settingpage = () => {
             <div className="relative z-10 min-h-[100dvh] flex justify-center items-center px-4 py-8">
                 <button
                     onClick={() => window.history.back()}
-                    className={`absolute top-4 left-4 min-[481px]:top-6 min-[481px]:left-6 ${arcadeBackButton} text-white bg-blue-600 hover:bg-blue-700`}
+                    className={`absolute top-3 left-3 min-[481px]:top-6 min-[481px]:left-6 ${arcadeBackButton} text-white bg-blue-600 hover:bg-blue-700`}
                 >
                     {t("Back")}
                 </button>
