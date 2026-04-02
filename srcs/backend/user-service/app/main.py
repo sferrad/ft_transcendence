@@ -87,7 +87,7 @@ async def internal_update_user(user_update: schemas.InternalUserUpdate, db: Sess
 	try:
 		crud.update_user(db, user)
 	except IntegrityError:
-		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already exist")
+		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already exists")
 	except SQLAlchemyError:
 		raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Database error")	
 	return {"ok": True, "user_id": user.id}

@@ -72,9 +72,9 @@ def health():
 # Mapping des erreurs:
 # - 401: identifiants invalides
 # - 503: user-service indisponible (réseau / down)
+# - 502: user-service a renvoyé une erreur inattendue
 @app.post("/auth/login")
 async def auth_login(body: LoginRequest):
-# - 502: user-service a renvoyé une erreur inattendue
     try:
         user = await verify_credentials(body.identifier, body.password)
     except InvalidCredentialsError as e:
