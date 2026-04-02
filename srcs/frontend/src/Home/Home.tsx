@@ -9,6 +9,13 @@ const Home = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const isAuthed = Boolean(localStorage.getItem("access_token"));
 
+    const arcadeButtonBase =
+        "hb-tap font-arcade cursor-pointer border-0 shadow-[0px_4px_rgb(255,255,255),0px_-4px_rgb(255,255,255),4px_0px_rgb(255,255,255),-4px_0px_rgb(255,255,255),0px_4px_rgba(0,0,0,0.22),4px_4px_rgba(0,0,0,0.22),-4px_4px_rgba(0,0,0,0.22),inset_0px_4px_rgba(255,255,255,0.21)] no-underline inline-flex items-center justify-center transition-transform duration-100 active:translate-y-0.5 max-w-full";
+    const arcadeNavButton =
+        `${arcadeButtonBase} px-6 py-2 min-[481px]:px-7 min-[481px]:py-3 min-[769px]:px-8 min-[769px]:py-3 text-xl min-[481px]:text-2xl min-[769px]:text-3xl`;
+    const arcadeMenuItemButton =
+        `${arcadeButtonBase} w-full px-4 py-2 text-left text-xl min-[481px]:text-xl`;
+
     const goTo = (path: string) => {
         setIsMobileMenuOpen(false);
         window.location.href = path;
@@ -30,13 +37,13 @@ const Home = () => {
                         <div className="hidden min-[769px]:flex items-center gap-4">
                             <button
                                 onClick={() => goTo('/login')}
-                                className="hb-tap cursor-pointer px-6 py-2 text-lg text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors duration-200"
+                                className={`${arcadeNavButton} text-black bg-blue-600 hover:bg-blue-700`}
                             >
                                 {t('Login')}
                             </button>
                             <button
                                 onClick={() => goTo('/register')}
-                                className="hb-tap cursor-pointer px-6 py-2 text-lg text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors duration-200"
+                                className={`${arcadeNavButton} text-black bg-[#4AD95A] hover:bg-green-600`}
                             >
                                 {t('Register')}
                             </button>
@@ -61,14 +68,14 @@ const Home = () => {
                                 >
                                     <button
                                         role="menuitem"
-                                        className="hb-tap w-full text-left px-4 py-3 text-base hover:bg-gray-50"
+                                        className={`${arcadeMenuItemButton} text-black bg-blue-600 hover:bg-blue-700`}
                                         onClick={() => goTo('/login')}
                                     >
                                         {t('Login')}
                                     </button>
                                     <button
                                         role="menuitem"
-                                        className="hb-tap w-full text-left px-4 py-3 text-base hover:bg-gray-50"
+                                        className={`${arcadeMenuItemButton} text-black bg-[#4AD95A] hover:bg-green-600`}
                                         onClick={() => goTo('/register')}
                                     >
                                         {t('Register')}

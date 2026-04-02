@@ -41,7 +41,7 @@ const Charselectsolo = () => {
                     onClick={() => {
                         navigate(`/solo-gameplay?player=${encodeURIComponent(player)}&ai=${encodeURIComponent(ai)}`);
                     }}
-                    className="hb-tap hb-landscape-btn font-arcade px-8 py-4 min-[481px]:px-12 min-[481px]:py-6 text-[clamp(1.25rem,3vw,3rem)] text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors duration-200 w-full max-w-md"
+                    className="font-arcade text-black bg-[#4AD95A] px-8 py-5 min-[481px]:px-7 min-[481px]:py-3 min-[769px]:px-9 min-[769px]:py-4 m-2 text-base min-[481px]:text-lg min-[769px]:text-4xl border-0 shadow-[0px_4px_rgb(255,255,255),0px_-4px_rgb(255,255,255),4px_0px_rgb(255,255,255),-4px_0px_rgb(255,255,255),0px_4px_rgba(0,0,0,0.22),4px_4px_rgba(0,0,0,0.22),-4px_4px_rgba(0,0,0,0.22),inset_0px_4px_rgba(255,255,255,0.21)] cursor-pointer no-underline inline-block transition-transform duration-100 active:translate-y-0.5 w-fit max-w-full"
                 >
                     {t("Start Game")}
                 </button>
