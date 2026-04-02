@@ -18,6 +18,11 @@ function Carousel() {
     const delay = 200;
     const { t } = useTranslation();
 
+    const arcadeButtonBase =
+        "hb-tap font-arcade border-0 shadow-[0px_4px_rgb(255,255,255),0px_-4px_rgb(255,255,255),4px_0px_rgb(255,255,255),-4px_0px_rgb(255,255,255),0px_4px_rgba(0,0,0,0.22),4px_4px_rgba(0,0,0,0.22),-4px_4px_rgba(0,0,0,0.22),inset_0px_4px_rgba(255,255,255,0.21)] cursor-pointer no-underline inline-flex items-center justify-center transition-transform duration-100 active:translate-y-0.5 max-w-full";
+    const arcadeArrowButton =
+        `${arcadeButtonBase} mx-1 min-[481px]:mx-2 p-2 text-3xl min-[481px]:text-4xl text-white bg-green-600 hover:bg-green-500`;
+
     const canNavigate = useCallback(() => {
         const now = Date.now();
         if (now - lastNavTime.current >= delay) {
@@ -88,7 +93,7 @@ function Carousel() {
         <div className="flex items-end justify-center min-h-[100dvh] pb-6 min-[481px]:pb-10 min-[769px]:pb-20 px-3 text-base min-[481px]:text-xl">
             <div className="flex items-center justify-center border-2 border-gray-300 bg-green-700 rounded-xl px-4 py-4 min-[481px]:px-8 min-[481px]:py-6 gap-3 min-[481px]:gap-4 w-[min(92vw,48rem)]">
                 <button
-                    className={`hb-tap mx-1 min-[481px]:mx-2 cursor-pointer text-4xl min-[481px]:text-5xl hover:scale-110 ${isPressedL ? 'scale-125' : ""} transition-transform text-white border-2 border-gray-300 rounded-lg p-2`}
+                    className={`${arcadeArrowButton} hover:scale-110 ${isPressedL ? 'scale-125' : ""}`}
                     onClick={prev}
                 >
                     <FaRegArrowAltCircleLeft />
@@ -114,13 +119,13 @@ function Carousel() {
                         return (
                             <button type='submit'
                                 key={mode}
-                                className={`absolute transition-all duration-200 ease-in-out px-4 py-2 min-[481px]:px-6 min-[481px]:py-3 rounded-lg font-semibold
+                                className={`absolute whitespace-nowrap transition-all duration-200 ease-in-out ${arcadeButtonBase} px-5 py-2 min-[481px]:px-6 min-[481px]:py-3 text-xl min-[481px]:text-2xl min-[769px]:text-3xl
                 ${isActive
-                                        ? 'z-20 scale-125 text-white shadow-xl transition-transform cursor-pointer'
-                                        : 'z-10 scale-75 bg-gray-400 text-gray-200 opacity-50'}
+                                        ? 'z-20 scale-125'
+                                        : 'z-10 scale-75 opacity-50 cursor-default'}
                 ${isPrev ? '-translate-x-[6.5rem] min-[481px]:-translate-x-[8.75rem]' : ''}
                 ${isNext ? 'translate-x-[6.5rem] min-[481px]:translate-x-[8.75rem]' : ''}
-                ${mode === "Solo" ? "bg-green-500" : mode === "Online" ? "bg-yellow-500" : mode === "Local" ? "bg-blue-500" : "bg-gray-500"}`}
+                ${mode === "Solo" ? "text-black bg-[#4AD95A] hover:bg-green-600" : mode === "Online" ? "text-black bg-yellow-400 hover:bg-yellow-500" : mode === "Local" ? "text-black bg-blue-600 hover:bg-blue-700" : "text-black bg-gray-600 hover:bg-gray-700"}`}
                                 onClick={() => select(mode)}
                                 disabled={!isActive}>
                                 {t(mode)}
@@ -130,7 +135,7 @@ function Carousel() {
                 </div>
 
                 <button
-                    className={`hb-tap mx-1 min-[481px]:mx-2 text-4xl min-[481px]:text-5xl hover:scale-110 ${isPressedR ? 'scale-125' : ""} cursor-pointer transition-transform text-white border-2 border-gray-300 rounded-lg p-2`}
+                    className={`${arcadeArrowButton} hover:scale-110 ${isPressedR ? 'scale-125' : ""}`}
                     onClick={next}
                 >
                     <FaRegArrowAltCircleRight />
