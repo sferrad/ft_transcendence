@@ -142,18 +142,8 @@ async def update_user_infos(payload: schemas.UserUpdateRequest, user_id: int = D
 	try:
 		res = await user_service_client.update_user_in_user_service(user_id, payload)
 		return res
-	except httpx.HTTPStatusError as e:
-		return Response(
-            content=e.response.content,
-            status_code=e.response.status_code,
-            media_type="application/json"
-        )
-	
-@app.delete("/me/settings/user")
-async def delete_user(user_id: int = Depends(_current_user_id)):
-	try:
-		res = await user_service_client.delete_user_in_user_service(user_id)
-		return res
+	except httpx.RequestError:
+		raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="user-service unavailable")
 	except httpx.HTTPStatusError as e:
 		return Response(
             content=e.response.content,
@@ -161,7 +151,23 @@ async def delete_user(user_id: int = Depends(_current_user_id)):
             media_type="application/json"
         )
 	except Exception as e:
-		raise HTTPException(status_code=500, detail=str(e))
+		raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+	
+@app.delete("/me/settings/user")
+async def delete_user(user_id: int = Depends(_current_user_id)):
+	try:
+		res = await user_service_client.delete_user_in_user_service(user_id)
+		return res
+	except httpx.RequestError:
+		raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="user-service unavailable")
+	except httpx.HTTPStatusError as e:
+		return Response(
+            content=e.response.content,
+            status_code=e.response.status_code,
+            media_type="application/json"
+        )
+	except Exception as e:
+		raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 	
 
 # Crée un profil par défaut pour un user.

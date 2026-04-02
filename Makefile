@@ -36,4 +36,4 @@ rebuild:
 
 re: fclean all
 
-.PHONY: all up upfg down logs ports clean fclean restart
+.PHONY: all up upfg down logs ps clean fclean restart rebuild re
