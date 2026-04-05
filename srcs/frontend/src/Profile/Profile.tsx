@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { uploadImageToCloudinary } from "../utils/cloudinary";
 import ProfilePicture from "./ProfilePicture";
+import HandleBio from "./Bio";
 
 function Profile() {
     const navigate = useNavigate();
@@ -20,6 +21,9 @@ function Profile() {
             navigate("/login");
             return;
         }
+
+        // const token = "demo_token"; // --- IGNORE ---
+        // localStorage.setItem("username", "demo_user"); // --- IGNORE ---
     
         const fetchProfilePicture = async () => {
             try {
@@ -137,9 +141,10 @@ function Profile() {
                         isLoading={isLoading}
                         onImageUpload={handleImageUpload}
                     />
-                    <h1 className="text-2xl font-bold text-center text-gray-800">
+                    <h1 className="text-5xl font-arcade text-center text-gray-800">
                         {localStorage.getItem("username")}
                     </h1>
+                        <HandleBio />
                     {/* Divider */}
                     <div className="h-px bg-gray-300 mb-6 md:mb-8" />
 
@@ -167,7 +172,7 @@ function Profile() {
                             </div>
                         )}
                     </div>
-
+                    {/* Bio Component */}
                     {/* Logout Button */}
                     <button
                         onClick={handleLogout}
