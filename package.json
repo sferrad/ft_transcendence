@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "cloudinary": "^2.9.0",
+    "next-cloudinary": "^6.17.5"
+  }
+}
