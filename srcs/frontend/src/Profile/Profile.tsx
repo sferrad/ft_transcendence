@@ -3,6 +3,7 @@ import "../i18n/index.ts";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { uploadImageToCloudinary } from "../utils/cloudinary";
+import ProfilePicture from "./ProfilePicture";
 
 function Profile() {
     const navigate = useNavigate();
@@ -11,6 +12,7 @@ function Profile() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
+    const [messageVisible, setMessageVisible] = useState(false);
 
     useEffect(() => {
         const token = localStorage.getItem("access_token");
@@ -29,11 +31,19 @@ function Profile() {
             } catch (error) {
                 console.error("Error fetching profile picture:", error);
                 setError("Erreur lors du chargement du profil");
+                setMessageVisible(true);
             }
         };
 
         fetchProfilePicture();
     }, [navigate]);
+
+    useEffect(() => {
+        if (messageVisible) {
+            const timer = setTimeout(() => setMessageVisible(false), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [messageVisible]);
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -43,116 +53,130 @@ function Profile() {
         setError(null);
         setSuccess(false);
 
-        try {
-            // Upload l'image vers Cloudinary
-            const imageUrl = await uploadImageToCloudinary(file);
-            setProfilePicture(imageUrl);
-            setSuccess(true);
-            setTimeout(() => setSuccess(false), 3000);
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : "Erreur lors de l'upload";
-            setError(errorMessage);
-            console.error("Error uploading image:", error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
         const token = localStorage.getItem("access_token");
         if (!token) {
             setError("Token manquant. Veuillez vous reconnecter.");
+            setMessageVisible(true);
+            setIsLoading(false);
             navigate("/login");
             return;
         }
 
-        if (!profilePicture) {
-            setError("Veuillez d'abord charger une image");
-            return;
-        }
-
-        setIsLoading(true);
-        setError(null);
-
         try {
-            console.log("Token:", token); // DEBUG
+            const imageUrl = await uploadImageToCloudinary(file);
+            setProfilePicture(imageUrl);
+
+            // Mise à jour directe de l'API
             const response = await fetch("/api/profile/me", {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify({ avatar_url: profilePicture }),
+                body: JSON.stringify({ avatar_url: imageUrl }),
             });
-            
-            console.log("Response status:", response.status); // DEBUG
-            console.log("Response status:", response.status); // DEBUG
+
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
-                console.error("API Error:", errorData); // DEBUG
                 if (response.status === 401) {
                     setError("Session expirée. Veuillez vous reconnecter.");
+                    setMessageVisible(true);
                     navigate("/login");
                     return;
                 }
                 throw new Error(errorData.detail || "Erreur serveur");
             }
+
             setSuccess(true);
-            setTimeout(() => setSuccess(false), 3000);
+            setMessageVisible(true);
         } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : "Erreur lors de la mise à jour";
+            const errorMessage = error instanceof Error ? error.message : "Erreur lors de l'upload";
             setError(errorMessage);
-            console.error("Error updating profile picture:", error);
+            setMessageVisible(true);
+            console.error("Error uploading image:", error);
         } finally {
             setIsLoading(false);
         }
     };
 
+    const handleLogout = async () => {
+        const token = localStorage.getItem("access_token");
+        if (!token) {
+            navigate("/login");
+            return;
+        }
+
+        try {
+            const response = await fetch("/api/auth/logout", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (response.ok) {
+                localStorage.removeItem("access_token");
+                localStorage.removeItem("username");
+                localStorage.removeItem("email");
+                localStorage.removeItem("user_id");
+                navigate("/login");
+            } else {
+                console.error("Failed to log out:", response.statusText);
+            }
+        } catch (error) {
+            console.error("Error logging out:", error);
+        }
+    };
+
     return (
-        <div className="relative min-h-[100dvh] w-full bg-[url('/assets/bgProfil.png')] bg-cover bg-center bg-no-repeat overflow-auto">
-            <img 
-                src={profilePicture || '/assets/default-profile.jpg'} 
-                alt="Profile Picture"
-                className="w-32 h-32 rounded-full object-cover mx-auto mt-8"
-            />
-            <form 
-                onSubmit={handleSubmit} 
-                className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white bg-opacity-75 p-6 rounded-lg shadow-lg w-96"
-            >
-                <div className="mb-4">
-                    <label className="block text-gray-700 font-bold mb-2">
-                        {t("Sélectionner une image")}
-                    </label>
-                    <input 
-                        type="file" 
-                        accept="image/*" 
-                        onChange={handleImageUpload}
-                        disabled={isLoading}
-                        className="w-full p-2 border border-gray-300 rounded"
+        <div className="relative min-h-screen w-full bg-[url('/assets/bgProfil.png')] bg-cover bg-center bg-no-repeat overflow-auto py-8 px-4 sm:px-6 md:px-8">
+
+            {/* Container Principal */}
+            <div className="flex items-center justify-center min-h-[calc(100vh-2rem)]">
+                <div className="w-full max-w-md bg-white bg-opacity-90 p-6 sm:p-8 md:p-10 rounded-2xl shadow-2xl backdrop-blur-sm">
+                    {/* Profile Picture Component */}
+                    <ProfilePicture 
+                        profilePicture={profilePicture}
+                        isLoading={isLoading}
+                        onImageUpload={handleImageUpload}
                     />
+                    <h1 className="text-2xl font-bold text-center text-gray-800">
+                        {localStorage.getItem("username")}
+                    </h1>
+                    {/* Divider */}
+                    <div className="h-px bg-gray-300 mb-6 md:mb-8" />
+
+                    {/* Messages */}
+                    <div className="space-y-3 min-h-[70px]">
+                        {messageVisible && error && (
+                            <div className="w-full p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-lg animate-in fade-in slide-in-from-top-2">
+                                <div className="flex items-start gap-3">
+                                    <svg className="w-5 h-5 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                    </svg>
+                                    <span className="text-sm font-medium">{error}</span>
+                                </div>
+                            </div>
+                        )}
+
+                        {messageVisible && success && (
+                            <div className="w-full p-4 bg-green-50 border-l-4 border-green-500 text-green-700 rounded-lg animate-in fade-in slide-in-from-top-2">
+                                <div className="flex items-start gap-3">
+                                    <svg className="w-5 h-5 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                    </svg>
+                                    <span className="text-sm font-medium">✓ {t("Succès!")}</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Logout Button */}
+                    <button
+                        onClick={handleLogout}
+                        className="w-full mt-6 px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg transition-colors text-sm sm:text-base"
+                    >
+                        {t("Logout")}
+                    </button>
                 </div>
-
-                {error && (
-                    <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-                        {error}
-                    </div>
-                )}
-
-                {success && (
-                    <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
-                        ✓ {t("Succès!")}
-                    </div>
-                )}
-
-                <button 
-                    type="submit" 
-                    disabled={isLoading || !profilePicture}
-                    className="w-full bg-blue-500 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-2 px-4 rounded transition"
-                >
-                    {isLoading ? "Chargement..." : t("Mettre à jour la photo")}
-                </button>
-            </form>
+            </div>
         </div>
     );
 }
