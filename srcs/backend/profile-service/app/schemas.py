@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional, List
 import enum
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 
 from .models import languageEnum
 
@@ -33,6 +33,7 @@ class ProfileOut(BaseModel):
 	language: Optional[str]
 	created_at: Optional[datetime]
 	updated_at: Optional[datetime]
+	model_config = ConfigDict(from_attributes=True)
 
 
 class InternalProfileCreate(BaseModel):
@@ -47,6 +48,7 @@ class UserSettingIn(BaseModel):
 class UserSettingOut(UserSettingIn):
 	id: int
 	user_id: int
+	model_config = ConfigDict(from_attributes=True)
 
 class UserUpdateRequest(BaseModel):
 	email: EmailStr | None = None
