@@ -58,30 +58,14 @@ async def send_request(payload: schemas.FriendRequestCreate, user_id: int = Depe
 		request = crud.create_friend_request(db, user_id, payload.to_user_id)
 	except IntegrityError:
 		raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Friend request conflict, please retry")
-	return schemas.FriendRequestOut(
-		id=request.id,
-		from_user_id=request.from_user_id,
-		to_user_id=request.to_user_id,
-		status=request.status,
-		created_at=request.created_at,
-		updated_at=request.updated_at,
-	)
+	return request
 
 # Affiche les requetes en attente
 @app.get("/requests/incoming", response_model=list[schemas.FriendRequestOut])
 async def incoming_requests(user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
-	requests = crud.list_incoming_requests(db, user_id)
-	return [
-		schemas.FriendRequestOut(
-			id=r.id,
-			from_user_id=r.from_user_id,
-			to_user_id=r.to_user_id,
-			status=r.status,
-			created_at=r.created_at,
-			updated_at=r.updated_at,
-		)
-		for r in requests
-	]
+	# Grâce à `schemas.FriendRequestOut.model_config = ConfigDict(from_attributes=True)`
+	# (Pydantic v2), on peut retourner directement les objets ORM SQLAlchemy.
+	return crud.list_incoming_requests(db, user_id)
 
 # accepte une requete
 @app.post("/requests/{request_id}/accept", response_model=dict)
@@ -100,7 +84,7 @@ async def accept_request(request_id: int, user_id: int = Depends(_current_user_i
 	return {"status": "ok"}
 
 # Refus de requete
-@app.post("/requests/{request_id}/reject")
+@app.post("/requests/{request_id}/reject", response_model=dict)
 async def reject_request(request_id: int, user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
 	request = crud.get_friend_request(db, request_id)
 	if not request or request.to_user_id != user_id:
@@ -117,7 +101,7 @@ async def reject_request(request_id: int, user_id: int = Depends(_current_user_i
 @app.get("/friends", response_model=list[schemas.FriendOut])
 async def list_my_friends(user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
 	friends = crud.list_friends(db, user_id)
-	return [schemas.FriendOut(friend_id=f.friend_id, created_at=f.created_at) for f in friends]
+	return friends
 
 # Bloquer un user
 @app.post("/block", response_model=schemas.BlockOut)
@@ -130,10 +114,10 @@ async def block(payload: schemas.BlockCreate, user_id: int = Depends(_current_us
 		block_row = crud.block_user(db, user_id, payload.blocked_user_id)
 	except IntegrityError:
 		raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Block user conflict, please retry")
-	return schemas.BlockOut(blocked_user_id=block_row.blocked_user_id, created_at=block_row.created_at)
+	return block_row
 
 # unbloxk user
-@app.delete("/block/{blocked_user_id}")
+@app.delete("/block/{blocked_user_id}", response_model=dict)
 async def unblock(blocked_user_id: int, user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
 	try:
 		ok = crud.unblock_user(db, user_id, blocked_user_id)
