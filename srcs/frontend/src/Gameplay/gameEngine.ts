@@ -19,6 +19,15 @@ const MIN_BOUNCE_VY = 1.8
 const KICK_SPEED = 50
 const GRAVITY_PLAYER = 0.5
 const JUMP_FORCE = -13
+// Impulsion initiale du dash: plus grand = dash plus agressif.
+const DASH_IMPULSE = 70
+// Perte de vitesse du dash à chaque frame (proche de 1 = plus long).
+const DASH_DECAY = 0.8
+// Seuil d'arrêt pour couper la micro-glisse en fin de dash.
+const DASH_STOP_EPSILON = 0.3
+
+// Boost horizontal temporaire conservé d'une frame à l'autre.
+const dashBoosts = [0, 0]
 
 const PLAYER1_START_X = 180
 const PLAYER2_START_X = CANVAS_WIDTH - 180
@@ -47,6 +56,8 @@ function createGoals(): { goal1: Goal; goal2: Goal } {
 }
 
 export function createInitialState(): GameState {
+  dashBoosts[0] = 0
+  dashBoosts[1] = 0
   const { goal1, goal2 } = createGoals()
   return {
     ball: {
@@ -93,6 +104,9 @@ export function resetBall(state: GameState): void {
 }
 
 function resetPlayers(state: GameState): void {
+  dashBoosts[0] = 0
+  dashBoosts[1] = 0
+
   state.player1.x = PLAYER1_START_X
   state.player1.y = PLAYER_START_Y
   state.player1.vx = 0
@@ -170,22 +184,35 @@ function tryShoot(player: Player, ball: Ball, shootRight: boolean, wantShoot: bo
   }
 }
 
+function updateDashBoost(currentBoost: number, dashLeft: boolean, dashRight: boolean): number {
+  // Double-appui: on remplace immédiatement le boost courant.
+  if (dashLeft && !dashRight) return -DASH_IMPULSE
+  if (dashRight && !dashLeft) return DASH_IMPULSE
+
+  // Sinon, le boost se dissipe progressivement.
+  const decayed = currentBoost * DASH_DECAY
+  return Math.abs(decayed) < DASH_STOP_EPSILON ? 0 : decayed
+}
+
+function applyHorizontalMovement(player: Player, moveLeft: boolean, moveRight: boolean, dashLeft: boolean, dashRight: boolean, dashIndex: 0 | 1): void {
+  dashBoosts[dashIndex] = updateDashBoost(dashBoosts[dashIndex], dashLeft, dashRight)
+  const direction = (moveRight ? 1 : 0) - (moveLeft ? 1 : 0)
+  player.vx = direction * player.speed + dashBoosts[dashIndex]
+  player.x += player.vx
+}
+
 function updatePlayers(state: GameState, keys: Keys): void {
   const p1 = state.player1
   const p2 = state.player2
   const floor = CANVAS_HEIGHT - PLAYER_RADIUS - 10
 
-  p1.vx = 0
-  if (keys.a) { p1.x -= p1.speed; p1.vx = -p1.speed }
-  if (keys.d) { p1.x += p1.speed; p1.vx = p1.speed }
+  applyHorizontalMovement(p1, keys.a, keys.d, keys.p1DashLeft, keys.p1DashRight, 0)
   if (keys.w && p1.y >= floor) p1.vy = JUMP_FORCE
   p1.vy += GRAVITY_PLAYER
   p1.y += p1.vy
   if (p1.y >= floor) { p1.y = floor; p1.vy = 0 }
 
-  p2.vx = 0
-  if (keys.ArrowLeft)  { p2.x -= p2.speed; p2.vx = -p2.speed }
-  if (keys.ArrowRight) { p2.x += p2.speed; p2.vx = p2.speed }
+  applyHorizontalMovement(p2, keys.ArrowLeft, keys.ArrowRight, keys.p2DashLeft, keys.p2DashRight, 1)
   if (keys.ArrowUp && p2.y >= floor) p2.vy = JUMP_FORCE
   p2.vy += GRAVITY_PLAYER
   p2.y += p2.vy
@@ -431,8 +458,7 @@ export function updateGame(state: GameState, keys: Keys, isSolo: boolean = false
   if (isSolo) {
     const p1 = state.player1
     const floor = CANVAS_HEIGHT - PLAYER_RADIUS - 10
-    if (keys.a) p1.x -= p1.speed
-    if (keys.d) p1.x += p1.speed
+    applyHorizontalMovement(p1, keys.a, keys.d, keys.p1DashLeft, keys.p1DashRight, 0)
     if (keys.w && p1.y >= floor) p1.vy = JUMP_FORCE
     p1.vy += GRAVITY_PLAYER
     p1.y += p1.vy
