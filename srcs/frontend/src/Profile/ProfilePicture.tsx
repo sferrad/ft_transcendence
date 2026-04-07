@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 interface ProfilePictureProps {
     profilePicture: string | null;
     isLoading: boolean;
-    onImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
+    onImageUpload?: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
 }
 
 function ProfilePicture({ profilePicture, isLoading, onImageUpload }: ProfilePictureProps) {
@@ -20,7 +20,7 @@ function ProfilePicture({ profilePicture, isLoading, onImageUpload }: ProfilePic
     return (
         <div className="flex flex-col items-center gap-4 mb-6 md:mb-8">
             {/* Profile Picture */}
-            <div className="relative">
+            <div className="relative mt-4">
                 <img
                     src={imageError ? '/assets/default-profile.jpg' : (profilePicture || '/assets/default-profile.jpg')}
                     alt="Profile Picture"
@@ -31,22 +31,24 @@ function ProfilePicture({ profilePicture, isLoading, onImageUpload }: ProfilePic
             </div>
 
             {/* File Upload Input */}
-            <div className="w-full max-w-xs">
-                <label 
-                    htmlFor="image-upload" 
-                    className="flex items-center justify-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg cursor-pointer transition-colors disabled:bg-gray-400"
-                >
-                    Modifier la photo
-                </label>
-                <input
-                    id="image-upload"
-                    type="file"
-                    accept="image/*"
-                    onChange={onImageUpload}
-                    disabled={isLoading}
-                    className="hidden"
-                />
-            </div>
+            {onImageUpload && (
+                <div className="w-full max-w-xs">
+                    <label 
+                        htmlFor="image-upload" 
+                        className="flex items-center justify-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg cursor-pointer transition-colors disabled:bg-gray-400"
+                    >
+                        Modifier la photo
+                    </label>
+                    <input
+                        id="image-upload"
+                        type="file"
+                        accept="image/*"
+                        onChange={onImageUpload}
+                        disabled={isLoading}
+                        className="hidden"
+                    />
+                </div>
+            )}
         </div>
     );
 }

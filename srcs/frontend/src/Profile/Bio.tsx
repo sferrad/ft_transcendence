@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 
+
 const HandleBio = () => {
     const [bio, setBio] = useState("");
     const [isEditing, setIsEditing] = useState(false);

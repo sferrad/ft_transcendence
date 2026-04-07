@@ -10,6 +10,10 @@ def get_user_by_identifier(db: Session, identifier: str) -> models.User | None:
 	)
 
 
+def get_user_by_username(db: Session, username: str) -> models.User | None:
+	return db.query(models.User).filter(models.User.username == username).first()
+
+
 def existing_user(db: Session, email: str) -> bool:
 	return (db.query(models.User).filter(models.User.email == email).first() is not None)
 
