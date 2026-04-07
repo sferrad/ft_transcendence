@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
 
@@ -16,6 +16,7 @@ class OutputLogin(BaseModel):
     id: int
     email: str
     username: str
+    model_config = ConfigDict(from_attributes=True)
 
 class UpdateUserRequest(BaseModel):
     user_id: int

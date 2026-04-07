@@ -46,15 +46,15 @@ def update_profile(db: Session, profile: models.Profile, payload: ProfileUpdate)
 		raise
 
 
-def get_user_settings(db: Session, user_id: int) -> models.UserSetting:
+def get_user_settings(db: Session, user_id: int) -> models.UserSetting | None:
 	return db.query(models.UserSetting).filter(models.UserSetting.user_id == user_id).first()
 
-def create_user_settings(db: Session, user_id:int) ->models.UserSetting:
+def create_user_settings(db: Session, user_id: int) -> models.UserSetting:
 	settings = models.UserSetting(user_id=user_id)
 	try:
-		db.add()
+		db.add(settings)
 		db.commit()
-		db.refresh()
+		db.refresh(settings)
 		return settings
 	except SQLAlchemyError:
 		db.rollback()
@@ -63,14 +63,16 @@ def create_user_settings(db: Session, user_id:int) ->models.UserSetting:
 def update_user_settings(user_id: int, db: Session, updates: UserSettingIn) -> models.UserSetting:
 	settings = get_user_settings(db, user_id)
 	if not settings:
-		create_user_settings(db, user_id)
-	updates_data = updates.dict(exclude_unset=True)
+		settings = create_user_settings(db, user_id)
+
+	# Pydantic v2 : `model_dump` remplace `.dict()`
+	updates_data = updates.model_dump(exclude_unset=True)
 	for field, value in updates_data.items():
 		setattr(settings, field, value)
 	try:
-		db.add()
+		db.add(settings)
 		db.commit()
-		db.refresh()
+		db.refresh(settings)
 		return settings
 	except SQLAlchemyError:
 		db.rollback()

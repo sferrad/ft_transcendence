@@ -8,25 +8,21 @@ interface PlayerCircleProps {
 }
 
 export function PlayerCircle({ x, y, radius, color, isKicking = false, facingRight = true }: PlayerCircleProps) {
-  const footW = 26
-  const footH = 13
-  const side = facingRight ? 1 : -1
+  const footW = Math.max(28, radius * 1.18)
+  const footH = Math.max(13, radius * 0.54)
 
-  const restOffsetX = side * 2
-  const restOffsetY = radius + 4
-  const restRotation = side * 8
+  // Le pied suit un arc naturel: repos sous le corps, tir vers l'avant.
+  const restAngle = 1.5
+  const kickAngle = 0
+  const kickProgress = isKicking ? 1 : 0
+  const localAngle = restAngle + (kickAngle - restAngle) * kickProgress
+  const footAngleRad = facingRight ? localAngle : Math.PI - localAngle
+  // On garde le pied accroché au bas du corps avec un léger décalage vers l'arrière.
+  const footDistance = radius * (isKicking ? 0.98 : 0.85)
 
-  const kickOffsetX = side * (radius * 0.85)
-  const kickOffsetY = 4
-  const kickRotation = side * 5
-
-
-  const offsetX = isKicking ? kickOffsetX : restOffsetX
-  const offsetY = isKicking ? kickOffsetY : restOffsetY
-  const rotation = isKicking ? kickRotation : restRotation
-
-  const footCenterX = x + offsetX
-  const footCenterY = y + offsetY
+  const footCenterX = x + Math.cos(footAngleRad) * footDistance - (facingRight ? radius * 0.4 : -radius * 0.4)
+  const footCenterY = y + Math.sin(footAngleRad) * footDistance + radius * 0.1
+  const rotation = (footAngleRad * 180) / Math.PI + (isKicking ? 0 : 6)
 
   return (
     <div style={{ position: 'absolute', left: 0, top: 0 }}>
@@ -53,7 +49,9 @@ export function PlayerCircle({ x, y, radius, color, isKicking = false, facingRig
         border: `2.5px solid ${color}`,
         transform: `rotate(${rotation}deg)`,
         transformOrigin: 'center center',
-        transition: isKicking ? 'none' : 'transform 0.1s ease-out, left 0.1s ease-out, top 0.1s ease-out',
+        transition: isKicking
+          ? 'transform 0.06s ease-out'
+          : 'transform 0.12s ease-out',
         boxShadow: isKicking ? `0 2px 8px rgba(255,255,255,0.5)` : 'none',
       }} />
     </div>
