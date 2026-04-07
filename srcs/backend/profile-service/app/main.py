@@ -59,17 +59,7 @@ async def get_me(user_id: int = Depends(_current_user_id), db: Session = Depends
 	profile = crud.get_profile_by_user_id(db, user_id)
 	if not profile:
 		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
-	return schemas.ProfileOut(
-		id=profile.id,
-		user_id=profile.user_id,
-		display_name=profile.display_name,
-		avatar_url=profile.avatar_url,
-		bio=profile.bio,
-		country=profile.country,
-		language=profile.language,
-		created_at=profile.created_at,
-		updated_at=profile.updated_at,
-	)
+	return profile
 
 # cree ou met a jour son profil
 @app.put("/me", response_model=schemas.ProfileOut)
@@ -98,17 +88,7 @@ async def put_me(payload: schemas.ProfileUpdate, user_id: int = Depends(_current
 		if "display_name" in data and data["display_name"] is None:
 			raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="display_name cannot be null")
 		profile = crud.update_profile(db, profile, payload)
-	return schemas.ProfileOut(
-		id=profile.id,
-		user_id=profile.user_id,
-		display_name=profile.display_name,
-		avatar_url=profile.avatar_url,
-		bio=profile.bio,
-		country=profile.country,
-		language=profile.language,
-		created_at=profile.created_at,
-		updated_at=profile.updated_at,
-	)
+	return profile
 
 # consulte le profile d un autre user
 @app.get("/profiles/{user_id}", response_model=schemas.ProfileOut)
@@ -116,21 +96,13 @@ async def get_profile(user_id: int, db: Session = Depends(get_db)):
 	profile = crud.get_profile_by_user_id(db, user_id)
 	if not profile:
 		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
-	return schemas.ProfileOut(
-		id=profile.id,
-		user_id=profile.user_id,
-		display_name=profile.display_name,
-		avatar_url=profile.avatar_url,
-		bio=profile.bio,
-		country=profile.country,
-		language=profile.language,
-		created_at=profile.created_at,
-		updated_at=profile.updated_at,
-	)
+	return profile
 
 @app.get("/me/settings", response_model = schemas.UserSettingOut)
 async def get_settings(user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)) -> schemas.UserSettingOut:
 	settings = crud.get_user_settings(db, user_id)
+	if not settings:
+		settings = crud.create_user_settings(db, user_id)
 	return settings
 
 @app.put("/me/settings", response_model=schemas.UserSettingOut)
@@ -186,18 +158,7 @@ async def internal_create_profile(payload: schemas.InternalProfileCreate, db: Se
 
 	existing = crud.get_profile_by_user_id(db, payload.user_id)
 	if existing:
-		return schemas.ProfileOut(
-			id=existing.id,
-			user_id=existing.user_id,
-			display_name=existing.display_name,
-			avatar_url=existing.avatar_url,
-			bio=existing.bio,
-			country=existing.country,
-			language=existing.language,
-			created_at=existing.created_at,
-			updated_at=existing.updated_at,
-		)
-
+		return existing
 	try:
 		profile = crud.create_profile(db, payload.user_id, schemas.ProfileCreate(display_name=payload.display_name))
 	except IntegrityError:
@@ -206,14 +167,4 @@ async def internal_create_profile(payload: schemas.InternalProfileCreate, db: Se
 		if not profile:
 			raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Profile creation conflict")
 
-	return schemas.ProfileOut(
-		id=profile.id,
-		user_id=profile.user_id,
-		display_name=profile.display_name,
-		avatar_url=profile.avatar_url,
-		bio=profile.bio,
-		country=profile.country,
-		language=profile.language,
-		created_at=profile.created_at,
-		updated_at=profile.updated_at,
-	)
+	return profile

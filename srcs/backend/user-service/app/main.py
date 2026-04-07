@@ -63,11 +63,10 @@ async def auth_register(payload: schemas.RegisterRequest, db: Session = Depends(
 		except Exception:
 			pass
 		raise
-
-	return schemas.OutputLogin(id=user.id, email=user.email, username=user.username)
+	return user
 
 # Ajout
-@app.post("/internal/auth/verify")
+@app.post("/internal/auth/verify", response_model=dict)
 async def internal_auth_verify(payload: schemas.LoginRequest, db: Session = Depends(get_db)):
 	user = crud.get_user_by_identifier(db, payload.identifier)
 	if not user or not verify_password(payload.password, user.hashed_password):
@@ -75,7 +74,7 @@ async def internal_auth_verify(payload: schemas.LoginRequest, db: Session = Depe
 	return {"ok": True, "user": schemas.OutputLogin(id=user.id, email=user.email, username=user.username)}
 
 
-@app.post("/internal/user/update")
+@app.post("/internal/user/update", response_model=dict)
 async def internal_update_user(user_update: schemas.InternalUserUpdate, db: Session = Depends(get_db)):
 	user = db.query(models.User).filter(models.User.id == user_update.user_id).first()
 	if not user:
@@ -92,7 +91,7 @@ async def internal_update_user(user_update: schemas.InternalUserUpdate, db: Sess
 		raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Database error")	
 	return {"ok": True, "user_id": user.id}
 
-@app.post("/internal/user/delete")
+@app.post("/internal/user/delete", response_model=dict)
 async def internal_delete_user(user_delete: schemas.InternalUserDelete, db: Session = Depends(get_db)):
 	user = db.query(models.User).filter(models.User.id == user_delete.user_id).first()
 	if not user:

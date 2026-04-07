@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class FriendRequestCreate(BaseModel):
@@ -17,11 +17,14 @@ class FriendRequestOut(BaseModel):
 	status: str
 	created_at: Optional[datetime]
 	updated_at: Optional[datetime]
+	# Pydantic v2 : remplace `orm_mode=True` (v1)
+	model_config = ConfigDict(from_attributes=True)
 
 
 class FriendOut(BaseModel):
 	friend_id: int
 	created_at: Optional[datetime]
+	model_config = ConfigDict(from_attributes=True)
 
 
 class BlockCreate(BaseModel):
@@ -31,3 +34,4 @@ class BlockCreate(BaseModel):
 class BlockOut(BaseModel):
 	blocked_user_id: int
 	created_at: Optional[datetime]
+	model_config = ConfigDict(from_attributes=True)
