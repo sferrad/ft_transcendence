@@ -5,15 +5,44 @@ import { useTranslation } from "react-i18next";
 import { uploadImageToCloudinary } from "../utils/cloudinary";
 import ProfilePicture from "./ProfilePicture";
 import HandleBio from "./Bio";
+import { useSearchParams } from "react-router-dom";
+
+type ProfileOut = {
+    id: number;
+    user_id: number;
+    display_name: string;
+    avatar_url: string | null;
+    bio: string | null;
+    country: string | null;
+    language: string | null;
+    created_at?: string | null;
+    updated_at?: string | null;
+};
+
+type UserLookupOut = {
+    id: number;
+    username: string;
+};
 
 function Profile() {
     const navigate = useNavigate();
     const { t } = useTranslation();
     const [profilePicture, setProfilePicture] = useState<string | null>(null);
+    const [profile, setProfile] = useState<ProfileOut | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
     const [messageVisible, setMessageVisible] = useState(false);
+    const [searchParams, setSearchParams] = useSearchParams();
+    const user = searchParams.get("user");
+    const [searchUserId, setSearchUserId] = useState(user ?? "");
+
+    const myUsername = localStorage.getItem("username") ?? "";
+    const isMe = !user || user === myUsername;
+
+    useEffect(() => {
+        setSearchUserId(user ?? "");
+    }, [user]);
 
     useEffect(() => {
         const token = localStorage.getItem("access_token");
@@ -25,12 +54,53 @@ function Profile() {
         // const token = "demo_token"; // --- IGNORE ---
         // localStorage.setItem("username", "demo_user"); // --- IGNORE ---
     
-        const fetchProfilePicture = async () => {
+        const fetchProfile = async (username: string | null) => {
             try {
-                const response = await fetch("/api/profile/me", {
+                setError(null);
+                setSuccess(false);
+
+                // si pas de username (ou si c'est le sien), on charge /me
+                if (!username || username === myUsername) {
+                    const response = await fetch("/api/profile/me", {
+                        headers: { Authorization: `Bearer ${token}` },
+                    });
+                    if (!response.ok) {
+                        if (response.status === 401) {
+                            navigate("/login");
+                            return;
+                        }
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    const data: ProfileOut = await response.json();
+                    setProfile(data);
+                    setProfilePicture(data.avatar_url ?? null);
+                    return;
+                }
+
+                // sinon: username -> user_id -> profile
+                const lookupResponse = await fetch(`/api/users/by-username/${encodeURIComponent(username)}`);
+                if (!lookupResponse.ok) {
+                    if (lookupResponse.status === 404) {
+                        setError("Utilisateur introuvable");
+                        setMessageVisible(true);
+                        return;
+                    }
+                    throw new Error(`HTTP ${lookupResponse.status}`);
+                }
+                const userData: UserLookupOut = await lookupResponse.json();
+
+                const response = await fetch(`/api/profile/profiles/${encodeURIComponent(String(userData.id))}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
-                const data = await response.json();
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        navigate("/login");
+                        return;
+                    }
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                const data: ProfileOut = await response.json();
+                setProfile(data);
                 setProfilePicture(data.avatar_url ?? null);
             } catch (error) {
                 console.error("Error fetching profile picture:", error);
@@ -39,8 +109,24 @@ function Profile() {
             }
         };
 
-        fetchProfilePicture();
-    }, [navigate]);
+        fetchProfile(user);
+    }, [navigate, user, myUsername]);
+
+    const handleSearchProfile = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        const trimmed = searchUserId.trim();
+
+        if (!trimmed) {
+            setSearchParams({});
+            return;
+        }
+
+        if (trimmed === myUsername) {
+            setSearchParams({});
+            return;
+        }
+        setSearchParams({ user: trimmed });
+    };
 
     useEffect(() => {
         if (messageVisible) {
@@ -135,16 +221,51 @@ function Profile() {
             {/* Container Principal */}
             <div className="flex items-center justify-center min-h-[calc(100vh-2rem)]">
                 <div className="w-full max-w-md bg-white bg-opacity-90 p-6 sm:p-8 md:p-10 rounded-2xl shadow-2xl backdrop-blur-sm">
+                    <form onSubmit={handleSearchProfile} className="mt-3 flex gap-2 ">
+                        <input
+                            value={searchUserId}
+                            onChange={(e) => setSearchUserId(e.target.value)}
+                            placeholder={t("Rechercher un profil")}
+                            className="flex-1 px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-800 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-gray-400"
+                        />
+                        <button
+                            type="submit"
+                            className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-900 text-white font-semibold transition-colors text-sm sm:text-base"
+                        >
+                            {t("Rechercher")}
+                        </button>
+                    </form>
                     {/* Profile Picture Component */}
-                    <ProfilePicture 
+                    <ProfilePicture
                         profilePicture={profilePicture}
                         isLoading={isLoading}
-                        onImageUpload={handleImageUpload}
+                        onImageUpload={isMe ? handleImageUpload : undefined}
                     />
                     <h1 className="text-5xl font-arcade text-center text-gray-800">
-                        {localStorage.getItem("username")}
+                        {profile?.display_name ?? myUsername}
                     </h1>
+
+
+                    {isMe ? (
                         <HandleBio />
+                    ) : (
+                        <div className="mt-4 text-sm sm:text-base text-gray-700">
+                            <div className="whitespace-pre-wrap break-words">
+                                {profile?.bio ?? t("Aucune bio")}
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="mt-4 grid grid-cols-2 gap-2 text-xs sm:text-sm text-gray-600">
+                        <div className="rounded-lg bg-gray-100 px-3 py-2">
+                            <div className="font-semibold">{t("Pays")}</div>
+                            <div>{profile?.country ?? "-"}</div>
+                        </div>
+                        <div className="rounded-lg bg-gray-100 px-3 py-2">
+                            <div className="font-semibold">{t("Langue")}</div>
+                            <div>{profile?.language ?? "-"}</div>
+                        </div>
+                    </div>
                     {/* Divider */}
                     <div className="h-px bg-gray-300 mb-6 md:mb-8" />
 
