@@ -18,6 +18,13 @@ class OutputLogin(BaseModel):
     username: str
     model_config = ConfigDict(from_attributes=True)
 
+
+class UserLookupOut(BaseModel):
+    id: int
+    email: str
+    username: str
+    model_config = ConfigDict(from_attributes=True)
+
 class UpdateUserRequest(BaseModel):
     user_id: int
     email: Optional[str]
