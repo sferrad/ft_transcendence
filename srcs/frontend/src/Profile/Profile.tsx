@@ -6,23 +6,18 @@ import { uploadImageToCloudinary } from "../utils/cloudinary";
 import ProfilePicture from "./ProfilePicture";
 import HandleBio from "./Bio";
 import { useSearchParams } from "react-router-dom";
-
-type ProfileOut = {
-    id: number;
-    user_id: number;
-    display_name: string;
-    avatar_url: string | null;
-    bio: string | null;
-    country: string | null;
-    language: string | null;
-    created_at?: string | null;
-    updated_at?: string | null;
-};
-
-type UserLookupOut = {
-    id: number;
-    username: string;
-};
+import { Handleadd } from "./Friends/AddFriends";
+import type { FriendRequestOut, ProfileOut } from "./types";
+import IncomingFriendRequests from "./components/IncomingFriendRequests";
+import FriendsPanel from "./components/FriendsPanel";
+import {
+    acceptFriendRequest,
+    getFriendsList,
+    fetchIncomingFriendRequests,
+    rejectFriendRequest,
+    resolveRequesterNames,
+} from "./api/friends";
+import { fetchMyProfile, fetchProfileByUserId, fetchUserByUsername, updateMyAvatar } from "./api/profile";
 
 function Profile() {
     const navigate = useNavigate();
@@ -35,10 +30,18 @@ function Profile() {
     const [messageVisible, setMessageVisible] = useState(false);
     const [searchParams, setSearchParams] = useSearchParams();
     const user = searchParams.get("user");
+    const userIdParam = searchParams.get("userId");
+    const userId = userIdParam ? Number(userIdParam) : null;
     const [searchUserId, setSearchUserId] = useState(user ?? "");
-
+    const [incomingRequests, setIncomingRequests] = useState<FriendRequestOut[]>([]);
+    const [requesterNames, setRequesterNames] = useState<Record<number, string>>({});
+    const [showFriends, setShowFriends] = useState(false);
+    const [friends, setFriends] = useState<Array<{ userId: number; displayName: string }>>([]);
     const myUsername = localStorage.getItem("username") ?? "";
-    const isMe = !user || user === myUsername;
+    const myUserId = Number(localStorage.getItem("user_id") ?? "0");
+    const isMe = (!user && !userIdParam) || user === myUsername || (!!userId && myUserId > 0 && userId === myUserId);
+
+    const isAlreadyFriend = !isMe && !!profile?.user_id && friends.some((f) => f.userId === profile.user_id);
 
     useEffect(() => {
         setSearchUserId(user ?? "");
@@ -53,64 +56,100 @@ function Profile() {
 
         // const token = "demo_token"; // --- IGNORE ---
         // localStorage.setItem("username", "demo_user"); // --- IGNORE ---
-    
+        const fetchIncomingRequests = async () => {
+            if (!isMe) {
+                setIncomingRequests([]);
+                return;
+            }
+            try {
+                const data = await fetchIncomingFriendRequests(token);
+                setIncomingRequests(data);
+                const names = await resolveRequesterNames(token, data);
+                setRequesterNames(names);
+            } catch (error) {
+                console.error("Error fetching incoming friend requests:", error);
+            }
+        };
+
         const fetchProfile = async (username: string | null) => {
             try {
                 setError(null);
                 setSuccess(false);
 
+                // If userId is provided, fetch profile directly by id.
+                if (userIdParam) {
+                    const idNum = Number(userIdParam);
+                    if (!Number.isFinite(idNum) || idNum <= 0) {
+                        throw new Error("Invalid userId");
+                    }
+                    const data = await fetchProfileByUserId(token, idNum);
+                    setProfile(data);
+                    setProfilePicture(data.avatar_url ?? null);
+                    return;
+                }
+
                 // si pas de username (ou si c'est le sien), on charge /me
                 if (!username || username === myUsername) {
-                    const response = await fetch("/api/profile/me", {
-                        headers: { Authorization: `Bearer ${token}` },
-                    });
-                    if (!response.ok) {
-                        if (response.status === 401) {
-                            navigate("/login");
-                            return;
-                        }
-                        throw new Error(`HTTP ${response.status}`);
-                    }
-                    const data: ProfileOut = await response.json();
+                    const data = await fetchMyProfile(token);
                     setProfile(data);
                     setProfilePicture(data.avatar_url ?? null);
                     return;
                 }
 
                 // sinon: username -> user_id -> profile
-                const lookupResponse = await fetch(`/api/users/by-username/${encodeURIComponent(username)}`);
-                if (!lookupResponse.ok) {
-                    if (lookupResponse.status === 404) {
-                        setError("Utilisateur introuvable");
-                        setMessageVisible(true);
-                        return;
-                    }
-                    throw new Error(`HTTP ${lookupResponse.status}`);
-                }
-                const userData: UserLookupOut = await lookupResponse.json();
-
-                const response = await fetch(`/api/profile/profiles/${encodeURIComponent(String(userData.id))}`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-                if (!response.ok) {
-                    if (response.status === 401) {
-                        navigate("/login");
-                        return;
-                    }
-                    throw new Error(`HTTP ${response.status}`);
-                }
-                const data: ProfileOut = await response.json();
+                const userData = await fetchUserByUsername(username);
+                const data = await fetchProfileByUserId(token, userData.id);
                 setProfile(data);
                 setProfilePicture(data.avatar_url ?? null);
             } catch (error) {
                 console.error("Error fetching profile picture:", error);
-                setError("Erreur lors du chargement du profil");
+                const message = error instanceof Error ? error.message : "Erreur lors du chargement du profil";
+                setError(message);
                 setMessageVisible(true);
             }
         };
 
+        fetchIncomingRequests();
         fetchProfile(user);
-    }, [navigate, user, myUsername]);
+    }, [navigate, user, myUsername, isMe, userIdParam]);
+
+    useEffect(() => {
+        if (!isMe || !showFriends) return;
+
+        const token = localStorage.getItem("access_token");
+        if (!token) {
+            navigate("/login");
+            return;
+        }
+
+        let cancelled = false;
+
+        (async () => {
+            try {
+                const list = await getFriendsList(token);
+                const friendIds = list.map((f) => f.friend_id);
+
+                const profiles = await Promise.all(
+                    friendIds.map(async (id) => {
+                        try {
+                            const p = await fetchProfileByUserId(token, id);
+                            return { userId: id, displayName: p.display_name || String(id) };
+                        } catch {
+                            return { userId: id, displayName: String(id) };
+                        }
+                    })
+                );
+
+                if (!cancelled) setFriends(profiles);
+            } catch (e) {
+                console.error("Error fetching friends list:", e);
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [isMe, showFriends, navigate]);
 
     const handleSearchProfile = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -156,26 +195,7 @@ function Profile() {
             const imageUrl = await uploadImageToCloudinary(file);
             setProfilePicture(imageUrl);
 
-            // Mise à jour directe de l'API
-            const response = await fetch("/api/profile/me", {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({ avatar_url: imageUrl }),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                if (response.status === 401) {
-                    setError("Session expirée. Veuillez vous reconnecter.");
-                    setMessageVisible(true);
-                    navigate("/login");
-                    return;
-                }
-                throw new Error(errorData.detail || "Erreur serveur");
-            }
+            await updateMyAvatar(token, imageUrl);
 
             setSuccess(true);
             setMessageVisible(true);
@@ -245,6 +265,87 @@ function Profile() {
                         {profile?.display_name ?? myUsername}
                     </h1>
 
+                    {isMe && (
+                        <div className="mt-3 flex justify-center">
+                            <button
+                                type="button"
+                                onClick={() => setShowFriends((v) => !v)}
+                                className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-900 text-white font-semibold transition-colors text-sm"
+                            >
+                                {t("Friends")}
+                            </button>
+                        </div>
+                    )}
+
+                    {isMe && showFriends && (
+                        <FriendsPanel
+                            title={t("Mes amis")}
+                            friends={friends}
+                            onSelectUserId={(friendUserId) => {
+                                setShowFriends(false);
+                                if (myUserId > 0 && friendUserId === myUserId) {
+                                    setSearchParams({});
+                                    return;
+                                }
+                                setSearchParams({ userId: String(friendUserId) });
+                            }}
+                        />
+                    )}
+
+                    {isMe && (
+                        <IncomingFriendRequests
+                            title={t("Demandes d'amis")}
+                            subtitle={t("t'a envoyé une demande")}
+                            acceptLabel={t("Accepter")}
+                            rejectLabel={t("Refuser")}
+                            requests={incomingRequests}
+                            requesterNames={requesterNames}
+                            onAccept={(requestId) => {
+                                const token = localStorage.getItem("access_token");
+                                if (!token) {
+                                    setSuccess(false);
+                                    setError("Token manquant. Veuillez vous reconnecter.");
+                                    setMessageVisible(true);
+                                    navigate("/login");
+                                    return;
+                                }
+                                acceptFriendRequest(token, requestId)
+                                    .then(() => {
+                                        setIncomingRequests((prev) => prev.filter((r) => r.id !== requestId));
+                                        setSuccess(true);
+                                        setMessageVisible(true);
+                                    })
+                                    .catch((err) => {
+                                        const msg = err instanceof Error ? err.message : "Erreur lors de l'acceptation";
+                                        setSuccess(false);
+                                        setError(msg);
+                                        setMessageVisible(true);
+                                    });
+                            }}
+                            onReject={(requestId) => {
+                                const token = localStorage.getItem("access_token");
+                                if (!token) {
+                                    setSuccess(false);
+                                    setError("Token manquant. Veuillez vous reconnecter.");
+                                    setMessageVisible(true);
+                                    navigate("/login");
+                                    return;
+                                }
+                                rejectFriendRequest(token, requestId)
+                                    .then(() => {
+                                        setIncomingRequests((prev) => prev.filter((r) => r.id !== requestId));
+                                        setSuccess(true);
+                                        setMessageVisible(true);
+                                    })
+                                    .catch((err) => {
+                                        const msg = err instanceof Error ? err.message : "Erreur lors du refus";
+                                        setSuccess(false);
+                                        setError(msg);
+                                        setMessageVisible(true);
+                                    });
+                            }}
+                        />
+                    )}
 
                     {isMe ? (
                         <HandleBio />
@@ -252,6 +353,35 @@ function Profile() {
                         <div className="mt-4 text-sm sm:text-base text-gray-700">
                             <div className="whitespace-pre-wrap break-words">
                                 {profile?.bio ?? t("Aucune bio")}
+                                <button
+                                    onClick={() => {
+                                        if (isAlreadyFriend) {
+                                            // Placeholder: remove friend will be wired later (no fetch here by request)
+                                            setSuccess(false);
+                                            setError("Suppression d'ami: à implémenter");
+                                            setMessageVisible(true);
+                                            return;
+                                        }
+
+                                        Handleadd(profile?.user_id ?? 0)
+                                            .then(() => {
+                                                setSuccess(true);
+                                                setMessageVisible(true);
+                                            })
+                                            .catch((err) => {
+                                                const msg = err instanceof Error ? err.message : "Erreur lors de l'ajout d'ami";
+                                                setSuccess(false);
+                                                setError(msg);
+                                                setMessageVisible(true);
+                                            });
+                                    }}
+                                    className={
+                                        "ml-4 px-3 py-1 text-white font-semibold rounded-lg transition-colors text-xs sm:text-sm " +
+                                        (isAlreadyFriend ? "bg-red-500 hover:bg-red-600" : "bg-blue-500 hover:bg-blue-600")
+                                    }
+                                >
+                                    👥 {isAlreadyFriend ? t("Supprimer l'ami") : t("Add Friend")}
+                                </button>
                             </div>
                         </div>
                     )}
