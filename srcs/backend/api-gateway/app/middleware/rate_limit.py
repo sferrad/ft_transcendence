@@ -6,7 +6,7 @@ from .redis import redis_client
 WHITELIST = {
     "/health"
 }
-LIMIT = 10
+LIMIT = 30
 WINDOW = 30
 
 
