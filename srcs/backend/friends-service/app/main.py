@@ -2,12 +2,14 @@ from fastapi import Depends, FastAPI, Header, HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from . import models
 from . import crud, schemas
 from .database import get_db, init_db, init_engine
 
 app = FastAPI(title="friends-service")
+Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
 
 @app.on_event("startup")
