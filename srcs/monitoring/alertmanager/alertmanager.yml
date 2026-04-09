@@ -1,0 +1,11 @@
+#  route -> ou vont les alertes par defaut
+#  receivers -> liste des detinations possibles
+# il envoi les alertes a prometheus donc silencieux ici
+
+global: {}
+
+route:
+  receiver: "null"
+
+receivers:
+  - name: "null"

@@ -4,6 +4,7 @@ from fastapi.responses import Response
 import httpx
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from . import user_service_client
 from . import crud, schemas
@@ -12,6 +13,7 @@ from .database import get_db, init_db, init_engine
 
 app = FastAPI(title="profile-service")
 
+Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
 @app.on_event("startup")
 def on_startup() -> None:

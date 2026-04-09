@@ -53,4 +53,4 @@ fclean_status: fclean status
 
 re_status: fclean_status all
 
-.PHONY: all up upfg down logs status clean fclean restart rebuild re fclean_status re_status
+.PHONY: all up upfg down logs status clean fclean restart rebuild re fclean_status re_status ps
