@@ -1,0 +1,29 @@
+groups:
+  - name: transcendence.rules
+    rules:
+    - alert: ServiceDown
+      expr: up == 0
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: "{{ $labels.job }} is DOWN"
+        description: "Target {{ $labels.instance }} is not reachable"
+    
+    - alert: High5xxRate
+      expr: sum by (job) (rate(http_requests_total{status="5xx"}[5m])) > 0
+      for: 2m
+      labels:
+        severity: warning
+      annotations:
+        summary: "{{ $labels.job }} has 5xx errors"
+        description: "5xx rate > 0 for 2m"
+
+    - alert: HighLatencyP95
+      expr: histogram_quantile(0.95, sum by (le, job) (rate(http_request_duration_seconds_bucket[5m]))) > 0.5
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High p95 latency on {{ $labels.job }}"
+        description: "p95 latency > 500ms for 5m"

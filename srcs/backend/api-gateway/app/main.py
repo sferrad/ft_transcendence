@@ -4,6 +4,7 @@ from fastapi import FastAPI, Request, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from fastapi import Header
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from .middleware.rate_limit import rate_limit_middleware
 from .security import load_jwt_secret, create_access_token
@@ -17,7 +18,10 @@ from .user_service_client import (
     UserServiceError
 )
 
+
 app = FastAPI(title="api-gateway")
+
+Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
 app.add_middleware(
     CORSMiddleware,

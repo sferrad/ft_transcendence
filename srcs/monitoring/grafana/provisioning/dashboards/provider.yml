@@ -1,0 +1,18 @@
+# // Nom du provider (unique)
+# // ID de l'organisation Grafana (généralement 1 pour la première org)
+# // Dossier dans Grafana(UI) où les dashboards seront organisés
+# // Type de provider (ici, on utilise des fichiers locaux(JSON))
+# // Permet de supprimer les dashboards qui ne sont plus présents dans le dossier
+# // Intervalle de mise à jour des dashboards (en secondes)
+# // Chemin local dans le container Grafana où les fichiers JSON des dashboards sont stockés
+apiVersion: 1
+
+providers:
+  - name: "transcendence-dashboards" 
+    orgId: 1 
+    folder: "transcendence" 
+    type: file 
+    disableDeletion: false 
+    updateIntervalSeconds: 10 
+    options:
+      path: /etc/grafana/provisioning/dashboards-json
