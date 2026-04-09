@@ -1,0 +1,17 @@
+# // Nom du datasource (affiché dans Grafana)
+# // (optionnel) UID unique pour ce datasource, utile pour les références dans les dashboards
+# // Type de datasource (ici, Prometheus)
+# // Mode d'accès (proxy ou direct)
+# // URL de votre serveur Prometheus (doit correspondre à l'adresse du service dans Docker)
+# // Définit ce datasource comme celui par défaut pour les dashboards
+# // Indique si le datasource peut être modifié dans l'interface Grafana
+
+apiVersion: 1
+datasources:
+  - name: Prometheus 
+    uid: prometheus 
+    type: prometheus 
+    access: proxy 
+    url: http://prometheus:9090 
+    isDefault: true 
+    editable: false 

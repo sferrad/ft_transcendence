@@ -4,3 +4,4 @@ pydantic==2.12.5
 SQLAlchemy==2.0.48
 psycopg[binary]
 uvicorn[standard]==0.34.3
+prometheus_fastapi_instrumentator

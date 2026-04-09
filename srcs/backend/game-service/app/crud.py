@@ -55,6 +55,10 @@ from . import models, schemas
 from typing import List, Optional
 
 
+class MatchEventSequenceAllocationError(RuntimeError):
+	pass
+
+
 # =========================
 # MATCH CRUD
 # =========================
@@ -143,7 +147,7 @@ def update_match(db: Session, match_id: int, match_update: schemas.MatchUpdate) 
 		return None
 	# exclude_unset=True : ignore les champs non fournis dans la requête.
 	# Exemple : si le client envoie {"status": "running"}, on ne touche PAS aux scores.
-	for field, value in match_update.dict(exclude_unset=True).items():
+	for field, value in match_update.model_dump(exclude_unset=True).items():
 		# `.items()` : itère sur des paires (clé, valeur) du dict.
 		# Exemple : ("status", "running")
 		#
@@ -217,17 +221,20 @@ def create_match_event(db: Session, match_id: int, event: schemas.MatchEventCrea
 		# -----------------------------
 		# 2) Construire l'objet ORM à insérer
 		# -----------------------------
-		# event.dict(exclude_unset=True) :
+		# event.model_dump(exclude_unset=True) :
 		# - transforme le Pydantic en dict,
 		# - ignore les champs non envoyés.
 		# Exemple : {"event_type": "goal_scored", "payload": {...}}
 		#
 		# Attention : on fixe explicitement `match_id` et `sequence` côté serveur.
 		# Le client n'a pas à gérer `sequence`.
+		# Sécurité/robustesse : on exclut aussi les champs gérés par le serveur (timestamp/sequence)
+		# pour éviter un overwrite involontaire (ou malveillant).
+		event_data = event.model_dump(exclude_unset=True, exclude={"sequence", "timestamp"})
 		db_event = models.MatchEvent(
 			match_id=match_id,
 			sequence=next_seq,
-			**event.dict(exclude_unset=True),
+			**event_data,
 		)
 		# Ajout dans la session.
 		db.add(db_event)
@@ -255,7 +262,7 @@ def create_match_event(db: Session, match_id: int, event: schemas.MatchEventCrea
 		db.refresh(db_event)
 		return db_event
 	# Après 3 tentatives, on abandonne.
-	raise IntegrityError("Failed to allocate match event sequence", params=None, orig=None)
+	raise MatchEventSequenceAllocationError("Failed to allocate match event sequence after retries")
 
 
 	# """Retourne la timeline d'un match, triée de manière déterministe."""
