@@ -4,9 +4,10 @@ from fastapi.responses import JSONResponse
 from .redis import redis_client
 
 WHITELIST = {
-    "/health"
+    "/health",
+    "/metrics",
 }
-LIMIT = 10
+LIMIT = 40
 WINDOW = 30
 
 
