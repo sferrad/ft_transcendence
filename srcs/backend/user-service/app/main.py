@@ -38,9 +38,9 @@ async def db_ping(db: Session = Depends(get_db)):
 		raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
-@app.get("/by-username/{username}", response_model=schemas.UserLookupOut)
-async def get_user_by_username(username: str, db: Session = Depends(get_db)):
-	user = crud.get_user_by_username(db, username)
+@app.get("/by-username/{identifier}", response_model=schemas.UserLookupOut)
+async def get_user_by_identifier(identifier: str, db: Session = Depends(get_db)):
+	user = crud.get_user_by_identifier(db, identifier)
 	if not user:
 		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 	return user
