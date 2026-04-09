@@ -6,3 +6,4 @@ SQLAlchemy==2.0.48
 psycopg[binary]
 uvicorn[standard]==0.34.3
 httpx==0.27.2
+prometheus_fastapi_instrumentator

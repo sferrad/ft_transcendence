@@ -29,6 +29,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, status
 
 # `text()` : permet d'exécuter une requête SQL brute (ici SELECT 1 pour ping).
 from sqlalchemy import text
+from prometheus_fastapi_instrumentator import Instrumentator
 
 # Session SQLAlchemy : type utilisé pour annoter `db: Session`.
 from sqlalchemy.orm import Session
@@ -45,6 +46,7 @@ from .database import get_db, init_db, init_engine
 
 app = FastAPI(title="game-service")
 
+Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
 def _current_user_id(x_user_id: str | None = Header(default=None, alias="X-User-Id")) -> int:
 	if not x_user_id:
@@ -149,7 +151,7 @@ def create_my_match(payload: schemas.MatchCreateMe, user_id: int = Depends(_curr
 	# - `match.__dict__` contient les colonnes ORM.
 	#   Attention : SQLAlchemy ajoute aussi `_sa_instance_state` (champ interne).
 	#   Pydantic ignore en général les champs inconnus, donc ça passe.
-	#   Sinon, alternative plus propre : `schemas.MatchInDB.from_orm(match)`.
+	#   Sinon, alternative plus propre (Pydantic v2) : `schemas.MatchInDB.model_validate(match)`.
 	# """
 @app.get("/matches/{match_id}", response_model=schemas.MatchWithEvents)
 def get_match(match_id: int, user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
@@ -212,7 +214,10 @@ def delete_match(match_id: int, user_id: int = Depends(_current_user_id), db: Se
 @app.post("/matches/{match_id}/events/", response_model=schemas.MatchEventInDB, status_code=201)
 def create_match_event(match_id: int, event: schemas.MatchEventCreate, user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
 	_require_match_participant(db=db, match_id=match_id, user_id=user_id)
-	return crud.create_match_event(db, match_id, event)
+	try:
+		return crud.create_match_event(db, match_id, event)
+	except crud.MatchEventSequenceAllocationError:
+		raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Could not allocate event sequence, please retry")
 
 	# """Retourne tous les events d'un match.
 
