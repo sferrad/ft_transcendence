@@ -81,3 +81,31 @@ export async function resolveRequesterNames(
     for (const [id, name] of lookups) map[id] = name;
     return map;
 }
+
+export async function blockFriend(token: string, blockedUserId: number): Promise<void> {
+    const response = await fetch("/api/friends/block", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ blocked_user_id: blockedUserId }),
+    });
+    if (!response.ok) {
+        const detail = await parseErrorDetail(response);
+        throw new Error(detail || `HTTP ${response.status}`);
+    }
+}
+
+export async function unblockFriend(token: string, blockedUserId: number): Promise<void> {
+    const response = await fetch(`/api/friends/block/${encodeURIComponent(String(blockedUserId))}`, {
+        method: "DELETE",
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
+    if (!response.ok) {
+        const detail = await parseErrorDetail(response);
+        throw new Error(detail || `HTTP ${response.status}`);
+    }
+}

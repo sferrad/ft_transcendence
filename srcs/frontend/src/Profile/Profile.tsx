@@ -16,6 +16,8 @@ import {
     fetchIncomingFriendRequests,
     rejectFriendRequest,
     resolveRequesterNames,
+    unblockFriend,
+    blockFriend,
 } from "./api/friends";
 import { fetchMyProfile, fetchProfileByUserId, fetchUserByUsername, updateMyAvatar } from "./api/profile";
 
@@ -28,6 +30,7 @@ function Profile() {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
     const [messageVisible, setMessageVisible] = useState(false);
+    const [isBlocking, setIsBlocking] = useState(false);
     const [searchParams, setSearchParams] = useSearchParams();
     const user = searchParams.get("user");
     const userIdParam = searchParams.get("userId");
@@ -42,6 +45,12 @@ function Profile() {
     const isMe = (!user && !userIdParam) || user === myUsername || (!!userId && myUserId > 0 && userId === myUserId);
 
     const isAlreadyFriend = !isMe && !!profile?.user_id && friends.some((f) => f.userId === profile.user_id);
+
+    useEffect(() => {
+        if (isMe || !profile?.user_id) return;
+        const key = `blocked:${profile.user_id}`;
+        setIsBlocking(localStorage.getItem(key) === "1");
+    }, [isMe, profile?.user_id]);
 
     useEffect(() => {
         setSearchUserId(user ?? "");
@@ -255,6 +264,7 @@ function Profile() {
                             {t("Rechercher")}
                         </button>
                     </form>
+                  
                     {/* Profile Picture Component */}
                     <ProfilePicture
                         profilePicture={profilePicture}
@@ -276,7 +286,7 @@ function Profile() {
                             </button>
                         </div>
                     )}
-
+                    
                     {isMe && showFriends && (
                         <FriendsPanel
                             title={t("Mes amis")}
@@ -382,10 +392,52 @@ function Profile() {
                                 >
                                     👥 {isAlreadyFriend ? t("Supprimer l'ami") : t("Add Friend")}
                                 </button>
+                              {/* Block / Unblock (toggle) */}
+                    {!isMe && profile?.user_id && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const token = localStorage.getItem("access_token");
+                                    if (!token) {
+                                        navigate("/login");
+                                        return;
+                                    }
+
+                                    const targetUserId = profile.user_id;
+                                    const key = `blocked:${targetUserId}`;
+
+                                    const action = isBlocking
+                                        ? unblockFriend(token, targetUserId)
+                                        : blockFriend(token, targetUserId);
+
+                                    action
+                                        .then(() => {
+                                            const next = !isBlocking;
+                                            setIsBlocking(next);
+                                            if (next) localStorage.setItem(key, "1");
+                                            else localStorage.removeItem(key);
+                                            setSuccess(true);
+                                            setMessageVisible(true);
+                                        })
+                                        .catch((err) => {
+                                            const msg = err instanceof Error ? err.message : "Erreur";
+                                            setSuccess(false);
+                                            setError(msg);
+                                            setMessageVisible(true);
+                                        });
+                                }}
+                                className={
+                                    "ml-2 px-3 py-1 rounded-lg text-white font-semibold transition-colors text-sm " +
+                                    (isBlocking ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600")
+                                }
+                            >
+                                {isBlocking ? t("Débloquer") : t("Bloquer")}
+                            </button>
+                    )}
                             </div>
                         </div>
                     )}
-
+    
                     <div className="mt-4 grid grid-cols-2 gap-2 text-xs sm:text-sm text-gray-600">
                         <div className="rounded-lg bg-gray-100 px-3 py-2">
                             <div className="font-semibold">{t("Pays")}</div>

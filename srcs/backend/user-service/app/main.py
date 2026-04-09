@@ -5,6 +5,7 @@ from fastapi import Depends, FastAPI, HTTPException, status
 from sqlalchemy.orm import Session
 from . import models
 from . import schemas, crud
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from .password import hash_password, verify_password
 from .database import get_db, init_db, init_engine
@@ -12,6 +13,8 @@ from .profile_service_client import create_profile
 
 
 app = FastAPI(title="user-service")
+
+Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
 # À l'import, Vault/DB peuvent ne pas être prêts -> crash.
 # Au startup, Docker a plus de chances d'avoir tout up.

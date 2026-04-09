@@ -17,7 +17,7 @@
 from enum import Enum
 
 # BaseModel : classe de base Pydantic qui valide/parse les données.
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 # Typing : Optional, List, Dict... pour documenter/valider les shapes.
 from typing import Optional, List, Any, Dict
@@ -75,11 +75,24 @@ class MatchInDB(MatchBase):
 	# Équivalent de `orm_mode=True` (Pydantic v1).
 	model_config = ConfigDict(from_attributes=True)
 
+class MatchEventType(str, Enum):
+	match_started = "match_started"
+	goal_scored = "goal_scored"
+	powerup_spawned = "powerup_spawned"
+	powerup_collected = "powerup_collected"
+	powerup_expired = "powerup_expired"
+	match_paused = "match_paused"
+	match_resumed = "match_resumed"
+	player_disconnected = "player_disconnected"
+	match_finished = "match_finished"
+	match_cancelled = "match_cancelled"
+
+
 class MatchEventBase(BaseModel):
 	# `event_type` est volontairement une liste fermée (Enum) pour éviter les typos
 	# et avoir des events cohérents côté analytics.
 	# Exemple : "goal_scored" au lieu de "goal_score" ou "goalscored".
-	event_type: "MatchEventType"
+	event_type: MatchEventType
 
 	# JSON libre mais structuré: idéalement { v, t_ms, actor_user_id, ... }
 	# - `v` : version de schéma de payload (ex: 1)
@@ -99,20 +112,10 @@ class MatchEventBase(BaseModel):
 	# Enum d'events MVP "Head Ball".
 	# Important : c'est volontairement minimal et stable.
 	# Tu peux en ajouter ensuite sans casser les anciens clients.
-class MatchEventType(str, Enum):
-	match_started = "match_started"
-	goal_scored = "goal_scored"
-	powerup_spawned = "powerup_spawned"
-	powerup_collected = "powerup_collected"
-	powerup_expired = "powerup_expired"
-	match_paused = "match_paused"
-	match_resumed = "match_resumed"
-	player_disconnected = "player_disconnected"
-	match_finished = "match_finished"
-	match_cancelled = "match_cancelled"
 
 	# Payload attendu à la création d'un event.
 	# Le serveur fixera `timestamp` (DB) et `sequence` si non fournis.
+	
 class MatchEventCreate(MatchEventBase):
 	pass
 
@@ -129,4 +132,4 @@ class MatchEventInDB(MatchEventBase):
 	# Schéma pratique pour renvoyer un match + sa timeline.
 	# Par défaut liste vide (pas None) pour simplifier côté front.
 class MatchWithEvents(MatchInDB):
-	events: List[MatchEventInDB] = []
+	events: List[MatchEventInDB] = Field(default_factory=list)
