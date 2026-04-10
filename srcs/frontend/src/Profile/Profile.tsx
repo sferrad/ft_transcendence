@@ -244,49 +244,57 @@ function Profile() {
         }
     };
 
-    return (
-        <div className="relative min-h-screen w-full bg-[url('/assets/bgProfil.png')] bg-cover bg-center bg-no-repeat overflow-auto py-8 px-4 sm:px-6 md:px-8">
+    const arcadeButtonBase =
+        "hb-tap font-arcade cursor-pointer border-0 shadow-[0px_4px_rgb(255,255,255),0px_-4px_rgb(255,255,255),4px_0px_rgb(255,255,255),-4px_0px_rgb(255,255,255),0px_4px_rgba(0,0,0,0.22),4px_4px_rgba(0,0,0,0.22),-4px_4px_rgba(0,0,0,0.22),inset_0px_4px_rgba(255,255,255,0.21)] no-underline inline-flex items-center justify-center gap-2 transition-transform duration-100 active:translate-y-0.5 max-w-full";
+    const arcadePrimaryButton = `${arcadeButtonBase} px-4 py-2 text-base min-[481px]:text-lg`;
+    const arcadeSmallButton = `${arcadeButtonBase} px-3 py-2 text-sm min-[481px]:text-base`;
 
-            {/* Container Principal */}
-            <div className="flex items-center justify-center min-h-[calc(100vh-2rem)]">
-                <div className="w-full max-w-md bg-white bg-opacity-90 p-6 sm:p-8 md:p-10 rounded-2xl shadow-2xl backdrop-blur-sm">
-                    <form onSubmit={handleSearchProfile} className="mt-3 flex gap-2 ">
+    return (
+        <div className="relative min-h-[100dvh] w-full overflow-auto">
+            <div
+                className="fixed inset-0 bg-[url('/assets/bgProfil.png')] bg-cover bg-center bg-no-repeat blur-sm"
+                aria-hidden="true"
+            ></div>
+
+            <div className="relative z-10 min-h-[100dvh] flex items-center justify-center px-4 py-8">
+                <div className="bg-[#f5f0e8]/90 border-4 border-[#2b2b2b] px-6 py-8 min-[481px]:px-10 min-[481px]:py-10 shadow-[6px_6px_0_#2b2b2b] w-[min(92vw,46rem)]">
+                    <form onSubmit={handleSearchProfile} className="flex flex-col min-[481px]:flex-row gap-3">
                         <input
                             value={searchUserId}
                             onChange={(e) => setSearchUserId(e.target.value)}
                             placeholder={t("Rechercher un profil")}
-                            className="flex-1 px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-800 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-gray-400"
+                            className="hb-tap flex-1 px-4 py-2 rounded-lg border-2 border-[#2b2b2b] bg-white/90 text-[#1f2937] text-base focus:outline-none focus:ring-2 focus:ring-black/20"
                         />
                         <button
                             type="submit"
-                            className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-900 text-white font-semibold transition-colors text-sm sm:text-base"
+                            className={`${arcadePrimaryButton} text-white bg-blue-600 hover:bg-blue-700`}
                         >
                             {t("Rechercher")}
                         </button>
                     </form>
-                  
-                    {/* Profile Picture Component */}
+
                     <ProfilePicture
                         profilePicture={profilePicture}
                         isLoading={isLoading}
                         onImageUpload={isMe ? handleImageUpload : undefined}
                     />
-                    <h1 className="text-5xl font-arcade text-center text-gray-800">
+
+                    <h1 className="hb-title font-arcade tracking-widest text-[#1f2937] text-center">
                         {profile?.display_name ?? myUsername}
                     </h1>
 
                     {isMe && (
-                        <div className="mt-3 flex justify-center">
+                        <div className="mt-4 flex justify-center">
                             <button
                                 type="button"
                                 onClick={() => setShowFriends((v) => !v)}
-                                className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-900 text-white font-semibold transition-colors text-sm"
+                                className={`${arcadePrimaryButton} text-white bg-blue-600 hover:bg-blue-700`}
                             >
                                 {t("Friends")}
                             </button>
                         </div>
                     )}
-                    
+
                     {isMe && showFriends && (
                         <FriendsPanel
                             title={t("Mes amis")}
@@ -360,13 +368,16 @@ function Profile() {
                     {isMe ? (
                         <HandleBio />
                     ) : (
-                        <div className="mt-4 text-sm sm:text-base text-gray-700">
-                            <div className="whitespace-pre-wrap break-words">
+                        <div className="mt-4 rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-4 text-[#1f2937]">
+                            <div className="whitespace-pre-wrap break-words text-sm min-[481px]:text-base">
                                 {profile?.bio ?? t("Aucune bio")}
+                            </div>
+
+                            <div className="mt-4 flex flex-wrap gap-3">
                                 <button
+                                    type="button"
                                     onClick={() => {
                                         if (isAlreadyFriend) {
-                                            // Placeholder: remove friend will be wired later (no fetch here by request)
                                             setSuccess(false);
                                             setError("Suppression d'ami: à implémenter");
                                             setMessageVisible(true);
@@ -385,101 +396,109 @@ function Profile() {
                                                 setMessageVisible(true);
                                             });
                                     }}
-                                    className={
-                                        "ml-4 px-3 py-1 text-white font-semibold rounded-lg transition-colors text-xs sm:text-sm " +
-                                        (isAlreadyFriend ? "bg-red-500 hover:bg-red-600" : "bg-blue-500 hover:bg-blue-600")
-                                    }
+                                    className={`${arcadeSmallButton} ${
+                                        isAlreadyFriend
+                                            ? "text-white bg-red-600 hover:bg-red-700"
+                                            : "text-white bg-blue-600 hover:bg-blue-700"
+                                    }`}
                                 >
                                     👥 {isAlreadyFriend ? t("Supprimer l'ami") : t("Add Friend")}
                                 </button>
-                              {/* Block / Unblock (toggle) */}
-                    {!isMe && profile?.user_id && (
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    const token = localStorage.getItem("access_token");
-                                    if (!token) {
-                                        navigate("/login");
-                                        return;
-                                    }
 
-                                    const targetUserId = profile.user_id;
-                                    const key = `blocked:${targetUserId}`;
+                                {!isMe && profile?.user_id && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const token = localStorage.getItem("access_token");
+                                            if (!token) {
+                                                navigate("/login");
+                                                return;
+                                            }
 
-                                    const action = isBlocking
-                                        ? unblockFriend(token, targetUserId)
-                                        : blockFriend(token, targetUserId);
+                                            const targetUserId = profile.user_id;
+                                            const key = `blocked:${targetUserId}`;
 
-                                    action
-                                        .then(() => {
-                                            const next = !isBlocking;
-                                            setIsBlocking(next);
-                                            if (next) localStorage.setItem(key, "1");
-                                            else localStorage.removeItem(key);
-                                            setSuccess(true);
-                                            setMessageVisible(true);
-                                        })
-                                        .catch((err) => {
-                                            const msg = err instanceof Error ? err.message : "Erreur";
-                                            setSuccess(false);
-                                            setError(msg);
-                                            setMessageVisible(true);
-                                        });
-                                }}
-                                className={
-                                    "ml-2 px-3 py-1 rounded-lg text-white font-semibold transition-colors text-sm " +
-                                    (isBlocking ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600")
-                                }
-                            >
-                                {isBlocking ? t("Débloquer") : t("Bloquer")}
-                            </button>
-                    )}
+                                            const action = isBlocking
+                                                ? unblockFriend(token, targetUserId)
+                                                : blockFriend(token, targetUserId);
+
+                                            action
+                                                .then(() => {
+                                                    const next = !isBlocking;
+                                                    setIsBlocking(next);
+                                                    if (next) localStorage.setItem(key, "1");
+                                                    else localStorage.removeItem(key);
+                                                    setSuccess(true);
+                                                    setMessageVisible(true);
+                                                })
+                                                .catch((err) => {
+                                                    const msg = err instanceof Error ? err.message : "Erreur";
+                                                    setSuccess(false);
+                                                    setError(msg);
+                                                    setMessageVisible(true);
+                                                });
+                                        }}
+                                        className={`${arcadeSmallButton} ${
+                                            isBlocking
+                                                ? "text-white bg-[#4AD95A] hover:bg-green-600"
+                                                : "text-white bg-red-600 hover:bg-red-700"
+                                        }`}
+                                    >
+                                        {isBlocking ? t("Débloquer") : t("Bloquer")}
+                                    </button>
+                                )}
                             </div>
                         </div>
                     )}
-    
-                    <div className="mt-4 grid grid-cols-2 gap-2 text-xs sm:text-sm text-gray-600">
-                        <div className="rounded-lg bg-gray-100 px-3 py-2">
-                            <div className="font-semibold">{t("Pays")}</div>
-                            <div>{profile?.country ?? "-"}</div>
+
+                    <div className="mt-4 grid grid-cols-1 min-[481px]:grid-cols-2 gap-3 text-sm text-[#1f2937]">
+                        <div className="rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-3">
+                            <div className="font-arcade tracking-wide text-base min-[481px]:text-lg">{t("Pays")}</div>
+                            <div className="mt-1">{profile?.country ?? "-"}</div>
                         </div>
-                        <div className="rounded-lg bg-gray-100 px-3 py-2">
-                            <div className="font-semibold">{t("Langue")}</div>
-                            <div>{profile?.language ?? "-"}</div>
+                        <div className="rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-3">
+                            <div className="font-arcade tracking-wide text-base min-[481px]:text-lg">{t("Langue")}</div>
+                            <div className="mt-1">{profile?.language ?? "-"}</div>
                         </div>
                     </div>
-                    {/* Divider */}
-                    <div className="h-px bg-gray-300 mb-6 md:mb-8" />
 
-                    {/* Messages */}
+                    <div className="border-t-2 border-[#2b2b2b] my-6" />
+
                     <div className="space-y-3 min-h-[70px]">
                         {messageVisible && error && (
-                            <div className="w-full p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-lg animate-in fade-in slide-in-from-top-2">
+                            <div className="w-full px-4 py-3 bg-white/85 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] text-[#1f2937]">
                                 <div className="flex items-start gap-3">
                                     <svg className="w-5 h-5 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                        <path
+                                            fillRule="evenodd"
+                                            d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                            clipRule="evenodd"
+                                        />
                                     </svg>
-                                    <span className="text-sm font-medium">{error}</span>
+                                    <span className="text-sm min-[481px]:text-base font-medium">{error}</span>
                                 </div>
                             </div>
                         )}
 
                         {messageVisible && success && (
-                            <div className="w-full p-4 bg-green-50 border-l-4 border-green-500 text-green-700 rounded-lg animate-in fade-in slide-in-from-top-2">
+                            <div className="w-full px-4 py-3 bg-white/85 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] text-[#1f2937]">
                                 <div className="flex items-start gap-3">
                                     <svg className="w-5 h-5 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                        <path
+                                            fillRule="evenodd"
+                                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                            clipRule="evenodd"
+                                        />
                                     </svg>
-                                    <span className="text-sm font-medium">✓ {t("Succès!")}</span>
+                                    <span className="text-sm min-[481px]:text-base font-medium">✓ {t("Succès!")}</span>
                                 </div>
                             </div>
                         )}
                     </div>
-                    {/* Bio Component */}
-                    {/* Logout Button */}
+
                     <button
                         onClick={handleLogout}
-                        className="w-full mt-6 px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg transition-colors text-sm sm:text-base"
+                        className={`w-full mt-6 ${arcadePrimaryButton} text-white bg-red-600 hover:bg-red-700`}
                     >
                         {t("Logout")}
                     </button>
