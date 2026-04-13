@@ -25,7 +25,7 @@ export default function IncomingFriendRequests({
 
     const arcadeButtonBase =
         "hb-tap font-arcade cursor-pointer border-0 shadow-[0px_4px_rgb(255,255,255),0px_-4px_rgb(255,255,255),4px_0px_rgb(255,255,255),-4px_0px_rgb(255,255,255),0px_4px_rgba(0,0,0,0.22),4px_4px_rgba(0,0,0,0.22),-4px_4px_rgba(0,0,0,0.22),inset_0px_4px_rgba(255,255,255,0.21)] no-underline inline-flex items-center justify-center gap-2 transition-transform duration-100 active:translate-y-0.5 max-w-full";
-    const arcadeTinyButton = `${arcadeButtonBase} px-3 py-2 text-xs min-[481px]:text-sm`;
+    const arcadeTinyButton = `${arcadeButtonBase} px-2 py-2 min-[481px]:px-3`;
 
     return (
         <div className="mt-4 rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-4 text-[#1f2937]">
@@ -34,7 +34,7 @@ export default function IncomingFriendRequests({
                 {requests.map((req) => (
                     <div
                         key={req.id}
-                        className="flex items-center justify-between gap-3 rounded-lg bg-white/90 border-2 border-[#2b2b2b] px-3 py-3 shadow-[2px_2px_0_#2b2b2b]"
+                        className="flex flex-col gap-3 rounded-lg bg-white/90 border-2 border-[#2b2b2b] px-3 py-3 shadow-[2px_2px_0_#2b2b2b] min-[481px]:flex-row min-[481px]:items-center min-[481px]:justify-between"
                     >
                         <div className="min-w-0">
                             <div className="truncate font-medium">
@@ -42,18 +42,18 @@ export default function IncomingFriendRequests({
                             </div>
                             <div className="text-xs opacity-80">{subtitle}</div>
                         </div>
-                        <div className="flex gap-2 flex-shrink-0">
+                        <div className="flex w-full gap-2 min-[481px]:w-auto min-[481px]:flex-shrink-0">
                             <button
                                 type="button"
                                 onClick={() => onAccept(req.id)}
-                                className={`${arcadeTinyButton} text-white bg-[#4AD95A] hover:bg-green-600`}
+                                className={`${arcadeTinyButton} flex-1 min-[481px]:flex-none text-white text-lg min-[481px]:text-2xl min-[769px]:text-3xl bg-[#4AD95A] hover:bg-green-600`}
                             >
                                 {acceptLabel}
                             </button>
                             <button
                                 type="button"
                                 onClick={() => onReject(req.id)}
-                                className={`${arcadeTinyButton} text-white bg-red-600 hover:bg-red-700`}
+                                className={`${arcadeTinyButton} flex-1 min-[481px]:flex-none text-white text-lg min-[481px]:text-2xl min-[769px]:text-3xl bg-red-600 hover:bg-red-700`}
                             >
                                 {rejectLabel}
                             </button>
