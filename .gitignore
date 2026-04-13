@@ -1,4 +1,4 @@
 .env
 doc
 .venv
-.vscode
+.node_modules

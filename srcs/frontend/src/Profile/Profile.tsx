@@ -1,31 +1,511 @@
 import { useNavigate } from "react-router-dom";
 import "../i18n/index.ts";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { uploadImageToCloudinary } from "../utils/cloudinary";
+import ProfilePicture from "./ProfilePicture";
+import HandleBio from "./Bio";
+import { useSearchParams } from "react-router-dom";
+import { Handleadd } from "./Friends/AddFriends";
+import type { FriendRequestOut, ProfileOut } from "./types";
+import IncomingFriendRequests from "./components/IncomingFriendRequests";
+import FriendsPanel from "./components/FriendsPanel";
+import {
+    acceptFriendRequest,
+    getFriendsList,
+    fetchIncomingFriendRequests,
+    rejectFriendRequest,
+    resolveRequesterNames,
+    unblockFriend,
+    blockFriend,
+} from "./api/friends";
+import { fetchMyProfile, fetchProfileByUserId, fetchUserByUsername, updateMyAvatar } from "./api/profile";
 
 function Profile() {
     const navigate = useNavigate();
     const { t } = useTranslation();
+    const [profilePicture, setProfilePicture] = useState<string | null>(null);
+    const [profile, setProfile] = useState<ProfileOut | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState(false);
+    const [messageVisible, setMessageVisible] = useState(false);
+    const [isBlocking, setIsBlocking] = useState(false);
+    const [searchParams, setSearchParams] = useSearchParams();
+    const user = searchParams.get("user");
+    const userIdParam = searchParams.get("userId");
+    const userId = userIdParam ? Number(userIdParam) : null;
+    const [searchUserId, setSearchUserId] = useState(user ?? "");
+    const [incomingRequests, setIncomingRequests] = useState<FriendRequestOut[]>([]);
+    const [requesterNames, setRequesterNames] = useState<Record<number, string>>({});
+    const [showFriends, setShowFriends] = useState(false);
+    const [friends, setFriends] = useState<Array<{ userId: number; displayName: string }>>([]);
+    const myUsername = localStorage.getItem("username") ?? "";
+    const myUserId = Number(localStorage.getItem("user_id") ?? "0");
+    const isMe = (!user && !userIdParam) || user === myUsername || (!!userId && myUserId > 0 && userId === myUserId);
+
+    const isAlreadyFriend = !isMe && !!profile?.user_id && friends.some((f) => f.userId === profile.user_id);
+
+    useEffect(() => {
+        if (isMe || !profile?.user_id) return;
+        const key = `blocked:${profile.user_id}`;
+        setIsBlocking(localStorage.getItem(key) === "1");
+    }, [isMe, profile?.user_id]);
+
+    useEffect(() => {
+        setSearchUserId(user ?? "");
+    }, [user]);
+
+    useEffect(() => {
+        const token = localStorage.getItem("access_token");
+        if (!token) {
+            navigate("/login");
+            return;
+        }
+
+        // const token = "demo_token"; // --- IGNORE ---
+        // localStorage.setItem("username", "demo_user"); // --- IGNORE ---
+        const fetchIncomingRequests = async () => {
+            if (!isMe) {
+                setIncomingRequests([]);
+                return;
+            }
+            try {
+                const data = await fetchIncomingFriendRequests(token);
+                setIncomingRequests(data);
+                const names = await resolveRequesterNames(token, data);
+                setRequesterNames(names);
+            } catch (error) {
+                console.error("Error fetching incoming friend requests:", error);
+            }
+        };
+
+        const fetchProfile = async (username: string | null) => {
+            try {
+                setError(null);
+                setSuccess(false);
+
+                // If userId is provided, fetch profile directly by id.
+                if (userIdParam) {
+                    const idNum = Number(userIdParam);
+                    if (!Number.isFinite(idNum) || idNum <= 0) {
+                        throw new Error("Invalid userId");
+                    }
+                    const data = await fetchProfileByUserId(token, idNum);
+                    setProfile(data);
+                    setProfilePicture(data.avatar_url ?? null);
+                    return;
+                }
+
+                // si pas de username (ou si c'est le sien), on charge /me
+                if (!username || username === myUsername) {
+                    const data = await fetchMyProfile(token);
+                    setProfile(data);
+                    setProfilePicture(data.avatar_url ?? null);
+                    return;
+                }
+
+                // sinon: username -> user_id -> profile
+                const userData = await fetchUserByUsername(username);
+                const data = await fetchProfileByUserId(token, userData.id);
+                setProfile(data);
+                setProfilePicture(data.avatar_url ?? null);
+            } catch (error) {
+                console.error("Error fetching profile picture:", error);
+                const message = error instanceof Error ? error.message : "Erreur lors du chargement du profil";
+                setError(message);
+                setMessageVisible(true);
+            }
+        };
+
+        fetchIncomingRequests();
+        fetchProfile(user);
+    }, [navigate, user, myUsername, isMe, userIdParam]);
+
+    useEffect(() => {
+        if (!isMe || !showFriends) return;
+
+        const token = localStorage.getItem("access_token");
+        if (!token) {
+            navigate("/login");
+            return;
+        }
+
+        let cancelled = false;
+
+        (async () => {
+            try {
+                const list = await getFriendsList(token);
+                const friendIds = list.map((f) => f.friend_id);
+
+                const profiles = await Promise.all(
+                    friendIds.map(async (id) => {
+                        try {
+                            const p = await fetchProfileByUserId(token, id);
+                            return { userId: id, displayName: p.display_name || String(id) };
+                        } catch {
+                            return { userId: id, displayName: String(id) };
+                        }
+                    })
+                );
+
+                if (!cancelled) setFriends(profiles);
+            } catch (e) {
+                console.error("Error fetching friends list:", e);
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [isMe, showFriends, navigate]);
+
+    const handleSearchProfile = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        const trimmed = searchUserId.trim();
+
+        if (!trimmed) {
+            setSearchParams({});
+            return;
+        }
+
+        if (trimmed === myUsername) {
+            setSearchParams({});
+            return;
+        }
+        setSearchParams({ user: trimmed });
+    };
+
+    useEffect(() => {
+        if (messageVisible) {
+            const timer = setTimeout(() => setMessageVisible(false), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [messageVisible]);
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsLoading(true);
+        setError(null);
+        setSuccess(false);
+
+        const token = localStorage.getItem("access_token");
+        if (!token) {
+            setError("Token manquant. Veuillez vous reconnecter.");
+            setMessageVisible(true);
+            setIsLoading(false);
+            navigate("/login");
+            return;
+        }
+
+        try {
+            const imageUrl = await uploadImageToCloudinary(file);
+            setProfilePicture(imageUrl);
+
+            await updateMyAvatar(token, imageUrl);
+
+            setSuccess(true);
+            setMessageVisible(true);
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : "Erreur lors de l'upload";
+            setError(errorMessage);
+            setMessageVisible(true);
+            console.error("Error uploading image:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleLogout = async () => {
+        const token = localStorage.getItem("access_token");
+        if (!token) {
+            navigate("/login");
+            return;
+        }
+
+        try {
+            const response = await fetch("/api/auth/logout", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (response.ok) {
+                localStorage.removeItem("access_token");
+                localStorage.removeItem("username");
+                localStorage.removeItem("email");
+                localStorage.removeItem("user_id");
+                navigate("/login");
+            } else {
+                console.error("Failed to log out:", response.statusText);
+            }
+        } catch (error) {
+            console.error("Error logging out:", error);
+        }
+    };
+
+    const arcadeButtonBase =
+        "hb-tap font-arcade cursor-pointer border-0 shadow-[0px_4px_rgb(255,255,255),0px_-4px_rgb(255,255,255),4px_0px_rgb(255,255,255),-4px_0px_rgb(255,255,255),0px_4px_rgba(0,0,0,0.22),4px_4px_rgba(0,0,0,0.22),-4px_4px_rgba(0,0,0,0.22),inset_0px_4px_rgba(255,255,255,0.21)] no-underline inline-flex items-center justify-center gap-2 transition-transform duration-100 active:translate-y-0.5 max-w-full";
+    const arcadePrimaryButton = `${arcadeButtonBase} px-4 py-2 text-base min-[481px]:text-lg`;
+    const arcadeSmallButton = `${arcadeButtonBase} px-3 py-2 text-sm min-[481px]:text-base`;
 
     return (
-        <div className="min-h-[100dvh] w-full flex items-center justify-center px-4 py-10">
-            <div className="w-full max-w-lg flex flex-col items-center text-center gap-4">
-                <h1 className="text-3xl min-[481px]:text-4xl font-bold">{t("Profile")}</h1>
-                <p className="text-base min-[481px]:text-lg">{t("This is the profile page.")}</p>
+        <div className="relative min-h-[100dvh] w-full overflow-auto">
+            <div
+                className="fixed inset-0 bg-[url('/assets/bgProfil.png')] bg-cover bg-center bg-no-repeat blur-sm"
+                aria-hidden="true"
+            ></div>
 
-                {localStorage.getItem("access_token") && (
-                    <div className="w-full rounded-lg border border-gray-200 bg-white/70 p-4 text-left">
-                        <p className="break-words">Your name: {localStorage.getItem("username")}</p>
-                        <p className="break-words">Email: {localStorage.getItem("email")}</p>
-                        <p className="break-words">User ID: {localStorage.getItem("user_id")}</p>
+            <div className="relative z-10 min-h-[100dvh] flex items-center justify-center px-4 py-8">
+                <div className="bg-[#f5f0e8]/90 border-4 border-[#2b2b2b] px-6 py-8 min-[481px]:px-10 min-[481px]:py-10 shadow-[6px_6px_0_#2b2b2b] w-[min(92vw,46rem)]">
+                    <form onSubmit={handleSearchProfile} className="flex flex-col min-[481px]:flex-row gap-3">
+                        <input
+                            value={searchUserId}
+                            onChange={(e) => setSearchUserId(e.target.value)}
+                            placeholder={t("Rechercher un profil")}
+                            className="hb-tap flex-1 px-4 py-2 rounded-lg border-2 border-[#2b2b2b] bg-white/90 text-[#1f2937] text-base focus:outline-none focus:ring-2 focus:ring-black/20"
+                        />
+                        <button
+                            type="submit"
+                            className={`${arcadePrimaryButton} text-white bg-blue-600 hover:bg-blue-700`}
+                        >
+                            {t("Rechercher")}
+                        </button>
+                    </form>
+
+                    <ProfilePicture
+                        profilePicture={profilePicture}
+                        isLoading={isLoading}
+                        onImageUpload={isMe ? handleImageUpload : undefined}
+                    />
+
+                    <h1 className="hb-title font-arcade tracking-widest text-[#1f2937] text-center">
+                        {profile?.display_name ?? myUsername}
+                    </h1>
+
+                    {isMe && (
+                        <div className="mt-4 flex justify-center">
+                            <button
+                                type="button"
+                                onClick={() => setShowFriends((v) => !v)}
+                                className={`${arcadePrimaryButton} text-white bg-blue-600 hover:bg-blue-700`}
+                            >
+                                {t("Friends")}
+                            </button>
+                        </div>
+                    )}
+
+                    {isMe && showFriends && (
+                        <FriendsPanel
+                            title={t("Mes amis")}
+                            friends={friends}
+                            onSelectUserId={(friendUserId) => {
+                                setShowFriends(false);
+                                if (myUserId > 0 && friendUserId === myUserId) {
+                                    setSearchParams({});
+                                    return;
+                                }
+                                setSearchParams({ userId: String(friendUserId) });
+                            }}
+                        />
+                    )}
+
+                    {isMe && (
+                        <IncomingFriendRequests
+                            title={t("Demandes d'amis")}
+                            subtitle={t("t'a envoyé une demande")}
+                            acceptLabel={t("Accepter")}
+                            rejectLabel={t("Refuser")}
+                            requests={incomingRequests}
+                            requesterNames={requesterNames}
+                            onAccept={(requestId) => {
+                                const token = localStorage.getItem("access_token");
+                                if (!token) {
+                                    setSuccess(false);
+                                    setError("Token manquant. Veuillez vous reconnecter.");
+                                    setMessageVisible(true);
+                                    navigate("/login");
+                                    return;
+                                }
+                                acceptFriendRequest(token, requestId)
+                                    .then(() => {
+                                        setIncomingRequests((prev) => prev.filter((r) => r.id !== requestId));
+                                        setSuccess(true);
+                                        setMessageVisible(true);
+                                    })
+                                    .catch((err) => {
+                                        const msg = err instanceof Error ? err.message : "Erreur lors de l'acceptation";
+                                        setSuccess(false);
+                                        setError(msg);
+                                        setMessageVisible(true);
+                                    });
+                            }}
+                            onReject={(requestId) => {
+                                const token = localStorage.getItem("access_token");
+                                if (!token) {
+                                    setSuccess(false);
+                                    setError("Token manquant. Veuillez vous reconnecter.");
+                                    setMessageVisible(true);
+                                    navigate("/login");
+                                    return;
+                                }
+                                rejectFriendRequest(token, requestId)
+                                    .then(() => {
+                                        setIncomingRequests((prev) => prev.filter((r) => r.id !== requestId));
+                                        setSuccess(true);
+                                        setMessageVisible(true);
+                                    })
+                                    .catch((err) => {
+                                        const msg = err instanceof Error ? err.message : "Erreur lors du refus";
+                                        setSuccess(false);
+                                        setError(msg);
+                                        setMessageVisible(true);
+                                    });
+                            }}
+                        />
+                    )}
+
+                    {isMe ? (
+                        <HandleBio />
+                    ) : (
+                        <div className="mt-4 rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-4 text-[#1f2937]">
+                            <div className="whitespace-pre-wrap break-words text-sm min-[481px]:text-base">
+                                {profile?.bio ?? t("Aucune bio")}
+                            </div>
+
+                            <div className="mt-4 flex flex-wrap gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (isAlreadyFriend) {
+                                            setSuccess(false);
+                                            setError("Suppression d'ami: à implémenter");
+                                            setMessageVisible(true);
+                                            return;
+                                        }
+
+                                        Handleadd(profile?.user_id ?? 0)
+                                            .then(() => {
+                                                setSuccess(true);
+                                                setMessageVisible(true);
+                                            })
+                                            .catch((err) => {
+                                                const msg = err instanceof Error ? err.message : "Erreur lors de l'ajout d'ami";
+                                                setSuccess(false);
+                                                setError(msg);
+                                                setMessageVisible(true);
+                                            });
+                                    }}
+                                    className={`${arcadeSmallButton} ${
+                                        isAlreadyFriend
+                                            ? "text-white bg-red-600 hover:bg-red-700"
+                                            : "text-white bg-blue-600 hover:bg-blue-700"
+                                    }`}
+                                >
+                                    👥 {isAlreadyFriend ? t("Supprimer l'ami") : t("Add Friend")}
+                                </button>
+
+                                {!isMe && profile?.user_id && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const token = localStorage.getItem("access_token");
+                                            if (!token) {
+                                                navigate("/login");
+                                                return;
+                                            }
+
+                                            const targetUserId = profile.user_id;
+                                            const key = `blocked:${targetUserId}`;
+
+                                            const action = isBlocking
+                                                ? unblockFriend(token, targetUserId)
+                                                : blockFriend(token, targetUserId);
+
+                                            action
+                                                .then(() => {
+                                                    const next = !isBlocking;
+                                                    setIsBlocking(next);
+                                                    if (next) localStorage.setItem(key, "1");
+                                                    else localStorage.removeItem(key);
+                                                    setSuccess(true);
+                                                    setMessageVisible(true);
+                                                })
+                                                .catch((err) => {
+                                                    const msg = err instanceof Error ? err.message : "Erreur";
+                                                    setSuccess(false);
+                                                    setError(msg);
+                                                    setMessageVisible(true);
+                                                });
+                                        }}
+                                        className={`${arcadeSmallButton} ${
+                                            isBlocking
+                                                ? "text-white bg-[#4AD95A] hover:bg-green-600"
+                                                : "text-white bg-red-600 hover:bg-red-700"
+                                        }`}
+                                    >
+                                        {isBlocking ? t("Débloquer") : t("Bloquer")}
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="mt-4 grid grid-cols-1 min-[481px]:grid-cols-2 gap-3 text-sm text-[#1f2937]">
+                        <div className="rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-3">
+                            <div className="font-arcade tracking-wide text-base min-[481px]:text-lg">{t("Pays")}</div>
+                            <div className="mt-1">{profile?.country ?? "-"}</div>
+                        </div>
+                        <div className="rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-3">
+                            <div className="font-arcade tracking-wide text-base min-[481px]:text-lg">{t("Langue")}</div>
+                            <div className="mt-1">{profile?.language ?? "-"}</div>
+                        </div>
                     </div>
-                )}
 
-                <button onClick={() => navigate("/")} className="hb-tap px-6 py-3 bg-blue-500 text-white rounded hover:bg-blue-600 w-full max-w-xs">
-                    {t("Go Back")}
-                </button>
+                    <div className="border-t-2 border-[#2b2b2b] my-6" />
+
+                    <div className="space-y-3 min-h-[70px]">
+                        {messageVisible && error && (
+                            <div className="w-full px-4 py-3 bg-white/85 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] text-[#1f2937]">
+                                <div className="flex items-start gap-3">
+                                    <svg className="w-5 h-5 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                        <path
+                                            fillRule="evenodd"
+                                            d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                            clipRule="evenodd"
+                                        />
+                                    </svg>
+                                    <span className="text-sm min-[481px]:text-base font-medium">{error}</span>
+                                </div>
+                            </div>
+                        )}
+
+                        {messageVisible && success && (
+                            <div className="w-full px-4 py-3 bg-white/85 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] text-[#1f2937]">
+                                <div className="flex items-start gap-3">
+                                    <svg className="w-5 h-5 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                        <path
+                                            fillRule="evenodd"
+                                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                            clipRule="evenodd"
+                                        />
+                                    </svg>
+                                    <span className="text-sm min-[481px]:text-base font-medium">✓ {t("Succès!")}</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <button
+                        onClick={handleLogout}
+                        className={`w-full mt-6 ${arcadePrimaryButton} text-white bg-red-600 hover:bg-red-700`}
+                    >
+                        {t("Logout")}
+                    </button>
+                </div>
             </div>
         </div>
     );
 }
 
-export default Profile
+export default Profile;
