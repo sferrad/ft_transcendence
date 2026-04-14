@@ -156,3 +156,16 @@ def cleanup_user_data(db: Session, user_id: int) -> dict:
 		"deleted_blocks": deleted_blocks
 	 }
 
+
+def unfriend_user(db: Session, user_id: int, friend_user_id: int) -> bool:
+	deleted = (
+		db.query(models.Friends)
+		.filter(or_(and_(models.Friends.user_id == user_id, models.Friends.friend_id == friend_user_id), and_(models.Friends.user_id == friend_user_id, models.Friends.friend_id == user_id)))
+		.delete(synchronize_session=False)
+	)
+	try:
+		db.commit()
+	except SQLAlchemyError:
+		db.rollback()
+		raise
+	return deleted > 0
