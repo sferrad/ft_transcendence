@@ -35,3 +35,6 @@ class BlockOut(BaseModel):
 	blocked_user_id: int
 	created_at: Optional[datetime]
 	model_config = ConfigDict(from_attributes=True)
+
+class InternalUserCleanup(BaseModel):
+	user_id: int
