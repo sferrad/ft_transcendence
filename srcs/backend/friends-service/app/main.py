@@ -127,7 +127,7 @@ async def unblock(blocked_user_id: int, user_id: int = Depends(_current_user_id)
 		raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Unblock user conflict, please retry")
 	if not ok:
 		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Block not found")
-	return {"ok": True}
+	return ok
 
 @app.post("/internal/user/cleanup")
 async def internal_cleanup_friends(user_to_clean: schemas.InternalUserCleanup, db: Session = Depends(get_db)):
@@ -137,3 +137,13 @@ async def internal_cleanup_friends(user_to_clean: schemas.InternalUserCleanup, d
 		return crud.cleanup_user_data(db, user_to_clean.user_id)
 	except Exception as e:
 		raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+	
+@app.delete("/unfriend/{friend_user_id}", response_model=bool)
+async def unfriend(friend_user_id: int, user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
+	try:
+		ok = crud.unfriend_user(db, user_id, friend_user_id)
+	except IntegrityError:
+		raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Unfriend user conflict, please retry")
+	if not ok:
+		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Friend not found")
+	return ok
