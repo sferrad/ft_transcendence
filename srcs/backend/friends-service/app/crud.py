@@ -137,3 +137,22 @@ def unblock_user(db: Session, user_id: int, blocked_user_id: int) -> bool:
 		db.rollback()
 		raise
 	return deleted > 0
+
+
+def cleanup_user_data(db: Session, user_id: int) -> dict:
+	try:
+		deleted_friends = (db.query(models.Friends).filter(or_(models.Friends.user_id ==user_id, models.Friends.friend_id == user_id))).delete(synchronize_session=False)
+		deleted_requests = (db.query(models.FriendsRequest).filter(or_(models.FriendsRequest.from_user_id == user_id, models.FriendsRequest.to_user_id == user_id))).delete(synchronize_session=False)
+		deleted_blocks = (db.query(models.Block).filter(or_(models.Block.user_id == user_id, models.Block.blocked_user_id == user_id))).delete(synchronize_session=False)
+		db.commit()
+	except SQLAlchemyError:
+		db.rollback()
+		raise
+	return {
+		"ok": True,
+		"user_id": user_id,
+		"deleted_friends": deleted_friends,
+		"deleted_requests": deleted_requests,
+		"deleted_blocks": deleted_blocks
+	 }
+
