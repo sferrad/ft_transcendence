@@ -118,8 +118,8 @@ async def block(payload: schemas.BlockCreate, user_id: int = Depends(_current_us
 		raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Block user conflict, please retry")
 	return block_row
 
-# unbloxk user
-@app.delete("/block/{blocked_user_id}", response_model=dict)
+# unblock user
+@app.delete("/block/{blocked_user_id}", response_model=bool)
 async def unblock(blocked_user_id: int, user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
 	try:
 		ok = crud.unblock_user(db, user_id, blocked_user_id)
@@ -127,4 +127,13 @@ async def unblock(blocked_user_id: int, user_id: int = Depends(_current_user_id)
 		raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Unblock user conflict, please retry")
 	if not ok:
 		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Block not found")
-	return {"status": "ok"}
+	return {"ok": True}
+
+@app.post("/internal/user/cleanup")
+async def internal_cleanup_friends(user_to_clean: schemas.InternalUserCleanup, db: Session = Depends(get_db)):
+	if user_to_clean.user_id <= 0:
+		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid user id")
+	try: 
+		return crud.cleanup_user_data(db, user_to_clean.user_id)
+	except Exception as e:
+		raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

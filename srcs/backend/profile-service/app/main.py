@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from . import user_service_client
+from . import friends_service_client
 from . import crud, schemas
 from . import schemas
 from .database import get_db, init_db, init_engine
@@ -128,10 +129,9 @@ async def update_user_infos(payload: schemas.UserUpdateRequest, user_id: int = D
 		raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 	
 @app.delete("/me/settings/user")
-async def delete_user(user_id: int = Depends(_current_user_id)):
+async def delete_user(user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
 	try:
 		res = await user_service_client.delete_user_in_user_service(user_id)
-		return res
 	except httpx.RequestError:
 		raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="user-service unavailable")
 	except httpx.HTTPStatusError as e:
@@ -142,7 +142,22 @@ async def delete_user(user_id: int = Depends(_current_user_id)):
         )
 	except Exception as e:
 		raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-	
+	try:
+		crud.delete_user_settings_by_user_id(db, user_id)
+	except Exception as e:
+		raise HTTPException(status_code=500, detail=f"Failed to delete user settings: {e}")
+	try:
+		crud.delete_profile_by_user_id(db, user_id)
+	except Exception as e:
+		raise HTTPException(status_code=500, detail=f"Failed to delete user profile: {e}")
+	friends_cleanup = None
+	try:
+		friends_cleanup = await friends_service_client.delete_friends_in_friends_service(user_id)
+	except httpx.RequestError:
+		friends_cleanup = {"ok": False, "error": "friends-service unavailable"}
+	except httpx.HTTPStatusError as e:
+		friends_cleanup = {"ok": False, "status": e.response.status_code}
+	return {"ok": True, "user_service": res, "friends_cleanup": friends_cleanup}	
 
 # Crée un profil par défaut pour un user.
 
@@ -163,6 +178,7 @@ async def internal_create_profile(payload: schemas.InternalProfileCreate, db: Se
 		return existing
 	try:
 		profile = crud.create_profile(db, payload.user_id, schemas.ProfileCreate(display_name=payload.display_name))
+		crud.create_user_settings(db, payload.user_id)
 	except IntegrityError:
 		# Si une course crée le profil juste avant nous, on relit.
 		profile = crud.get_profile_by_user_id(db, payload.user_id)

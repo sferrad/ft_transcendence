@@ -77,3 +77,28 @@ def update_user_settings(user_id: int, db: Session, updates: UserSettingIn) -> m
 	except SQLAlchemyError:
 		db.rollback()
 		raise
+
+def delete_profile_by_user_id(db: Session, user_id: int) -> bool:
+	profile = get_profile_by_user_id(db, user_id)
+	if not profile:
+		return False
+	try:
+		db.delete(profile)
+		db.commit()
+		return True
+	except SQLAlchemyError:
+		db.rollback()
+		raise
+
+
+def delete_user_settings_by_user_id(db: Session, user_id: int) -> bool:
+	user_settings = get_user_settings(db, user_id)
+	if not user_settings:
+			return False
+	try:
+		db.delete(user_settings)
+		db.commit()
+		return True
+	except SQLAlchemyError:
+		db.rollback()
+		raise
