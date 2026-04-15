@@ -28,8 +28,9 @@ volumes:
   vault-file:
   grafana-data:
   alertmanager-data:
+  avatar-profile-service:
 
-    ## DATABASES ####
+## DATABASES ####
 
 services:
   user-db:
@@ -449,10 +450,12 @@ services:
       - DB_PORT=${DB_PORT}
       - DB_NAME=profile_db
       - VAULT_DB_CREDS_PATH=database/creds/profile-role
+      - AVATAR_UPLOAD_DIR=/app/uploads/avatars
     expose:
       - "8006"
     volumes:
       - vault-data:/vault/data:ro
+      - avatar-profile-service:/app/uploads
     networks:
       - transcendence-backend
       - transcendence-database
