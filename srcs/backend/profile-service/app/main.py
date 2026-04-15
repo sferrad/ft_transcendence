@@ -1,7 +1,9 @@
-from fastapi import Depends, FastAPI, Header, HTTPException, status
+from fastapi import Depends, FastAPI, Header, HTTPException, status, UploadFile, File
 from sqlalchemy import text
-from fastapi.responses import Response
+from fastapi.responses import Response, FileResponse
 import httpx
+import os
+import uuid
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -11,6 +13,10 @@ from . import friends_service_client
 from . import crud, schemas
 from . import schemas
 from .database import get_db, init_db, init_engine
+
+AVATAR_UPLOAD_DIR = os.getenv("AVATAR_UPLOAD_DIR", "/app/uploads/avatars")
+AVATAR_MAX_BYTES = 5 * 1024 * 1024
+
 
 app = FastAPI(title="profile-service")
 
@@ -39,6 +45,7 @@ async def db_ping(db: Session = Depends(get_db)):
 	except Exception as e:
 		raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 	
+	
 def _current_user_id(x_user_id: str | None = Header(default=None, alias="X-User-Id")) -> int:
 	if not x_user_id:
 		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing X-User-Id header")
@@ -52,8 +59,37 @@ def _current_user_id(x_user_id: str | None = Header(default=None, alias="X-User-
 
 
 
+ALLOWED_AVATAR_TYPES = {
+	"image/jpeg": ".jpg",
+	"image/png": ".png",
+	"image/webp": ".webp",
+	"image/gif": ".gif",
+}
 
 
+async def _save_avatar(upload: UploadFile) -> str:
+	if upload.content_type not in ALLOWED_AVATAR_TYPES:
+		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid image type")
+	os.makedirs(AVATAR_UPLOAD_DIR, exist_ok=True)
+	ext = ALLOWED_AVATAR_TYPES[upload.content_type]
+	filename = f"{uuid.uuid4().hex}{ext}"
+	path = os.path.join(AVATAR_UPLOAD_DIR, filename)
+	size = 0
+	with open(path, "wb") as f:
+		while True:
+			chunk = await upload.read(1024 * 1024)  # 1MB
+			if not chunk:
+				break
+			size += len(chunk)
+			if size > AVATAR_MAX_BYTES:
+				f.close()
+				try:
+					os.remove(path)
+				except Exception:
+					pass
+				raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File too large")
+			f.write(chunk)
+	return filename
 
 
 # consulte son profile
@@ -75,16 +111,12 @@ async def put_me(payload: schemas.ProfileUpdate, user_id: int = Depends(_current
 			profile = crud.create_profile(db, user_id, schemas.ProfileCreate(**payload.model_dump(exclude_unset=True)))
 			# SQLAlchemyError: catch large pour rollback systematique
 			# vs
-			# IntegrityError: catch apeecifique (unique constraint...) 
+			# IntegrityError: catch spécifique (unique constraint...)
 		except IntegrityError:
-			# Race condition:possible que 2 requetes se chevauchent et que entre
-			# le SELECT(get_profile_by_user_id) et le INSERT(create_profile) un
-			# user b ait cree egalement un user avec ce id unique avant user a
+			# Race condition: possible qu'entre le SELECT et l'INSERT, un autre process ait créé le profil.
 			profile = crud.get_profile_by_user_id(db, user_id)
 			if not profile:
-				# si profil n existe toujours pas ca veut dire transaction foireuse, rollback ailleurs, lecture pas possible, etc.
 				raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Profile creation conflict, please retry")
-			# si profile existe on ne le cree plus on l'update
 			profile = crud.update_profile(db, profile, payload)
 	else:
 		data = payload.model_dump(exclude_unset=True)
@@ -159,13 +191,8 @@ async def delete_user(user_id: int = Depends(_current_user_id), db: Session = De
 		friends_cleanup = {"ok": False, "status": e.response.status_code}
 	return {"ok": True, "user_service": res, "friends_cleanup": friends_cleanup}	
 
-# Crée un profil par défaut pour un user.
 
-# Cas d'usage:
-# - juste après un register dans user-service, on veut un profil minimal.
 
-# Comportement:
-# - idempotent: si le profil existe déjà pour ce user_id, on le renvoie.
 @app.post("/internal/profile/create", response_model=schemas.ProfileOut, status_code=status.HTTP_201_CREATED)
 async def internal_create_profile(payload: schemas.InternalProfileCreate, db: Session = Depends(get_db)):
 	if payload.user_id <= 0:
@@ -184,5 +211,25 @@ async def internal_create_profile(payload: schemas.InternalProfileCreate, db: Se
 		profile = crud.get_profile_by_user_id(db, payload.user_id)
 		if not profile:
 			raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Profile creation conflict")
-
 	return profile
+
+
+@app.post("/me/avatar", response_model=schemas.ProfileOut)
+async def post_avatar(avatar: UploadFile = File(...), user_id: int = Depends(_current_user_id),db: Session = Depends(get_db),):
+	profile = crud.get_profile_by_user_id(db, user_id)
+	if not profile:
+		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
+	filename = await _save_avatar(avatar)
+	avatar_url = f"/profile/avatars/{filename}"
+	updated = crud.update_profile(db, profile, schemas.ProfileUpdate(avatar_url=avatar_url))
+	return updated
+
+
+@app.get("/avatars/{filename}")
+async def get_avatar(filename: str):
+	if "/" in filename or "\\" in filename or ".." in filename:
+		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid filename")
+	path = os.path.join(AVATAR_UPLOAD_DIR, filename)
+	if not os.path.isfile(path):
+		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Avatar not found")
+	return FileResponse(path)
