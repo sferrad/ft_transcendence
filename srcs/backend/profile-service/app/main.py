@@ -11,7 +11,6 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from . import user_service_client
 from . import friends_service_client
 from . import crud, schemas
-from . import schemas
 from .database import get_db, init_db, init_engine
 
 AVATAR_UPLOAD_DIR = os.getenv("AVATAR_UPLOAD_DIR", "/app/uploads/avatars")
@@ -67,9 +66,35 @@ ALLOWED_AVATAR_TYPES = {
 }
 
 
+async def _check_magic_bytes(upload: UploadFile) -> None:
+	head = await upload.read(16) # lis les 16 premiers bytes (magic bytes)
+	try:
+		upload.file.seek(0) # retour en arriere au byte 0
+	except Exception:
+		raise HTTPException(status_code=400, detail="Invalid upload")
+	ext = upload.content_type
+	if ext == "image/png":
+		if not head.startswith(b"\x89PNG\r\n\x1a\n"):
+			raise HTTPException(status_code=400, detail="Invalid PNG")
+		return
+	if ext == "image/jpeg":
+		if not head.startswith(b"\xff\xd8\xff"):
+			raise HTTPException(status_code=400, detail="Invalid JPEG")
+		return
+	if ext == "image/gif":
+		if not (head.startswith(b"GIF87a") or head.startswith(b"GIF89a")):
+			raise HTTPException(status_code=400, detail="Invalid GIF")
+		return
+	if ext == "image/webp":
+		if not (head.startswith(b"RIFF") and head[8:12] == b"WEBP"):
+			raise HTTPException(status_code=400, detail="Invalid WebP")
+		return
+	raise HTTPException(status_code=400, detail="Invalid image type")
+
 async def _save_avatar(upload: UploadFile) -> str:
 	if upload.content_type not in ALLOWED_AVATAR_TYPES:
 		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid image type")
+	await _check_magic_bytes(upload)
 	os.makedirs(AVATAR_UPLOAD_DIR, exist_ok=True)
 	ext = ALLOWED_AVATAR_TYPES[upload.content_type]
 	filename = f"{uuid.uuid4().hex}{ext}"
@@ -91,6 +116,35 @@ async def _save_avatar(upload: UploadFile) -> str:
 			f.write(chunk)
 	return filename
 
+def _try_delete_avatar_file(filename: str | None) -> None:
+	if not filename:
+		return
+	if not _is_safe_filename(filename):
+		return
+	try:
+		path = os.path.join(AVATAR_UPLOAD_DIR, filename)
+		if os.path.isfile(path):
+			os.remove(path)
+	except Exception:
+		return
+
+def _is_safe_filename(filename: str) -> bool:
+	if not filename:
+		return False
+	if "/" in filename or "\\" in filename or ".." in filename:
+		return False
+	return True
+
+def _filename_from_avatar_url(avatar_url: str | None) -> str | None:
+	if not avatar_url:
+		return None
+	prefix = "/profile/avatars/"
+	if not avatar_url.startswith(prefix):
+		return None
+	filename = avatar_url.removeprefix(prefix)
+	if not _is_safe_filename(filename):
+		return None
+	return filename
 
 # consulte son profile
 @app.get("/me", response_model=schemas.ProfileOut)
@@ -174,6 +228,11 @@ async def delete_user(user_id: int = Depends(_current_user_id), db: Session = De
         )
 	except Exception as e:
 		raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+	profile = crud.get_profile_by_user_id(db, user_id)
+	if profile:
+		old_filename = _filename_from_avatar_url(profile.avatar_url)
+	else:
+		old_filename = None
 	try:
 		crud.delete_user_settings_by_user_id(db, user_id)
 	except Exception as e:
@@ -182,6 +241,7 @@ async def delete_user(user_id: int = Depends(_current_user_id), db: Session = De
 		crud.delete_profile_by_user_id(db, user_id)
 	except Exception as e:
 		raise HTTPException(status_code=500, detail=f"Failed to delete user profile: {e}")
+	_try_delete_avatar_file(old_filename)
 	friends_cleanup = None
 	try:
 		friends_cleanup = await friends_service_client.delete_friends_in_friends_service(user_id)
@@ -219,9 +279,11 @@ async def post_avatar(avatar: UploadFile = File(...), user_id: int = Depends(_cu
 	profile = crud.get_profile_by_user_id(db, user_id)
 	if not profile:
 		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
+	old_filename = _filename_from_avatar_url(profile.avatar_url)
 	filename = await _save_avatar(avatar)
 	avatar_url = f"/profile/avatars/{filename}"
 	updated = crud.update_profile(db, profile, schemas.ProfileUpdate(avatar_url=avatar_url))
+	_try_delete_avatar_file(old_filename)
 	return updated
 
 
