@@ -8,3 +8,4 @@ psycopg[binary]
 uvicorn[standard]==0.34.3
 httpx
 prometheus_fastapi_instrumentator
+python-multipart
