@@ -380,6 +380,9 @@ services:
       - DB_PORT=${DB_PORT}
       - DB_NAME=friends_db
       - VAULT_DB_CREDS_PATH=database/creds/friends-role
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PRESENCE_TTL_SECONDS=45
     expose:
       - "8004"
     volumes:
