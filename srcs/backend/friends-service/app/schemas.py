@@ -38,3 +38,13 @@ class BlockOut(BaseModel):
 
 class InternalUserCleanup(BaseModel):
 	user_id: int
+
+class PresencePingOut(BaseModel):
+	ok: bool
+	ttl_seconds: int
+
+class FriendsWithStatusOut(BaseModel):
+	friend_id: int
+	created_at: Optional[datetime]
+	online: bool
+	model_config = ConfigDict(from_attributes=True)
