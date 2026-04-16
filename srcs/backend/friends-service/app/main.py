@@ -1,3 +1,5 @@
+import os
+from .redis import client_redis
 from fastapi import Depends, FastAPI, Header, HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
@@ -8,9 +10,44 @@ from . import models
 from . import crud, schemas
 from .database import get_db, init_db, init_engine
 
+PRESENCE_TTL_SECONDS = int(os.getenv("PRESENCE_TTL_SECONDS", "45"))
+PRESENCE_KEY_PREFIX = "presence:user:"
+
 app = FastAPI(title="friends-service")
 Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
+
+def _current_user_id(x_user_id: str | None = Header(default=None, alias="X-User-Id")) -> int:
+	if not x_user_id:
+		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing X-User-Id header")
+	try:
+		user_id = int(x_user_id)
+	except ValueError:
+		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid X-User-Id header")
+	if user_id <= 0:
+		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid X-User-Id header")
+	return user_id
+
+
+
+def _presence_key(user_id: int) -> str:
+	return f"{PRESENCE_KEY_PREFIX}{user_id}"
+
+
+async def _set_online(user_id: int) -> None:
+	await client_redis.setex(_presence_key(user_id), PRESENCE_TTL_SECONDS, "1")
+
+
+async def _get_online_list(user_ids: list[int]) -> dict[int, bool]:
+	if not user_ids:
+		return {}
+	keys = [_presence_key(uid) for uid in user_ids]
+	values = await client_redis.mget(keys)
+	return {user_id : (values[i] is not None) for i, user_id in enumerate(user_ids)}
+	# result = {}
+	# for user_id, value in zip(user_ids, values)
+	# is_online = value is not None (bool true ou false si online ou non)
+	# result[user_id] = is_online
 
 @app.on_event("startup")
 def on_startup() -> None:
@@ -34,16 +71,21 @@ async def db_ping(db: Session = Depends(get_db)):
 	except Exception as e:
 		raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 	
-def _current_user_id(x_user_id: str | None = Header(default=None, alias="X-User-Id")) -> int:
-	if not x_user_id:
-		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing X-User-Id header")
-	try:
-		user_id = int(x_user_id)
-	except ValueError:
-		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid X-User-Id header")
-	if user_id <= 0:
-		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid X-User-Id header")
-	return user_id
+
+@app.post("/presence/ping", response_model=schemas.PresencePingOut)
+async def presence_ping(user_id: int = Depends(_current_user_id)):
+	await _set_online(user_id)
+	return schemas.PresencePingOut(ok=True, ttl_seconds=PRESENCE_TTL_SECONDS)
+
+@app.get("/friends/with-status", response_model=list[schemas.FriendsWithStatusOut])
+async def list_my_friends_with_their_status(user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
+	friend_list = crud.list_friends(db, user_id)
+	friend_ids = [f.friend_id for f in friend_list]
+	online_list = await _get_online_list(friend_ids)
+	out: list[dict] = []
+	for f in friend_list:
+		out.append({"friend_id": f.friend_id, "created_at": f.created_at, "online": bool(online_list.get(f.friend_id, False))})
+	return out
 
 # envoi une requete
 @app.post("/requests", response_model=schemas.FriendRequestOut)
