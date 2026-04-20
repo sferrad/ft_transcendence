@@ -1,7 +1,7 @@
 
 type Props = {
     title: string;
-    friends: Array<{ userId: number; displayName: string }>;
+    friends: Array<{ userId: number; displayName: string; online: boolean }>;
     onSelectUserId: (userId: number) => void;
 };
 
@@ -21,7 +21,16 @@ export default function FriendsPanel({ title, friends, onSelectUserId }: Props) 
                             onClick={() => onSelectUserId(f.userId)}
                             className="hb-tap w-full text-left rounded-lg bg-white/90 border-2 border-[#2b2b2b] px-3 py-2 shadow-[2px_2px_0_#2b2b2b] hover:bg-white transition-colors"
                         >
-                            <div className="truncate font-medium">{f.displayName}</div>
+                            <div className="flex items-center gap-2">
+                                <span
+                                    className={[
+                                        "h-2.5 w-2.5 rounded-full border border-[#2b2b2b]",
+                                        f.online ? "bg-green-500" : "bg-red-700",
+                                    ].join(" ")}
+                                    aria-label={f.online ? "Online" : "Offline"}
+                                />
+                                <div className="truncate font-medium">{f.displayName}</div>
+                            </div>
                         </button>
                     ))}
                 </div>
