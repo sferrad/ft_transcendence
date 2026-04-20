@@ -12,12 +12,12 @@ import IncomingFriendRequests from "./components/IncomingFriendRequests";
 import FriendsPanel from "./components/FriendsPanel";
 import {
     acceptFriendRequest,
-    getFriendsList,
     fetchIncomingFriendRequests,
     rejectFriendRequest,
     resolveRequesterNames,
     unblockFriend,
     blockFriend,
+    getFriendsWithStatus,
 } from "./api/friends";
 import { fetchMyProfile, fetchProfileByUserId, fetchUserByUsername, updateMyAvatar } from "./api/profile";
 
@@ -26,6 +26,7 @@ function Profile() {
     const { t } = useTranslation();
     const [profilePicture, setProfilePicture] = useState<string | null>(null);
     const [profile, setProfile] = useState<ProfileOut | null>(null);
+    const [viewedUserOnline, setViewedUserOnline] = useState<boolean | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
@@ -39,12 +40,42 @@ function Profile() {
     const [incomingRequests, setIncomingRequests] = useState<FriendRequestOut[]>([]);
     const [requesterNames, setRequesterNames] = useState<Record<number, string>>({});
     const [showFriends, setShowFriends] = useState(false);
-    const [friends, setFriends] = useState<Array<{ userId: number; displayName: string }>>([]);
+    const [friends, setFriends] = useState<Array<{ userId: number; displayName: string; online: boolean }>>([]);
     const myUsername = localStorage.getItem("username") ?? "";
     const myUserId = Number(localStorage.getItem("user_id") ?? "0");
     const isMe = (!user && !userIdParam) || user === myUsername || (!!userId && myUserId > 0 && userId === myUserId);
 
     const isAlreadyFriend = !isMe && !!profile?.user_id && friends.some((f) => f.userId === profile.user_id);
+
+    useEffect(() => {
+        if (isMe || !profile?.user_id) {
+            setViewedUserOnline(null);
+            return;
+        }
+
+        const token = localStorage.getItem("access_token");
+        if (!token) {
+            setViewedUserOnline(null);
+            return;
+        }
+
+        let cancelled = false;
+
+        (async () => {
+            try {
+                const list = await getFriendsWithStatus(token);
+                const match = list.find((f) => f.friend_id === profile.user_id);
+                if (!cancelled) setViewedUserOnline(match ? match.online : null);
+            } catch (e) {
+                console.error("Error fetching presence for viewed profile:", e);
+                if (!cancelled) setViewedUserOnline(null);
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [isMe, profile?.user_id]);
 
     useEffect(() => {
         if (isMe || !profile?.user_id) return;
@@ -135,16 +166,16 @@ function Profile() {
 
         (async () => {
             try {
-                const list = await getFriendsList(token);
-                const friendIds = list.map((f) => f.friend_id);
+                const list = await getFriendsWithStatus(token);
 
                 const profiles = await Promise.all(
-                    friendIds.map(async (id) => {
+                    list.map(async (f) => {
+                        const id = f.friend_id;
                         try {
                             const p = await fetchProfileByUserId(token, id);
-                            return { userId: id, displayName: p.display_name || String(id) };
+                            return { userId: id, displayName: p.display_name || String(id), online: f.online };
                         } catch {
-                            return { userId: id, displayName: String(id) };
+                            return { userId: id, displayName: String(id), online: f.online };
                         }
                     })
                 );
@@ -277,6 +308,7 @@ function Profile() {
                         profilePicture={profilePicture}
                         isLoading={isLoading}
                         onImageUpload={isMe ? handleImageUpload : undefined}
+                        presenceOnline={!isMe ? viewedUserOnline : null}
                     />
 
                     <h1 className="hb-title font-arcade tracking-widest text-[#1f2937] text-center">

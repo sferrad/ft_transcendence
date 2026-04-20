@@ -4,9 +4,10 @@ interface ProfilePictureProps {
     profilePicture: string | null;
     isLoading: boolean;
     onImageUpload?: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
+    presenceOnline?: boolean | null;
 }
 
-function ProfilePicture({ profilePicture, isLoading, onImageUpload }: ProfilePictureProps) {
+function ProfilePicture({ profilePicture, isLoading, onImageUpload, presenceOnline }: ProfilePictureProps) {
     const [imageError, setImageError] = useState(false);
 
     useEffect(() => {
@@ -28,6 +29,16 @@ function ProfilePicture({ profilePicture, isLoading, onImageUpload }: ProfilePic
                     className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 rounded-full object-cover border-4 border-[#2b2b2b] shadow-[4px_4px_0_#2b2b2b]"
                 />
                 <div className="absolute inset-0 rounded-full bg-black opacity-0 hover:opacity-10 transition-opacity" />
+
+                {typeof presenceOnline === "boolean" && (
+                    <span
+                        className={[
+                            "absolute -right-1 -bottom-1 h-4 w-4 rounded-full border-2 border-[#2b2b2b]",
+                            presenceOnline ? "bg-green-500" : "bg-red-700",
+                        ].join(" ")}
+                        aria-label={presenceOnline ? "Online" : "Offline"}
+                    />
+                )}
             </div>
 
             {/* File Upload Input */}
