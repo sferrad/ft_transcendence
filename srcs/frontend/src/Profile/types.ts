@@ -10,6 +10,17 @@ export type ProfileOut = {
     updated_at?: string | null;
 };
 
+export type FriendswithStatusOut = {
+    friend_id: number;
+    created_at?: string | null;
+    online: boolean;
+};
+
+export type PresencePingOut = {
+    ok: boolean;
+    ttl_seconds: number;
+};
+
 export type UserLookupOut = {
     id: number;
     username: string;

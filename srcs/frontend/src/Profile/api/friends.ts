@@ -1,4 +1,4 @@
-import type { FriendOut, FriendRequestOut, ProfileOut } from "../types";
+import type { FriendOut, FriendRequestOut, FriendswithStatusOut, PresencePingOut, ProfileOut } from "../types";
 
 async function parseErrorDetail(response: Response): Promise<string | null> {
     try {
@@ -96,6 +96,30 @@ export async function blockFriend(token: string, blockedUserId: number): Promise
         throw new Error(detail || `HTTP ${response.status}`);
     }
 }
+
+export async function getFriendsWithStatus(token: string): Promise<FriendswithStatusOut[]> {
+    const response = await fetch("/api/friends/friends/with-status", {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) {
+        const detail = await parseErrorDetail(response);
+        throw new Error(detail || `HTTP ${response.status}`);
+    }
+    return await response.json();
+}
+
+export async function pingPresence(token: string): Promise<PresencePingOut> {
+    const response = await fetch("/api/friends/presence/ping", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) {
+        const detail = await parseErrorDetail(response);
+        throw new Error(detail || `HTTP ${response.status}`);
+    }
+    return await response.json();
+}
+
 
 export async function unblockFriend(token: string, blockedUserId: number): Promise<void> {
     const response = await fetch(`/api/friends/block/${encodeURIComponent(String(blockedUserId))}`, {

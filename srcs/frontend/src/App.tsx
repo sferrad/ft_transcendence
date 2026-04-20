@@ -10,8 +10,26 @@ import Settingpage from './setting/Settingpage';
 import ChangePass from './setting/Acc/Changepass';
 import ChangeMail from './setting/Acc/Changemail';
 import DeleteAcc from './setting/Acc/Deleteacc';
+import { useEffect } from 'react';
+import { pingPresence } from './Profile/api/friends';
 
 const App = () => {
+  useEffect(() => {
+    const ping = async () => {
+      const token = localStorage.getItem('access_token');
+      if (!token) return;
+      try {
+        await pingPresence(token);
+      } catch {
+      }
+    };
+
+    ping();
+
+    const intervalId = window.setInterval(ping, 30000);
+    return () => window.clearInterval(intervalId);
+  }, []);
+
   return (
     <BrowserRouter>
       <Routes>
