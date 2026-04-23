@@ -8,19 +8,13 @@ from . import models
 
 
 def create_room(db: Session, *, name: str, is_private: bool, owner_user_id: int) -> models.Room:
-    room = models.Room(name=name, is_private=is_private, owner_user_id=owner_user_id)
     try:
-        db.add(room)
-        db.commit()
-        db.refresh(room)
-    except SQLAlchemyError:
-        db.rollback()
-        raise
-    member = models.RoomMember(user_id=owner_user_id, role="owner")
-    member.room = room
-    try:
-        db.add(member)
-        db.commit()
+        with db.begin():
+            room = models.Room(name=name, is_private=is_private, owner_user_id=owner_user_id)
+            member = models.RoomMember(user_id=owner_user_id, role="owner")
+            member.room = room
+            db.add(room)
+            db.add(member)
         return room
     except SQLAlchemyError:
         db.rollback()
@@ -85,7 +79,7 @@ def delete_room(db: Session, *, room_id: int, owner_user_id: int) -> None:
         raise
     
 def list_messages(db: Session, *, room_id: int, limit: int = 50) -> list[models.Message]:
-    messages_list = db.query(models.Message).filter(models.Message.room_id == room_id).order_by(models.Message.created_at.desc()).limit(limit).all()
+    messages_list = db.query(models.Message).filter(models.Message.room_id == room_id).order_by(models.Message.created_at.desc(), models.Message.id.desc()).limit(limit).all()
     return list(reversed(messages_list))
 
 def create_message(db: Session, *, room_id: int, sender_user_id: int, content: str) -> models.Message:
