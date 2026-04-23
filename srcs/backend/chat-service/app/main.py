@@ -1,5 +1,6 @@
 from fastapi import Depends, FastAPI, HTTPException, status, Header
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from prometheus_fastapi_instrumentator import Instrumentator
 
@@ -46,7 +47,7 @@ def _current_user_id(x_user_id: str | None = Header(default=None, alias="X-User-
 def create_room(payload: schemas.RoomCreate, user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
 	try:
 		return crud.create_room(db, name=payload.name, is_private=payload.is_private, owner_user_id=user_id)
-	except Exception:
+	except IntegrityError:
 		raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Room already exist")
 	
 @app.get("/rooms", response_model=list[schemas.RoomOut])
