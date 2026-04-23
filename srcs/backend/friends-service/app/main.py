@@ -6,7 +6,6 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from prometheus_fastapi_instrumentator import Instrumentator
 
-from . import models
 from . import crud, schemas
 from .database import get_db, init_db, init_engine
 
