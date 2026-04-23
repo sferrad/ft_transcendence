@@ -20,7 +20,6 @@ const Home = () => {
         setIsMobileMenuOpen(false);
         window.location.href = path;
     };
-
     return (
         <div className="relative min-h-[100dvh] w-full bg-[url('/assets/bgHome.png')] bg-cover bg-center bg-no-repeat overflow-hidden">
             {/*

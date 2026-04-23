@@ -25,7 +25,7 @@ export default function IncomingFriendRequests({
 
     const arcadeButtonBase =
         "hb-tap font-arcade cursor-pointer border-0 shadow-[0px_4px_rgb(255,255,255),0px_-4px_rgb(255,255,255),4px_0px_rgb(255,255,255),-4px_0px_rgb(255,255,255),0px_4px_rgba(0,0,0,0.22),4px_4px_rgba(0,0,0,0.22),-4px_4px_rgba(0,0,0,0.22),inset_0px_4px_rgba(255,255,255,0.21)] no-underline inline-flex items-center justify-center gap-2 transition-transform duration-100 active:translate-y-0.5 max-w-full";
-    const arcadeTinyButton = `${arcadeButtonBase} px-2 py-2 min-[481px]:px-3`;
+    const arcadeTinyButton = `${arcadeButtonBase} px-2 py-2 min-[481px]:px-3 text-base min-[481px]:text-lg`;
 
     return (
         <div className="mt-4 rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-4 text-[#1f2937]">

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface ProfilePictureProps {
     profilePicture: string | null;
@@ -8,7 +9,11 @@ interface ProfilePictureProps {
 }
 
 function ProfilePicture({ profilePicture, isLoading, onImageUpload, presenceOnline }: ProfilePictureProps) {
+    const { t } = useTranslation();
     const [imageError, setImageError] = useState(false);
+
+    const resolvedProfileSrc =
+        profilePicture && profilePicture.startsWith("/profile/") ? `/api${profilePicture}` : profilePicture;
 
     useEffect(() => {
         setImageError(false);
@@ -23,8 +28,12 @@ function ProfilePicture({ profilePicture, isLoading, onImageUpload, presenceOnli
             {/* Profile Picture */}
             <div className="relative">
                 <img
-                    src={imageError ? '/assets/default-profile.jpg' : (profilePicture || '/assets/default-profile.jpg')}
-                    alt="Profile Picture"
+                    src={
+                        imageError
+                            ? "/assets/default-profile.jpg"
+                            : (resolvedProfileSrc || "/assets/default-profile.jpg")
+                    }
+                    alt={t("Profile Picture")}
                     onError={handleImageError}
                     className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 rounded-full object-cover border-4 border-[#2b2b2b] shadow-[4px_4px_0_#2b2b2b]"
                 />
@@ -36,7 +45,7 @@ function ProfilePicture({ profilePicture, isLoading, onImageUpload, presenceOnli
                             "absolute -right-1 -bottom-1 h-4 w-4 rounded-full border-2 border-[#2b2b2b]",
                             presenceOnline ? "bg-green-500" : "bg-red-700",
                         ].join(" ")}
-                        aria-label={presenceOnline ? "Online" : "Offline"}
+                        aria-label={presenceOnline ? t("Online") : t("Offline")}
                     />
                 )}
             </div>
@@ -46,9 +55,9 @@ function ProfilePicture({ profilePicture, isLoading, onImageUpload, presenceOnli
                 <div className="w-full max-w-xs">
                     <label 
                         htmlFor="image-upload" 
-                        className="hb-tap font-arcade cursor-pointer flex items-center justify-center px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 shadow-[0px_4px_rgb(255,255,255),0px_-4px_rgb(255,255,255),4px_0px_rgb(255,255,255),-4px_0px_rgb(255,255,255),0px_4px_rgba(0,0,0,0.22),4px_4px_rgba(0,0,0,0.22),-4px_4px_rgba(0,0,0,0.22),inset_0px_4px_rgba(255,255,255,0.21)] transition-transform duration-100 active:translate-y-0.5 disabled:bg-gray-400"
+                        className="hb-tap text-lg font-arcade cursor-pointer flex items-center justify-center px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 shadow-[0px_4px_rgb(255,255,255),0px_-4px_rgb(255,255,255),4px_0px_rgb(255,255,255),-4px_0px_rgb(255,255,255),0px_4px_rgba(0,0,0,0.22),4px_4px_rgba(0,0,0,0.22),-4px_4px_rgba(0,0,0,0.22),inset_0px_4px_rgba(255,255,255,0.21)] transition-transform duration-100 active:translate-y-0.5 disabled:bg-gray-400"
                     >
-                        Modifier la photo
+                        {t("Change Profile Picture")}
                     </label>
                     <input
                         id="image-upload"
