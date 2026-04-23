@@ -1,3 +1,4 @@
+import { t } from "i18next";
 
 type Props = {
     title: string;
@@ -11,7 +12,7 @@ export default function FriendsPanel({ title, friends, onSelectUserId }: Props) 
             <div className="font-arcade tracking-wide text-base min-[481px]:text-lg mb-3">{title}</div>
 
             {friends.length === 0 ? (
-                <div className="text-sm opacity-80">Aucun ami pour le moment.</div>
+                <div className="text-sm opacity-80">{t("No friends yet.")}</div>
             ) : (
                 <div className="space-y-2">
                     {friends.map((f) => (

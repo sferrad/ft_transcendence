@@ -41,7 +41,6 @@
     "Back": "Volver",
     "Page Not Found": "Pagina no encontrada",
     "Go Home": "Ir a inicio",
-    "Delete Account": "Eliminar cuenta",
 
     "Current Password": "Contrasena actual",
     "New Password": "Nueva contrasena",
@@ -71,5 +70,29 @@
 
     "Failed to delete account": "No se pudo eliminar la cuenta",
     "Account deleted successfully": "Cuenta eliminada con exito",
-    "An error occurred while deleting the account.": "Ocurrio un error al eliminar la cuenta."
+    "An error occurred while deleting the account.": "Ocurrio un error al eliminar la cuenta.",
+
+    "No friends yet.": "Aun no tienes amigos.",
+    "Search by username": "Buscar por nombre de usuario",
+    "Search": "Buscar",
+    "Friends": "Amigos",
+    "My Friends": "Mis Amigos",
+    "Friend Requests": "Solicitudes de Amistad",
+    "has sent you a request": "te ha enviado una solicitud",
+    "Accept": "Aceptar",
+    "Reject": "Rechazar",
+    "Remove Friend": "Eliminar Amigo",
+    "Add Friend": "Agregar Amigo",
+    "Unblock": "Desbloquear",
+    "Block": "Bloquear",
+
+    "Country": "Pais",
+    "Change Profile Picture": "Cambiar Foto de Perfil",
+    "Cancel": "Cancelar",
+    "Edit Bio": "Editar Bio",
+    "Add Bio": "Agregar Bio",
+    "Saving...": "Guardando...",
+    "Save": "Guardar",
+
+    "No bio set yet.": "Aun no has establecido una bio."
 }

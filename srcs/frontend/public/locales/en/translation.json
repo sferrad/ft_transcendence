@@ -41,7 +41,6 @@
     "Back": "Back",
     "Page Not Found": "Page Not Found",
     "Go Home": "Go Home",
-    "Delete Account": "Delete Account",
 
     "Current Password": "Current Password",
     "New Password": "New Password",
@@ -71,6 +70,29 @@
 
     "Failed to delete account": "Failed to delete account",
     "Account deleted successfully": "Account deleted successfully",
-    "An error occurred while deleting the account.": "An error occurred while deleting the account."
+    "An error occurred while deleting the account.": "An error occurred while deleting the account.",
     
+    "No friends yet.": "No friends yet.",
+    "Search by username": "Search by username",
+    "Search": "Search",
+    "Friends": "Friends",
+    "My Friends": "My Friends",
+    "Friend Requests": "Friend Requests",
+    "has sent you a request": "has sent you a request",
+    "Accept": "Accept",
+    "Reject": "Reject",
+    "Remove Friend": "Remove Friend",
+    "Add Friend": "Add Friend",
+    "Unblock": "Unblock",
+    "Block": "Block",
+
+    "Country": "Country",
+    "Change Profile Picture": "Change Profile Picture",
+    "Cancel": "Cancel",
+    "Edit Bio": "Edit Bio",
+    "Add Bio": "Add Bio",
+    "Saving...": "Saving...",
+    "Save": "Save",
+
+    "No bio set yet.": "No bio set yet."
 }

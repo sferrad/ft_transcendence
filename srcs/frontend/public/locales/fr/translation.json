@@ -42,8 +42,6 @@
     "Page Not Found": "Page non trouvee",
     "Go Home": "Aller a l'accueil",
 
-    "Delete Account": "Supprimer le compte",
-
     "Current Password": "Mot de passe actuel",
     "New Password": "Nouveau mot de passe",
     "Confirm New Password": "Confirmer le nouveau mot de passe",
@@ -72,6 +70,30 @@
 
     "Failed to delete account": "Echec de la suppression du compte",
     "Account deleted successfully": "Compte supprime avec succes",
-    "An error occurred while deleting the account.": "Une erreur s'est produite lors de la suppression du compte."
+    "An error occurred while deleting the account.": "Une erreur s'est produite lors de la suppression du compte.",
+
+    "No friends yet.": "Pas encore d'amis.",
+    "Search by username": "Rechercher par nom d'utilisateur",
+    "Search": "Rechercher",
+    "Friends": "Amis",
+    "My Friends": "Mes Amis",
+    "Friend Requests": "Demandes d'Amis",
+    "has sent you a request": "vous a envoyé une demande",
+    "Accept": "Accepter",
+    "Reject": "Rejeter",
+    "Remove Friend": "Supprimer Ami",
+    "Add Friend": "Ajouter Ami",
+    "Unblock": "Débloquer",
+    "Block": "Bloquer",
+
+    "Country": "Pays",
+    "Change Profile Picture": "Changer la photo de profil",
+    "Cancel": "Annuler",
+    "Edit Bio": "Modifier la bio",
+    "Add Bio": "Ajouter une bio",
+    "Saving...": "Sauvegarde...",
+    "Save": "Sauvegarder",
+
+    "No bio set yet.": "Aucune bio définie pour le moment."
 }
 

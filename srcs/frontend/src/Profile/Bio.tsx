@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 
 
 const HandleBio = () => {
+    const { t } = useTranslation();
     const [bio, setBio] = useState("");
     const [isEditing, setIsEditing] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -64,7 +66,7 @@ const HandleBio = () => {
 
     const arcadeButtonBase =
         "hb-tap font-arcade cursor-pointer border-0 shadow-[0px_4px_rgb(255,255,255),0px_-4px_rgb(255,255,255),4px_0px_rgb(255,255,255),-4px_0px_rgb(255,255,255),0px_4px_rgba(0,0,0,0.22),4px_4px_rgba(0,0,0,0.22),-4px_4px_rgba(0,0,0,0.22),inset_0px_4px_rgba(255,255,255,0.21)] no-underline inline-flex items-center justify-center gap-2 transition-transform duration-100 active:translate-y-0.5 max-w-full";
-    const arcadeSmallButton = `${arcadeButtonBase} px-4 py-2 text-sm min-[481px]:text-base`;
+    const arcadeSmallButton = `${arcadeButtonBase} px-4 py-2:text-base`;
 
     return (
         <div className="mt-4 rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-4 text-[#1f2937]">
@@ -88,25 +90,25 @@ const HandleBio = () => {
                             disabled={isLoading}
                             className={`${arcadeSmallButton} text-white bg-[#4AD95A] hover:bg-green-600 disabled:bg-gray-400`}
                         >
-                            {isLoading ? "Sauvegarde..." : "Save"}
+                            {isLoading ? t("Saving...") : t("Save")}
                         </button>
                         <button
                             onClick={() => setIsEditing(false)}
                             disabled={isLoading}
                             className={`${arcadeSmallButton} text-white bg-red-600 hover:bg-red-700 disabled:bg-gray-400`}
                         >
-                            Cancel
+                            {t("Cancel")}
                         </button>
                     </div>
                 </div>
             ) : (
                 <div className="flex items-start justify-between gap-4">
-                    <p className="text-sm min-[481px]:text-base whitespace-pre-wrap break-words flex-1">{bio || "No bio set yet."}</p>
+                    <p className="text-sm min-[481px]:text-base whitespace-pre-wrap break-words flex-1">{bio || t("No bio set yet.")}</p>
                     <button
                         onClick={() => setIsEditing(true)}
-                        className={`${arcadeSmallButton} text-white bg-blue-600 hover:bg-blue-700 flex-shrink-0`}
+                        className={`${arcadeSmallButton} text-sm min-[481px]:text-lg text-white bg-blue-600 hover:bg-blue-700 flex-shrink-0`}
                     >
-                        Edit
+                        {t(bio ? "Edit Bio" : "Add Bio")}
                     </button>
                 </div>
             )}
