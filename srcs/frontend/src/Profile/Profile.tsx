@@ -1,13 +1,12 @@
 import { useNavigate } from "react-router-dom";
 import "../i18n/index.ts";
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { uploadImageToCloudinary } from "../utils/cloudinary";
 import ProfilePicture from "./ProfilePicture";
 import HandleBio from "./Bio";
 import { useSearchParams } from "react-router-dom";
 import { Handleadd } from "./Friends/AddFriends";
-import type { FriendRequestOut, ProfileOut } from "./types";
+import type { FriendRequestOut, FriendswithStatusOut, ProfileOut } from "./types";
 import IncomingFriendRequests from "./components/IncomingFriendRequests";
 import FriendsPanel from "./components/FriendsPanel";
 import {
@@ -19,20 +18,53 @@ import {
     blockFriend,
     getFriendsWithStatus,
 } from "./api/friends";
-import { fetchMyProfile, fetchProfileByUserId, fetchUserByUsername, updateMyAvatar } from "./api/profile";
+import { fetchMyProfile, fetchProfileByUserId, fetchUserByUsername, uploadMyAvatar } from "./api/profile";
+
+function normalizeAvatarUrl(url: string | null): string | null {
+    if (!url) return null;
+    if (url.startsWith("/profile/avatars/")) {
+        return `/api/profile/avatars/${url.slice("/profile/avatars/".length)}`;
+    }
+    return url;
+}
+
+async function loadAvatarForImgSrc(
+    token: string,
+    normalizedUrl: string | null
+): Promise<{ src: string | null; isObjectUrl: boolean }> {
+    if (!normalizedUrl) return { src: null, isObjectUrl: false };
+
+    // If the avatar is behind /api/ (protected), <img> won't send Authorization.
+    // So we fetch it ourselves and convert it to a blob: URL.
+    if (normalizedUrl.startsWith("/api/profile/avatars/")) {
+        const response = await fetch(normalizedUrl, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) {
+            throw new Error(`Avatar HTTP ${response.status}`);
+        }
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        return { src: objectUrl, isObjectUrl: true };
+    }
+
+    // Public URL (Cloudinary, etc.)
+    return { src: normalizedUrl, isObjectUrl: false };
+}
 
 function Profile() {
     const navigate = useNavigate();
     const { t } = useTranslation();
     const [profilePicture, setProfilePicture] = useState<string | null>(null);
+    const lastAvatarObjectUrlRef = useRef<string | null>(null);
     const [profile, setProfile] = useState<ProfileOut | null>(null);
-    const [viewedUserOnline, setViewedUserOnline] = useState<boolean | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
     const [messageVisible, setMessageVisible] = useState(false);
     const [isBlocking, setIsBlocking] = useState(false);
     const [searchParams, setSearchParams] = useSearchParams();
+    const [viewedUserOnline, setViewedUserOnline] = useState<boolean | null>(null);
     const user = searchParams.get("user");
     const userIdParam = searchParams.get("userId");
     const userId = userIdParam ? Number(userIdParam) : null;
@@ -47,7 +79,7 @@ function Profile() {
 
     const isAlreadyFriend = !isMe && !!profile?.user_id && friends.some((f) => f.userId === profile.user_id);
 
-    useEffect(() => {
+     useEffect(() => {
         if (isMe || !profile?.user_id) {
             setViewedUserOnline(null);
             return;
@@ -63,8 +95,8 @@ function Profile() {
 
         (async () => {
             try {
-                const list = await getFriendsWithStatus(token);
-                const match = list.find((f) => f.friend_id === profile.user_id);
+                const list: FriendswithStatusOut[] = await getFriendsWithStatus(token);
+                const match = list.find((f: FriendswithStatusOut) => f.friend_id === profile.user_id);
                 if (!cancelled) setViewedUserOnline(match ? match.online : null);
             } catch (e) {
                 console.error("Error fetching presence for viewed profile:", e);
@@ -124,7 +156,13 @@ function Profile() {
                     }
                     const data = await fetchProfileByUserId(token, idNum);
                     setProfile(data);
-                    setProfilePicture(data.avatar_url ?? null);
+                    const { src, isObjectUrl } = await loadAvatarForImgSrc(token, normalizeAvatarUrl(data.avatar_url ?? null));
+                    if (lastAvatarObjectUrlRef.current) {
+                        URL.revokeObjectURL(lastAvatarObjectUrlRef.current);
+                        lastAvatarObjectUrlRef.current = null;
+                    }
+                    if (isObjectUrl && src) lastAvatarObjectUrlRef.current = src;
+                    setProfilePicture(src);
                     return;
                 }
 
@@ -132,7 +170,13 @@ function Profile() {
                 if (!username || username === myUsername) {
                     const data = await fetchMyProfile(token);
                     setProfile(data);
-                    setProfilePicture(data.avatar_url ?? null);
+                    const { src, isObjectUrl } = await loadAvatarForImgSrc(token, normalizeAvatarUrl(data.avatar_url ?? null));
+                    if (lastAvatarObjectUrlRef.current) {
+                        URL.revokeObjectURL(lastAvatarObjectUrlRef.current);
+                        lastAvatarObjectUrlRef.current = null;
+                    }
+                    if (isObjectUrl && src) lastAvatarObjectUrlRef.current = src;
+                    setProfilePicture(src);
                     return;
                 }
 
@@ -140,7 +184,13 @@ function Profile() {
                 const userData = await fetchUserByUsername(username);
                 const data = await fetchProfileByUserId(token, userData.id);
                 setProfile(data);
-                setProfilePicture(data.avatar_url ?? null);
+                const { src, isObjectUrl } = await loadAvatarForImgSrc(token, normalizeAvatarUrl(data.avatar_url ?? null));
+                if (lastAvatarObjectUrlRef.current) {
+                    URL.revokeObjectURL(lastAvatarObjectUrlRef.current);
+                    lastAvatarObjectUrlRef.current = null;
+                }
+                if (isObjectUrl && src) lastAvatarObjectUrlRef.current = src;
+                setProfilePicture(src);
             } catch (error) {
                 console.error("Error fetching profile picture:", error);
                 const message = error instanceof Error ? error.message : "Erreur lors du chargement du profil";
@@ -152,6 +202,15 @@ function Profile() {
         fetchIncomingRequests();
         fetchProfile(user);
     }, [navigate, user, myUsername, isMe, userIdParam]);
+
+    useEffect(() => {
+        return () => {
+            if (lastAvatarObjectUrlRef.current) {
+                URL.revokeObjectURL(lastAvatarObjectUrlRef.current);
+                lastAvatarObjectUrlRef.current = null;
+            }
+        };
+    }, []);
 
     useEffect(() => {
         if (!isMe || !showFriends) return;
@@ -166,10 +225,10 @@ function Profile() {
 
         (async () => {
             try {
-                const list = await getFriendsWithStatus(token);
+                const list: FriendswithStatusOut[] = await getFriendsWithStatus(token);
 
                 const profiles = await Promise.all(
-                    list.map(async (f) => {
+                    list.map(async (f: FriendswithStatusOut) => {
                         const id = f.friend_id;
                         try {
                             const p = await fetchProfileByUserId(token, id);
@@ -232,10 +291,18 @@ function Profile() {
         }
 
         try {
-            const imageUrl = await uploadImageToCloudinary(file);
-            setProfilePicture(imageUrl);
-
-            await updateMyAvatar(token, imageUrl);
+            const updatedProfile = await uploadMyAvatar(token, file);
+            setProfile(updatedProfile);
+            const { src, isObjectUrl } = await loadAvatarForImgSrc(
+                token,
+                normalizeAvatarUrl(updatedProfile.avatar_url ?? null)
+            );
+            if (lastAvatarObjectUrlRef.current) {
+                URL.revokeObjectURL(lastAvatarObjectUrlRef.current);
+                lastAvatarObjectUrlRef.current = null;
+            }
+            if (isObjectUrl && src) lastAvatarObjectUrlRef.current = src;
+            setProfilePicture(src);
 
             setSuccess(true);
             setMessageVisible(true);

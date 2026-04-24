@@ -14,6 +14,7 @@ RUN apt-get update && \
     && rm -rf /var/lib/apt/lists/* \
     && useradd -m -u 1000 -s /bin/bash appuser \
     && mkdir -p  /app/logs \
+    && mkdir -p /app/uploads/avatars \
     && chown -R appuser:appuser /app
     
 	
