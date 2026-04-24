@@ -6,17 +6,17 @@ import ProfilePicture from "./ProfilePicture";
 import HandleBio from "./Bio";
 import { useSearchParams } from "react-router-dom";
 import { Handleadd } from "./Friends/AddFriends";
-import type { FriendRequestOut, ProfileOut } from "./types";
+import type { FriendRequestOut, FriendswithStatusOut, ProfileOut } from "./types";
 import IncomingFriendRequests from "./components/IncomingFriendRequests";
 import FriendsPanel from "./components/FriendsPanel";
 import {
     acceptFriendRequest,
-    getFriendsList,
     fetchIncomingFriendRequests,
     rejectFriendRequest,
     resolveRequesterNames,
     unblockFriend,
     blockFriend,
+    getFriendsWithStatus,
 } from "./api/friends";
 import { fetchMyProfile, fetchProfileByUserId, fetchUserByUsername, uploadMyAvatar } from "./api/profile";
 
@@ -64,6 +64,7 @@ function Profile() {
     const [messageVisible, setMessageVisible] = useState(false);
     const [isBlocking, setIsBlocking] = useState(false);
     const [searchParams, setSearchParams] = useSearchParams();
+    const [viewedUserOnline, setViewedUserOnline] = useState<boolean | null>(null);
     const user = searchParams.get("user");
     const userIdParam = searchParams.get("userId");
     const userId = userIdParam ? Number(userIdParam) : null;
@@ -77,6 +78,36 @@ function Profile() {
     const isMe = (!user && !userIdParam) || user === myUsername || (!!userId && myUserId > 0 && userId === myUserId);
 
     const isAlreadyFriend = !isMe && !!profile?.user_id && friends.some((f) => f.userId === profile.user_id);
+
+     useEffect(() => {
+        if (isMe || !profile?.user_id) {
+            setViewedUserOnline(null);
+            return;
+        }
+
+        const token = localStorage.getItem("access_token");
+        if (!token) {
+            setViewedUserOnline(null);
+            return;
+        }
+
+        let cancelled = false;
+
+        (async () => {
+            try {
+                const list: FriendswithStatusOut[] = await getFriendsWithStatus(token);
+                const match = list.find((f: FriendswithStatusOut) => f.friend_id === profile.user_id);
+                if (!cancelled) setViewedUserOnline(match ? match.online : null);
+            } catch (e) {
+                console.error("Error fetching presence for viewed profile:", e);
+                if (!cancelled) setViewedUserOnline(null);
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [isMe, profile?.user_id]);
 
     useEffect(() => {
         if (isMe || !profile?.user_id) return;
@@ -194,16 +225,16 @@ function Profile() {
 
         (async () => {
             try {
-                const list = await getFriendsList(token);
-                const friendIds = list.map((f) => f.friend_id);
+                const list: FriendswithStatusOut[] = await getFriendsWithStatus(token);
 
                 const profiles = await Promise.all(
-                    friendIds.map(async (id) => {
+                    list.map(async (f: FriendswithStatusOut) => {
+                        const id = f.friend_id;
                         try {
                             const p = await fetchProfileByUserId(token, id);
-                            return { userId: id, displayName: p.display_name || String(id), online: false };
+                            return { userId: id, displayName: p.display_name || String(id), online: f.online };
                         } catch {
-                            return { userId: id, displayName: String(id), online: false };
+                            return { userId: id, displayName: String(id), online: f.online };
                         }
                     })
                 );
@@ -313,8 +344,8 @@ function Profile() {
 
     const arcadeButtonBase =
         "hb-tap font-arcade cursor-pointer border-0 shadow-[0px_4px_rgb(255,255,255),0px_-4px_rgb(255,255,255),4px_0px_rgb(255,255,255),-4px_0px_rgb(255,255,255),0px_4px_rgba(0,0,0,0.22),4px_4px_rgba(0,0,0,0.22),-4px_4px_rgba(0,0,0,0.22),inset_0px_4px_rgba(255,255,255,0.21)] no-underline inline-flex items-center justify-center gap-2 transition-transform duration-100 active:translate-y-0.5 max-w-full";
-    const arcadePrimaryButton = `${arcadeButtonBase} px-4 py-2 text-base min-[481px]:text-lg`;
-    const arcadeSmallButton = `${arcadeButtonBase} px-3 py-2 text-sm min-[481px]:text-base`;
+    const arcadePrimaryButton = `${arcadeButtonBase} px-4 py-2`;
+    const arcadeSmallButton = `${arcadeButtonBase} px-3 py-2 text-lg min-[481px]:text-xl`;
 
     return (
         <div className="relative min-h-[100dvh] w-full overflow-auto">
@@ -329,14 +360,14 @@ function Profile() {
                         <input
                             value={searchUserId}
                             onChange={(e) => setSearchUserId(e.target.value)}
-                            placeholder={t("Rechercher un profil")}
+                            placeholder={t("Search by username")}
                             className="hb-tap flex-1 px-4 py-2 rounded-lg border-2 border-[#2b2b2b] bg-white/90 text-[#1f2937] text-base focus:outline-none focus:ring-2 focus:ring-black/20"
                         />
                         <button
                             type="submit"
                             className={`${arcadePrimaryButton} text-white bg-blue-600 hover:bg-blue-700`}
                         >
-                            {t("Rechercher")}
+                            {t("Search")}
                         </button>
                     </form>
 
@@ -344,6 +375,7 @@ function Profile() {
                         profilePicture={profilePicture}
                         isLoading={isLoading}
                         onImageUpload={isMe ? handleImageUpload : undefined}
+                        presenceOnline={!isMe ? viewedUserOnline : null}
                     />
 
                     <h1 className="hb-title font-arcade tracking-widest text-[#1f2937] text-center">
@@ -355,7 +387,7 @@ function Profile() {
                             <button
                                 type="button"
                                 onClick={() => setShowFriends((v) => !v)}
-                                className={`${arcadePrimaryButton} text-white bg-blue-600 hover:bg-blue-700`}
+                                className={`${arcadePrimaryButton} text-2xl min-[481px]:text-3xl text-white bg-blue-600 hover:bg-blue-700`}
                             >
                                 {t("Friends")}
                             </button>
@@ -364,7 +396,7 @@ function Profile() {
 
                     {isMe && showFriends && (
                         <FriendsPanel
-                            title={t("Mes amis")}
+                            title={t("My Friends")}
                             friends={friends}
                             onSelectUserId={(friendUserId) => {
                                 setShowFriends(false);
@@ -379,10 +411,10 @@ function Profile() {
 
                     {isMe && (
                         <IncomingFriendRequests
-                            title={t("Demandes d'amis")}
-                            subtitle={t("t'a envoyé une demande")}
-                            acceptLabel={t("Accepter")}
-                            rejectLabel={t("Refuser")}
+                            title={t("Friend Requests")}
+                            subtitle={t("has sent you a request")}
+                            acceptLabel={t("Accept")}
+                            rejectLabel={t("Reject")}
                             requests={incomingRequests}
                             requesterNames={requesterNames}
                             onAccept={(requestId) => {
@@ -465,11 +497,11 @@ function Profile() {
                                     }}
                                     className={`${arcadeSmallButton} ${
                                         isAlreadyFriend
-                                            ? "text-white bg-red-600 hover:bg-red-700"
-                                            : "text-white bg-blue-600 hover:bg-blue-700"
+                                            ? "text-white text-lg min-[481px]:text-xl bg-red-600 hover:bg-red-700"
+                                            : "text-white text-lg min-[481px]:text-xl bg-blue-600 hover:bg-blue-700"
                                     }`}
                                 >
-                                    👥 {isAlreadyFriend ? t("Supprimer l'ami") : t("Add Friend")}
+                                    👥 {isAlreadyFriend ? t("Remove Friend") : t("Add Friend")}
                                 </button>
 
                                 {!isMe && profile?.user_id && (
@@ -507,11 +539,11 @@ function Profile() {
                                         }}
                                         className={`${arcadeSmallButton} ${
                                             isBlocking
-                                                ? "text-white bg-[#4AD95A] hover:bg-green-600"
-                                                : "text-white bg-red-600 hover:bg-red-700"
+                                                ? "text-white text-lg min-[481px]:text-xl bg-[#4AD95A] hover:bg-green-600"
+                                                : "text-white text-lg min-[481px]:text-xl bg-red-600 hover:bg-red-700"
                                         }`}
                                     >
-                                        {isBlocking ? t("Débloquer") : t("Bloquer")}
+                                        {isBlocking ? t("Unblock") : t("Block")}
                                     </button>
                                 )}
                             </div>
@@ -520,11 +552,11 @@ function Profile() {
 
                     <div className="mt-4 grid grid-cols-1 min-[481px]:grid-cols-2 gap-3 text-sm text-[#1f2937]">
                         <div className="rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-3">
-                            <div className="font-arcade tracking-wide text-base min-[481px]:text-lg">{t("Pays")}</div>
+                            <div className="font-arcade tracking-wide text-base min-[481px]:text-lg">{t("Country")}</div>
                             <div className="mt-1">{profile?.country ?? "-"}</div>
                         </div>
                         <div className="rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-3">
-                            <div className="font-arcade tracking-wide text-base min-[481px]:text-lg">{t("Langue")}</div>
+                            <div className="font-arcade tracking-wide text-base min-[481px]:text-lg">{t("Language")}</div>
                             <div className="mt-1">{profile?.language ?? "-"}</div>
                         </div>
                     </div>
@@ -565,7 +597,7 @@ function Profile() {
 
                     <button
                         onClick={handleLogout}
-                        className={`w-full mt-6 ${arcadePrimaryButton} text-white bg-red-600 hover:bg-red-700`}
+                        className={`w-full mt-6 ${arcadePrimaryButton} text-4xl text-white bg-red-600 hover:bg-red-700`}
                     >
                         {t("Logout")}
                     </button>
