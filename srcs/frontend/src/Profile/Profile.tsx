@@ -1,8 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import "../i18n/index.ts";
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { uploadImageToCloudinary } from "../utils/cloudinary";
 import ProfilePicture from "./ProfilePicture";
 import HandleBio from "./Bio";
 import { useSearchParams } from "react-router-dom";
@@ -12,21 +11,53 @@ import IncomingFriendRequests from "./components/IncomingFriendRequests";
 import FriendsPanel from "./components/FriendsPanel";
 import {
     acceptFriendRequest,
+    getFriendsList,
     fetchIncomingFriendRequests,
     rejectFriendRequest,
     resolveRequesterNames,
     unblockFriend,
     blockFriend,
-    getFriendsWithStatus,
 } from "./api/friends";
-import { fetchMyProfile, fetchProfileByUserId, fetchUserByUsername, updateMyAvatar } from "./api/profile";
+import { fetchMyProfile, fetchProfileByUserId, fetchUserByUsername, uploadMyAvatar } from "./api/profile";
+
+function normalizeAvatarUrl(url: string | null): string | null {
+    if (!url) return null;
+    if (url.startsWith("/profile/avatars/")) {
+        return `/api/profile/avatars/${url.slice("/profile/avatars/".length)}`;
+    }
+    return url;
+}
+
+async function loadAvatarForImgSrc(
+    token: string,
+    normalizedUrl: string | null
+): Promise<{ src: string | null; isObjectUrl: boolean }> {
+    if (!normalizedUrl) return { src: null, isObjectUrl: false };
+
+    // If the avatar is behind /api/ (protected), <img> won't send Authorization.
+    // So we fetch it ourselves and convert it to a blob: URL.
+    if (normalizedUrl.startsWith("/api/profile/avatars/")) {
+        const response = await fetch(normalizedUrl, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) {
+            throw new Error(`Avatar HTTP ${response.status}`);
+        }
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        return { src: objectUrl, isObjectUrl: true };
+    }
+
+    // Public URL (Cloudinary, etc.)
+    return { src: normalizedUrl, isObjectUrl: false };
+}
 
 function Profile() {
     const navigate = useNavigate();
     const { t } = useTranslation();
     const [profilePicture, setProfilePicture] = useState<string | null>(null);
+    const lastAvatarObjectUrlRef = useRef<string | null>(null);
     const [profile, setProfile] = useState<ProfileOut | null>(null);
-    const [viewedUserOnline, setViewedUserOnline] = useState<boolean | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
@@ -46,36 +77,6 @@ function Profile() {
     const isMe = (!user && !userIdParam) || user === myUsername || (!!userId && myUserId > 0 && userId === myUserId);
 
     const isAlreadyFriend = !isMe && !!profile?.user_id && friends.some((f) => f.userId === profile.user_id);
-
-    useEffect(() => {
-        if (isMe || !profile?.user_id) {
-            setViewedUserOnline(null);
-            return;
-        }
-
-        const token = localStorage.getItem("access_token");
-        if (!token) {
-            setViewedUserOnline(null);
-            return;
-        }
-
-        let cancelled = false;
-
-        (async () => {
-            try {
-                const list = await getFriendsWithStatus(token);
-                const match = list.find((f) => f.friend_id === profile.user_id);
-                if (!cancelled) setViewedUserOnline(match ? match.online : null);
-            } catch (e) {
-                console.error("Error fetching presence for viewed profile:", e);
-                if (!cancelled) setViewedUserOnline(null);
-            }
-        })();
-
-        return () => {
-            cancelled = true;
-        };
-    }, [isMe, profile?.user_id]);
 
     useEffect(() => {
         if (isMe || !profile?.user_id) return;
@@ -124,7 +125,13 @@ function Profile() {
                     }
                     const data = await fetchProfileByUserId(token, idNum);
                     setProfile(data);
-                    setProfilePicture(data.avatar_url ?? null);
+                    const { src, isObjectUrl } = await loadAvatarForImgSrc(token, normalizeAvatarUrl(data.avatar_url ?? null));
+                    if (lastAvatarObjectUrlRef.current) {
+                        URL.revokeObjectURL(lastAvatarObjectUrlRef.current);
+                        lastAvatarObjectUrlRef.current = null;
+                    }
+                    if (isObjectUrl && src) lastAvatarObjectUrlRef.current = src;
+                    setProfilePicture(src);
                     return;
                 }
 
@@ -132,7 +139,13 @@ function Profile() {
                 if (!username || username === myUsername) {
                     const data = await fetchMyProfile(token);
                     setProfile(data);
-                    setProfilePicture(data.avatar_url ?? null);
+                    const { src, isObjectUrl } = await loadAvatarForImgSrc(token, normalizeAvatarUrl(data.avatar_url ?? null));
+                    if (lastAvatarObjectUrlRef.current) {
+                        URL.revokeObjectURL(lastAvatarObjectUrlRef.current);
+                        lastAvatarObjectUrlRef.current = null;
+                    }
+                    if (isObjectUrl && src) lastAvatarObjectUrlRef.current = src;
+                    setProfilePicture(src);
                     return;
                 }
 
@@ -140,7 +153,13 @@ function Profile() {
                 const userData = await fetchUserByUsername(username);
                 const data = await fetchProfileByUserId(token, userData.id);
                 setProfile(data);
-                setProfilePicture(data.avatar_url ?? null);
+                const { src, isObjectUrl } = await loadAvatarForImgSrc(token, normalizeAvatarUrl(data.avatar_url ?? null));
+                if (lastAvatarObjectUrlRef.current) {
+                    URL.revokeObjectURL(lastAvatarObjectUrlRef.current);
+                    lastAvatarObjectUrlRef.current = null;
+                }
+                if (isObjectUrl && src) lastAvatarObjectUrlRef.current = src;
+                setProfilePicture(src);
             } catch (error) {
                 console.error("Error fetching profile picture:", error);
                 const message = error instanceof Error ? error.message : "Erreur lors du chargement du profil";
@@ -152,6 +171,15 @@ function Profile() {
         fetchIncomingRequests();
         fetchProfile(user);
     }, [navigate, user, myUsername, isMe, userIdParam]);
+
+    useEffect(() => {
+        return () => {
+            if (lastAvatarObjectUrlRef.current) {
+                URL.revokeObjectURL(lastAvatarObjectUrlRef.current);
+                lastAvatarObjectUrlRef.current = null;
+            }
+        };
+    }, []);
 
     useEffect(() => {
         if (!isMe || !showFriends) return;
@@ -166,16 +194,16 @@ function Profile() {
 
         (async () => {
             try {
-                const list = await getFriendsWithStatus(token);
+                const list = await getFriendsList(token);
+                const friendIds = list.map((f) => f.friend_id);
 
                 const profiles = await Promise.all(
-                    list.map(async (f) => {
-                        const id = f.friend_id;
+                    friendIds.map(async (id) => {
                         try {
                             const p = await fetchProfileByUserId(token, id);
-                            return { userId: id, displayName: p.display_name || String(id), online: f.online };
+                            return { userId: id, displayName: p.display_name || String(id), online: false };
                         } catch {
-                            return { userId: id, displayName: String(id), online: f.online };
+                            return { userId: id, displayName: String(id), online: false };
                         }
                     })
                 );
@@ -232,10 +260,18 @@ function Profile() {
         }
 
         try {
-            const imageUrl = await uploadImageToCloudinary(file);
-            setProfilePicture(imageUrl);
-
-            await updateMyAvatar(token, imageUrl);
+            const updatedProfile = await uploadMyAvatar(token, file);
+            setProfile(updatedProfile);
+            const { src, isObjectUrl } = await loadAvatarForImgSrc(
+                token,
+                normalizeAvatarUrl(updatedProfile.avatar_url ?? null)
+            );
+            if (lastAvatarObjectUrlRef.current) {
+                URL.revokeObjectURL(lastAvatarObjectUrlRef.current);
+                lastAvatarObjectUrlRef.current = null;
+            }
+            if (isObjectUrl && src) lastAvatarObjectUrlRef.current = src;
+            setProfilePicture(src);
 
             setSuccess(true);
             setMessageVisible(true);
@@ -277,8 +313,8 @@ function Profile() {
 
     const arcadeButtonBase =
         "hb-tap font-arcade cursor-pointer border-0 shadow-[0px_4px_rgb(255,255,255),0px_-4px_rgb(255,255,255),4px_0px_rgb(255,255,255),-4px_0px_rgb(255,255,255),0px_4px_rgba(0,0,0,0.22),4px_4px_rgba(0,0,0,0.22),-4px_4px_rgba(0,0,0,0.22),inset_0px_4px_rgba(255,255,255,0.21)] no-underline inline-flex items-center justify-center gap-2 transition-transform duration-100 active:translate-y-0.5 max-w-full";
-    const arcadePrimaryButton = `${arcadeButtonBase} px-4 py-2`;
-    const arcadeSmallButton = `${arcadeButtonBase} px-3 py-2 text-lg min-[481px]:text-xl`;
+    const arcadePrimaryButton = `${arcadeButtonBase} px-4 py-2 text-base min-[481px]:text-lg`;
+    const arcadeSmallButton = `${arcadeButtonBase} px-3 py-2 text-sm min-[481px]:text-base`;
 
     return (
         <div className="relative min-h-[100dvh] w-full overflow-auto">
@@ -293,14 +329,14 @@ function Profile() {
                         <input
                             value={searchUserId}
                             onChange={(e) => setSearchUserId(e.target.value)}
-                            placeholder={t("Search by username")}
+                            placeholder={t("Rechercher un profil")}
                             className="hb-tap flex-1 px-4 py-2 rounded-lg border-2 border-[#2b2b2b] bg-white/90 text-[#1f2937] text-base focus:outline-none focus:ring-2 focus:ring-black/20"
                         />
                         <button
                             type="submit"
                             className={`${arcadePrimaryButton} text-white bg-blue-600 hover:bg-blue-700`}
                         >
-                            {t("Search")}
+                            {t("Rechercher")}
                         </button>
                     </form>
 
@@ -308,7 +344,6 @@ function Profile() {
                         profilePicture={profilePicture}
                         isLoading={isLoading}
                         onImageUpload={isMe ? handleImageUpload : undefined}
-                        presenceOnline={!isMe ? viewedUserOnline : null}
                     />
 
                     <h1 className="hb-title font-arcade tracking-widest text-[#1f2937] text-center">
@@ -320,7 +355,7 @@ function Profile() {
                             <button
                                 type="button"
                                 onClick={() => setShowFriends((v) => !v)}
-                                className={`${arcadePrimaryButton} text-2xl min-[481px]:text-3xl text-white bg-blue-600 hover:bg-blue-700`}
+                                className={`${arcadePrimaryButton} text-white bg-blue-600 hover:bg-blue-700`}
                             >
                                 {t("Friends")}
                             </button>
@@ -329,7 +364,7 @@ function Profile() {
 
                     {isMe && showFriends && (
                         <FriendsPanel
-                            title={t("My Friends")}
+                            title={t("Mes amis")}
                             friends={friends}
                             onSelectUserId={(friendUserId) => {
                                 setShowFriends(false);
@@ -344,10 +379,10 @@ function Profile() {
 
                     {isMe && (
                         <IncomingFriendRequests
-                            title={t("Friend Requests")}
-                            subtitle={t("has sent you a request")}
-                            acceptLabel={t("Accept")}
-                            rejectLabel={t("Reject")}
+                            title={t("Demandes d'amis")}
+                            subtitle={t("t'a envoyé une demande")}
+                            acceptLabel={t("Accepter")}
+                            rejectLabel={t("Refuser")}
                             requests={incomingRequests}
                             requesterNames={requesterNames}
                             onAccept={(requestId) => {
@@ -430,11 +465,11 @@ function Profile() {
                                     }}
                                     className={`${arcadeSmallButton} ${
                                         isAlreadyFriend
-                                            ? "text-white text-lg min-[481px]:text-xl bg-red-600 hover:bg-red-700"
-                                            : "text-white text-lg min-[481px]:text-xl bg-blue-600 hover:bg-blue-700"
+                                            ? "text-white bg-red-600 hover:bg-red-700"
+                                            : "text-white bg-blue-600 hover:bg-blue-700"
                                     }`}
                                 >
-                                    👥 {isAlreadyFriend ? t("Remove Friend") : t("Add Friend")}
+                                    👥 {isAlreadyFriend ? t("Supprimer l'ami") : t("Add Friend")}
                                 </button>
 
                                 {!isMe && profile?.user_id && (
@@ -472,11 +507,11 @@ function Profile() {
                                         }}
                                         className={`${arcadeSmallButton} ${
                                             isBlocking
-                                                ? "text-white text-lg min-[481px]:text-xl bg-[#4AD95A] hover:bg-green-600"
-                                                : "text-white text-lg min-[481px]:text-xl bg-red-600 hover:bg-red-700"
+                                                ? "text-white bg-[#4AD95A] hover:bg-green-600"
+                                                : "text-white bg-red-600 hover:bg-red-700"
                                         }`}
                                     >
-                                        {isBlocking ? t("Unblock") : t("Block")}
+                                        {isBlocking ? t("Débloquer") : t("Bloquer")}
                                     </button>
                                 )}
                             </div>
@@ -485,11 +520,11 @@ function Profile() {
 
                     <div className="mt-4 grid grid-cols-1 min-[481px]:grid-cols-2 gap-3 text-sm text-[#1f2937]">
                         <div className="rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-3">
-                            <div className="font-arcade tracking-wide text-base min-[481px]:text-lg">{t("Country")}</div>
+                            <div className="font-arcade tracking-wide text-base min-[481px]:text-lg">{t("Pays")}</div>
                             <div className="mt-1">{profile?.country ?? "-"}</div>
                         </div>
                         <div className="rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-3">
-                            <div className="font-arcade tracking-wide text-base min-[481px]:text-lg">{t("Language")}</div>
+                            <div className="font-arcade tracking-wide text-base min-[481px]:text-lg">{t("Langue")}</div>
                             <div className="mt-1">{profile?.language ?? "-"}</div>
                         </div>
                     </div>
@@ -530,7 +565,7 @@ function Profile() {
 
                     <button
                         onClick={handleLogout}
-                        className={`w-full mt-6 ${arcadePrimaryButton} text-4xl text-white bg-red-600 hover:bg-red-700`}
+                        className={`w-full mt-6 ${arcadePrimaryButton} text-white bg-red-600 hover:bg-red-700`}
                     >
                         {t("Logout")}
                     </button>
