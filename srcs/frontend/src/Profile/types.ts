@@ -39,3 +39,42 @@ export type FriendOut = {
     friend_id: number;
     created_at?: string | null;
 };
+
+export type RoomOut = {
+    id: number;
+    name: string;
+    is_private: boolean;
+    owner_user_id: number;
+    created_at?: string | null;
+};
+
+export type RoomCreate = {
+    name: string;
+    is_private: boolean;
+};
+
+export type MessageOut = {
+    sender_user_id: number;
+    room_id: number;
+    content: string;
+    created_at?: string | null;
+};
+
+export type MessageCreate = {
+    content: string;
+};
+
+export type JoinRoomOut = {
+    ok: boolean;
+    room_id: number;
+};
+
+export type LeaveRoomOut = {
+    ok: boolean;
+    room_id: number;
+};
+
+export type DeleteRoomOut = {
+    ok: boolean;
+    room_id: number;
+};
