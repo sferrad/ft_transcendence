@@ -28,6 +28,7 @@ function Profil() {
                 className='hb-tap cursor-pointer profile-button inline-flex items-center justify-center'><CgProfile /></button>
             {isOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-2 z-50 profile-menu">
+                    <button onClick={() => navigate("/chat")} className="hb-tap block w-full text-left px-4 py-3 text-base text-gray-700 hover:bg-gray-100">{t("Chat")}</button>
                     <button onClick={() => navigate("/profile")} className="hb-tap block w-full text-left px-4 py-3 text-base text-gray-700 hover:bg-gray-100">{t("Profile")}</button>
                     <button onClick={disconnect} className="hb-tap block w-full text-left px-4 py-3 text-base text-gray-700 hover:bg-gray-100">{t("Logout")}</button>
                 </div>
