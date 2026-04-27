@@ -1,9 +1,13 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { ChatButton } from "./ChatButton";
 
 function ChatPage() {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const roomIdParam = searchParams.get("roomId");
+    const initialRoomId = roomIdParam ? Number(roomIdParam) : null;
 
     useEffect(() => {
         const token = localStorage.getItem("access_token");
@@ -30,7 +34,7 @@ function ChatPage() {
                 </div>
 
                 <div className="min-h-0 flex-1 overflow-hidden rounded-[1.5rem] border-4 border-[#1f2937] bg-white/90 shadow-[10px_10px_0_#1f2937]">
-                    <ChatButton />
+                    <ChatButton initialRoomId={Number.isFinite(initialRoomId) && (initialRoomId ?? 0) > 0 ? initialRoomId : null} />
                 </div>
             </div>
         </div>
