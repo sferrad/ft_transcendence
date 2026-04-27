@@ -4,7 +4,11 @@ import type { MessageOut, ProfileOut, RoomOut } from "../Profile/types";
 import { createRoom, deleteRoom, getMessages, getRoomMembers, getRooms, joinRoom, leaveRoom, sendMessage } from "../Profile/api/chat";
 import { fetchProfileByUserId } from "../Profile/api/profile";
 
-export function ChatButton() {
+type ChatButtonProps = {
+    initialRoomId?: number | null;
+};
+
+export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
     const navigate = useNavigate();
     const [rooms, setRooms] = useState<RoomOut[]>([]);
     const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
@@ -31,6 +35,42 @@ export function ChatButton() {
         const data = await getRooms(token);
         setRooms(data);
     };
+
+    const parseDmPairFromRoomName = (roomName: string): [number, number] | null => {
+        const match = /^dm-(\d+)-(\d+)$/.exec(roomName.trim());
+        if (!match) return null;
+        const a = Number(match[1]);
+        const b = Number(match[2]);
+        if (!Number.isFinite(a) || !Number.isFinite(b) || a <= 0 || b <= 0) return null;
+        return [a, b];
+    };
+
+    const getDmOtherUserId = (room: RoomOut): number | null => {
+        if (!room.is_private) return null;
+        const pair = parseDmPairFromRoomName(room.name);
+        if (!pair) return null;
+        const [a, b] = pair;
+        if (currentUserId === a) return b;
+        if (currentUserId === b) return a;
+        return null;
+    };
+
+    const getRoomDisplayName = (room: RoomOut): string => {
+        const otherUserId = getDmOtherUserId(room);
+        if (!otherUserId) return room.name;
+        const partner = profiles[otherUserId];
+        return partner?.display_name?.trim() || "Direct message";
+    };
+
+    const visibleRooms = useMemo(() => {
+        return rooms.filter((room) => {
+            if (!room.is_private) return true;
+            const pair = parseDmPairFromRoomName(room.name);
+            if (!pair) return true;
+            const [a, b] = pair;
+            return currentUserId > 0 && (currentUserId === a || currentUserId === b);
+        });
+    }, [rooms, currentUserId]);
 
     const refreshMessages = async (roomId: number) => {
         if (!token) return;
@@ -142,6 +182,22 @@ export function ChatButton() {
     }, [token]);
 
     useEffect(() => {
+        if (!initialRoomId || selectedRoomId != null || visibleRooms.length === 0) return;
+        const exists = visibleRooms.some((room) => room.id === initialRoomId);
+        if (exists) setSelectedRoomId(initialRoomId);
+    }, [initialRoomId, visibleRooms, selectedRoomId]);
+
+    useEffect(() => {
+        if (selectedRoomId == null) return;
+        const stillVisible = visibleRooms.some((room) => room.id === selectedRoomId);
+        if (stillVisible) return;
+        setSelectedRoomId(null);
+        setMessages([]);
+        setMemberIds([]);
+        setSystemEvents([]);
+    }, [visibleRooms, selectedRoomId]);
+
+    useEffect(() => {
         if (selectedRoomId == null) return;
 
         prevMemberIdsRef.current = null;
@@ -164,6 +220,19 @@ export function ChatButton() {
         if (!messages.length) return;
         hydrateProfiles(messages).catch(() => undefined);
     }, [messages]);
+
+    useEffect(() => {
+        if (!token || currentUserId <= 0 || rooms.length === 0) return;
+        const partnerIds = Array.from(
+            new Set(
+                rooms
+                    .map((room) => getDmOtherUserId(room))
+                    .filter((id): id is number => typeof id === "number" && id > 0)
+            )
+        );
+        if (partnerIds.length === 0) return;
+        hydrateProfilesByUserIds(partnerIds).catch(() => undefined);
+    }, [rooms, token, currentUserId]);
 
     useEffect(() => {
         messageEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -257,6 +326,10 @@ export function ChatButton() {
 
     const handleDeleteRoom = async () => {
         if (!token || selectedRoomId == null) return;
+        if (selectedRoom && getDmOtherUserId(selectedRoom)) {
+            setStatus("This private channel cannot be deleted");
+            return;
+        }
         try {
             await deleteRoom(token, selectedRoomId);
             setStatus(null);
@@ -272,11 +345,12 @@ export function ChatButton() {
     };
 
     const selectedRoom = useMemo(
-        () => rooms.find((room) => room.id === selectedRoomId) ?? null,
-        [rooms, selectedRoomId]
+        () => visibleRooms.find((room) => room.id === selectedRoomId) ?? null,
+        [visibleRooms, selectedRoomId]
     );
 
     const isOwner = Boolean(selectedRoom && currentUserId > 0 && selectedRoom.owner_user_id === currentUserId);
+    const isSelectedRoomDm = Boolean(selectedRoom && getDmOtherUserId(selectedRoom));
 
     const handleAvatarError = (event: React.SyntheticEvent<HTMLImageElement>) => {
         event.currentTarget.src = "/assets/default-profile.jpg";
@@ -365,13 +439,14 @@ export function ChatButton() {
                     <div className="min-h-0 flex-1 overflow-auto px-3 py-3">
                         <div className="mb-3 flex items-center justify-between px-1 text-xs font-bold uppercase tracking-[0.18em] text-[#374151]">
                             <span>Channels</span>
-                            <span>{rooms.length}</span>
+                            <span>{visibleRooms.length}</span>
                         </div>
                         <div className="space-y-2">
-                            {rooms.length === 0 && <p className="px-2 py-3 text-sm text-[#6b7280]">No rooms yet.</p>}
-                            {rooms.map((room) => {
+                            {visibleRooms.length === 0 && <p className="px-2 py-3 text-sm text-[#6b7280]">No rooms yet.</p>}
+                            {visibleRooms.map((room) => {
                                 const isSelected = room.id === selectedRoomId;
                                 const isRoomOwner = currentUserId > 0 && room.owner_user_id === currentUserId;
+                                const isDm = Boolean(getDmOtherUserId(room));
                                 return (
                                     <button
                                         key={room.id}
@@ -387,11 +462,15 @@ export function ChatButton() {
                                     >
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="min-w-0">
-                                                <div className="truncate text-sm font-semibold text-[#1f2937]">{room.name}</div>
+                                                <div className="truncate text-sm font-semibold text-[#1f2937]">{getRoomDisplayName(room)}</div>
                                                 <div className="mt-1 flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-[#6b7280]">
-                                                    <span>{room.is_private ? "Private" : "Public"}</span>
-                                                    <span>•</span>
-                                                    <span>#{room.id}</span>
+                                                    <span>{isDm ? "Direct message" : room.is_private ? "Private" : "Public"}</span>
+                                                    {!isDm && (
+                                                        <>
+                                                            <span>•</span>
+                                                            <span>#{room.id}</span>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
                                             <div className="flex flex-col items-end gap-1">
@@ -420,11 +499,15 @@ export function ChatButton() {
                             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                                 <div className="min-w-0">
                                     <div className="text-xs uppercase tracking-[0.22em] text-[#6b7280]">Current channel</div>
-                                    <div className="truncate text-lg font-bold text-[#1f2937] min-[481px]:text-xl">{selectedRoom.name}</div>
+                                    <div className="truncate text-lg font-bold text-[#1f2937] min-[481px]:text-xl">{getRoomDisplayName(selectedRoom)}</div>
                                     <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[#6b7280] min-[481px]:text-sm">
-                                        <span>{selectedRoom.is_private ? "Private" : "Public"}</span>
-                                        <span>•</span>
-                                        <span>Owner #{selectedRoom.owner_user_id}</span>
+                                        <span>{isSelectedRoomDm ? "Direct message" : selectedRoom.is_private ? "Private" : "Public"}</span>
+                                        {!isSelectedRoomDm && (
+                                            <>
+                                                <span>•</span>
+                                                <span>Owner #{selectedRoom.owner_user_id}</span>
+                                            </>
+                                        )}
                                         <span>•</span>
                                         <span>{memberIds.length} member{memberIds.length > 1 ? "s" : ""}</span>
                                     </div>
@@ -443,7 +526,7 @@ export function ChatButton() {
                                     >
                                         Leave
                                     </button>
-                                    {isOwner && (
+                                    {isOwner && !isSelectedRoomDm && (
                                         <button
                                             onClick={handleDeleteRoom}
                                             className="rounded-xl border-2 border-[#1f2937] bg-[#ef4444] px-3 py-2 text-sm font-semibold text-white shadow-[3px_3px_0_#1f2937] transition hover:translate-x-[1px] hover:translate-y-[1px]"
@@ -567,7 +650,7 @@ export function ChatButton() {
                             </div>
 
                             <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#6b7280] sm:text-xs">
-                                <span>{selectedRoom ? `Connected to ${selectedRoom.name}` : "No channel selected"}</span>
+                                <span>{selectedRoom ? `Connected to ${getRoomDisplayName(selectedRoom)}` : "No channel selected"}</span>
                                 <span>{messages.length} message{messages.length > 1 ? "s" : ""}</span>
                             </div>
                         </form>
