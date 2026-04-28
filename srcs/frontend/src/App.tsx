@@ -14,6 +14,7 @@ import DeleteAcc from './setting/Acc/Deleteacc';
 import { useEffect } from 'react';
 import { pingPresence } from './Profile/api/friends';
 import ChatPage from './chat/ChatPage';
+import SaveData from './setting/Acc/Savedata';
 
 const App = () => {
   useEffect(() => {
@@ -47,6 +48,7 @@ const App = () => {
         <Route path="/settings/change-password" element={<ChangePass />} />
         <Route path="/settings/change-email" element={<ChangeMail />} />
         <Route path="/settings/delete-account" element={<DeleteAcc />} />
+        <Route path="/settings/save-data" element={<SaveData />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>

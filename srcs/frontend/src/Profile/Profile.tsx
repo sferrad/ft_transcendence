@@ -17,6 +17,7 @@ import {
     unblockFriend,
     blockFriend,
     getFriendsWithStatus,
+    removeFriend,
 } from "./api/friends";
 import { fetchMyProfile, fetchProfileByUserId, fetchUserByUsername, uploadMyAvatar } from "./api/profile";
 import { createRoom, getRooms, joinRoom } from "./api/chat";
@@ -395,8 +396,16 @@ function Profile() {
                 aria-hidden="true"
             ></div>
 
-            <div className="relative z-10 min-h-[100dvh] flex items-center justify-center px-4 py-8">
-                <div className="bg-[#f5f0e8]/90 border-4 border-[#2b2b2b] px-6 py-8 min-[481px]:px-10 min-[481px]:py-10 shadow-[6px_6px_0_#2b2b2b] w-[min(92vw,46rem)]">
+            <div className="relative z-10 min-h-[100dvh] px-4 py-8">
+                <button
+                    onClick={() => navigate("/")}
+                    className={`${arcadePrimaryButton} absolute left-4 top-4 text-2xl min-[481px]:text-3xl text-white bg-blue-600 hover:bg-blue-700`}
+                >
+                    {t("Home")}
+                </button>
+
+                <div className="min-h-[100dvh] flex items-center justify-center">
+                    <div className="bg-[#f5f0e8]/90 border-4 border-[#2b2b2b] px-6 py-8 min-[481px]:px-10 min-[481px]:py-10 shadow-[6px_6px_0_#2b2b2b] w-[min(92vw,46rem)]">
                     <form onSubmit={handleSearchProfile} className="flex flex-col min-[481px]:flex-row gap-3">
                         <input
                             value={searchUserId}
@@ -528,9 +537,26 @@ function Profile() {
                                     type="button"
                                     onClick={() => {
                                         if (isAlreadyFriend) {
-                                            setSuccess(false);
-                                            setError("Suppression d'ami: à implémenter");
-                                            setMessageVisible(true);
+                                            const token = localStorage.getItem("access_token");
+                                            if (!token) {
+                                                setSuccess(false);
+                                                setError("Token manquant. Veuillez vous reconnecter.");
+                                                setMessageVisible(true);
+                                                navigate("/login");
+                                                return;
+                                            }
+                                            removeFriend(token, profile?.user_id ?? 0)
+                                                .then(() => {
+                                                    setSuccess(true);
+                                                    setMessageVisible(true);
+                                                    setFriends((prev) => prev.filter((f) => f.userId !== profile?.user_id));
+                                                })
+                                                .catch((err) => {
+                                                    const msg = err instanceof Error ? err.message : "Erreur lors de la suppression d'ami";
+                                                    setSuccess(false);
+                                                    setError(msg);
+                                                    setMessageVisible(true);
+                                                });
                                             return;
                                         }
 
@@ -652,6 +678,7 @@ function Profile() {
                     >
                         {t("Logout")}
                     </button>
+                    </div>
                 </div>
             </div>
         </div>
