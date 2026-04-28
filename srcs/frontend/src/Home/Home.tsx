@@ -29,7 +29,10 @@ const Home = () => {
             */}
             <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-end p-4 min-[481px]:p-6 relative">
                 {isAuthed ? (
-                    <Profil />
+                    <div className="flex items-center justify-between w-full">
+                        
+                        <Profil />
+                    </div>
                 ) : (
                     <>
                         {/* Desktop menu */}
