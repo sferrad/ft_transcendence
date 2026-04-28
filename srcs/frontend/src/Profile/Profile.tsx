@@ -19,6 +19,7 @@ import {
     getFriendsWithStatus,
 } from "./api/friends";
 import { fetchMyProfile, fetchProfileByUserId, fetchUserByUsername, uploadMyAvatar } from "./api/profile";
+import { createRoom, getRooms, joinRoom } from "./api/chat";
 
 function normalizeAvatarUrl(url: string | null): string | null {
     if (!url) return null;
@@ -347,6 +348,46 @@ function Profile() {
     const arcadePrimaryButton = `${arcadeButtonBase} px-4 py-2`;
     const arcadeSmallButton = `${arcadeButtonBase} px-3 py-2 text-lg min-[481px]:text-xl`;
 
+    const handleOpenPrivateChat = async () => {
+        if (isMe || !profile?.user_id) return;
+
+        const token = localStorage.getItem("access_token");
+        if (!token) {
+            navigate("/login");
+            return;
+        }
+
+        try {
+            const myId = Number(localStorage.getItem("user_id") ?? "0");
+            if (!Number.isFinite(myId) || myId <= 0) {
+                throw new Error("Session utilisateur invalide");
+            }
+
+            const targetId = profile.user_id;
+            const [a, b] = myId < targetId ? [myId, targetId] : [targetId, myId];
+            const dmRoomName = `dm-${a}-${b}`;
+
+            const rooms = await getRooms(token);
+            let room = rooms.find((r) => r.is_private && r.name === dmRoomName) ?? null;
+
+            if (!room) {
+                room = await createRoom(token, { name: dmRoomName, is_private: true });
+            }
+
+            await joinRoom(token, room.id);
+            navigate(`/chat?roomId=${encodeURIComponent(String(room.id))}`);
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : "Impossible d'ouvrir le message privé";
+            if (msg.toLowerCase().includes("blocked")) {
+                setError("Impossible d'envoyer un message privé: cette personne vous a bloqué ou vous l'avez bloquée.");
+            } else {
+                setError(msg);
+            }
+            setSuccess(false);
+            setMessageVisible(true);
+        }
+    };
+
     return (
         <div className="relative min-h-[100dvh] w-full overflow-auto">
             <div
@@ -468,6 +509,16 @@ function Profile() {
                         <HandleBio />
                     ) : (
                         <div className="mt-4 rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-4 text-[#1f2937]">
+                            <div className="mb-4 flex flex-wrap gap-3">
+                                <button
+                                    type="button"
+                                    onClick={handleOpenPrivateChat}
+                                    className={`${arcadeSmallButton} text-white text-lg min-[481px]:text-xl bg-[#1f2937] hover:bg-black`}
+                                >
+                                    {t("Private Message")}
+                                </button>
+                            </div>
+
                             <div className="whitespace-pre-wrap break-words text-sm min-[481px]:text-base">
                                 {profile?.bio ?? t("Aucune bio")}
                             </div>

@@ -13,6 +13,7 @@ import ChangeMail from './setting/Acc/Changemail';
 import DeleteAcc from './setting/Acc/Deleteacc';
 import { useEffect } from 'react';
 import { pingPresence } from './Profile/api/friends';
+import ChatPage from './chat/ChatPage';
 
 const App = () => {
   useEffect(() => {
@@ -38,6 +39,7 @@ const App = () => {
         <Route path="/register" element={<Handleregister />} />
         <Route path="/" element={<Home />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/chat" element={<ChatPage />} />
         <Route path="/solo-select" element={<Charselectsolo />} />
         <Route path="/local-select" element={<LocalCharselect />} />
         <Route path="/solo-gameplay" element={<Gameplay />} />
