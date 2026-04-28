@@ -42,7 +42,7 @@ function Carousel() {
                 navigate("/login");
         }
         else if (mode === 'Local')
-            navigate("/login");
+            navigate("/local-select");
         else if (mode === 'Settings')
             navigate("/settings");
     }, [navigate]);

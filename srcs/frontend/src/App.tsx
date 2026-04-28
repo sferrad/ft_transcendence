@@ -4,6 +4,7 @@ import Handleregister from './log/Handleregister'
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Profile from './Profile/Profile';
 import Charselectsolo from './Solo/Charselect';
+import LocalCharselect from './Local/Charselect';
 import Gameplay from './Gameplay/Gameplay';
 import NotFound from './error/404';
 import Settingpage from './setting/Settingpage';
@@ -38,6 +39,7 @@ const App = () => {
         <Route path="/" element={<Home />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/solo-select" element={<Charselectsolo />} />
+        <Route path="/local-select" element={<LocalCharselect />} />
         <Route path="/solo-gameplay" element={<Gameplay />} />
         <Route path="/settings" element={<Settingpage />} />
         <Route path="/settings/change-password" element={<ChangePass />} />
