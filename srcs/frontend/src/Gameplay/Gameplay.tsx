@@ -32,8 +32,8 @@ const Gameplay = () => {
   const scale = useScale()
 
   const user = getCurrentUser()
-  const playerName = user?.username || searchParams.get('player') || 'Joueur'
-  const aiName = searchParams.get('ai') || 'CPU'
+  const playerName = user?.username || searchParams.get('playerName') || 'Joueur'
+  const aiName = searchParams.get('player2') || searchParams.get('ai') || 'CPU'
 
   const { gameState, goalFlash, restart } = useGameLoop(playerName, aiName, true)
 
