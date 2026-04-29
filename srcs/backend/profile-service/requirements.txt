@@ -9,3 +9,4 @@ uvicorn[standard]==0.34.3
 httpx
 prometheus_fastapi_instrumentator
 python-multipart
+aiosmtplib>=2.0.0

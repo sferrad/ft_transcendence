@@ -115,3 +115,13 @@ def get_room_members(room_id: int, user_id: int = Depends(_current_user_id), db:
 	if not crud.is_member(db, room_id=room_id, user_id=user_id):
 		raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a member")
 	return crud.list_room_member_ids(db, room_id=room_id)
+
+@app.post("/internal/user/cleanup")
+def internal_cleanup_user(payload: dict, db: Session = Depends(get_db)):
+	user_id = int(payload.get("user_id") or 0)
+	if user_id <= 0:
+		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid user id")
+	try:
+		return crud.cleanup_user_data(db, user_id=user_id)
+	except ValueError as e:
+		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
