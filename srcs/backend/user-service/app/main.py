@@ -112,3 +112,10 @@ async def internal_delete_user(user_delete: schemas.InternalUserDelete, db: Sess
 	except SQLAlchemyError:
 		raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Database error")	
 	return {"ok": True, "deleted_user_id": user_delete.user_id}
+
+@app.get("/internal/user/{user_id}", response_model=schemas.UserLookupOut)
+async def internal_get_user(user_id: int, db: Session = Depends(get_db)):
+	user = crud.get_user_by_id(db, user_id)
+	if not user:
+		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+	return user

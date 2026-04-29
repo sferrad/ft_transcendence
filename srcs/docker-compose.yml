@@ -438,6 +438,17 @@ services:
       retries: 3
       start_period: 30s
 
+  mailhog:
+    build:
+      context: ./backend/mailhog
+      dockerfile: Dockerfile
+    image: mailhog
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    restart: unless-stopped
+    networks:
+      - transcendence-backend
   profile-service:
     build:
       context: ./backend/profile-service
@@ -454,6 +465,10 @@ services:
       - DB_NAME=profile_db
       - VAULT_DB_CREDS_PATH=database/creds/profile-role
       - AVATAR_UPLOAD_DIR=/app/uploads/avatars
+      - MAIL_SERVER=mailhog
+      - MAIL_PORT=1025
+      - MAIL_FROM=noreply@team42.com
+
     expose:
       - "8006"
     volumes:
@@ -467,6 +482,8 @@ services:
         condition: service_healthy
       vault:
         condition: service_healthy
+      mailhog:
+        condition: service_started
     restart: unless-stopped
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8006/health" ]

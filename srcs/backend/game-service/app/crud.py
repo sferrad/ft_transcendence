@@ -284,3 +284,12 @@ def get_match_events(db: Session, match_id: int) -> List[models.MatchEvent]:
 		.order_by(models.MatchEvent.sequence.asc(), models.MatchEvent.timestamp.asc())
 		.all()
 	)
+
+def cleanup_user_data(db: Session, *, user_id: int) -> dict:
+	if user_id <= 0:
+		raise ValueError("invalid user id")
+	user = db.query(models.Match).filter(or_(models.Match.player1_id == user_id, models.Match.player2_id == user_id))
+	count_match = user.count()
+	user.delete(synchronize_session=False)
+	db.commit()
+	return {"ok": True, "deleted_matches": count_match}
