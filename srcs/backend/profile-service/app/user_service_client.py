@@ -22,3 +22,9 @@ async def delete_user_in_user_service(user_id: int):
         response = await client.post(url, json={"user_id": user_id})
     response.raise_for_status()
     return response.json()
+
+async def fetch_user_in_user_service(user_id: int) -> dict:
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        response = await client.get(f"{USER_SERVICE_URL}/internal/user/{user_id}")
+    response.raise_for_status()
+    return response.json()
