@@ -102,3 +102,26 @@ def list_room_member_ids(db: Session, *, room_id: int) -> list[int]:
         .order_by(models.RoomMember.user_id.asc())
     )
     return list(db.scalars(stmt).all())
+
+def cleanup_user_data(db: Session, *, user_id: int) -> dict:
+    if user_id <= 0:
+        raise ValueError("Invalid user id")
+    try:
+        deleted_membership = db.query(models.RoomMember).filter(models.RoomMember.user_id == user_id).delete(synchronize_session=False)
+        randomized_messages = db.query(models.Message).filter(models.Message.sender_user_id == user_id).update({"sender_user_id": 0, "content": "[deleted]"}, synchronize_session=False)
+        owned_rooms = db.query(models.Room).filter(models.Room.owner_user_id == user_id).all()
+        deleted_private_room = 0
+        orphaned_public_rooms = 0
+        for room in owned_rooms:
+            if bool(room.is_private):
+                db.delete(room)
+                deleted_private_room += 1
+            else:
+                room.owner_user_id = 0
+                orphaned_public_rooms += 1
+        db.commit()
+        return {"ok": True, "deleted_membership": deleted_membership, "randomized_messages": randomized_messages, "deleted_private_room": deleted_private_room, "orphaned_public_rooms": orphaned_public_rooms}
+    except SQLAlchemyError:
+        db.rollback()
+        raise
+    

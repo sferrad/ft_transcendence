@@ -228,3 +228,13 @@ def create_match_event(match_id: int, event: schemas.MatchEventCreate, user_id: 
 def get_match_events(match_id: int, user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
 	_require_match_participant(db=db, match_id=match_id, user_id=user_id)
 	return crud.get_match_events(db, match_id)
+
+@app.post("/internal/user/cleanup")
+def internal_user_cleanup(payload: dict, db: Session = Depends(get_db)) -> dict:
+	user_id = int(payload.get("user_id") or 0)
+	if user_id <= 0:
+		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid user id")
+	try:
+		return crud.cleanup_user_data(db, user_id=user_id)
+	except ValueError as e:
+		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
