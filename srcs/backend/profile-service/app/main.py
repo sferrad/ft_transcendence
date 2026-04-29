@@ -7,10 +7,10 @@ import uuid
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from prometheus_fastapi_instrumentator import Instrumentator
+import json
+from datetime import datetime, timezone
 
-from . import user_service_client
-from . import friends_service_client
-from . import crud, schemas
+from . import crud, schemas, user_service_client, friends_service_client, chat_service_client, game_service_client, email_config
 from .database import get_db, init_db, init_engine
 
 AVATAR_UPLOAD_DIR = os.getenv("AVATAR_UPLOAD_DIR", "/app/uploads/avatars")
@@ -216,8 +216,27 @@ async def update_user_infos(payload: schemas.UserUpdateRequest, user_id: int = D
 	
 @app.delete("/me/settings/user")
 async def delete_user(user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
+	user_email = None
+	username = None
 	try:
-		res = await user_service_client.delete_user_in_user_service(user_id)
+		user_info = await user_service_client.fetch_user_in_user_service(user_id)
+		user_email = user_info.get("email")
+		username = user_info.get("username")
+	except Exception:
+		pass
+	email_sent = False
+	if user_email:
+		try:
+			await email_config.send_deletion_request_confirmation(
+                email_to=user_email,
+                username=username or "Utilisateur",
+            )
+			email_sent = True
+		except Exception as e:
+			print(f"[WARN] Failed to send pre-deletion email: {e}")
+		
+	try:
+		user = await user_service_client.delete_user_in_user_service(user_id)
 	except httpx.RequestError:
 		raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="user-service unavailable")
 	except httpx.HTTPStatusError as e:
@@ -233,15 +252,22 @@ async def delete_user(user_id: int = Depends(_current_user_id), db: Session = De
 		old_filename = _filename_from_avatar_url(profile.avatar_url)
 	else:
 		old_filename = None
+	profile_cleanup = {"ok": True}
 	try:
 		crud.delete_user_settings_by_user_id(db, user_id)
+		profile_cleanup["deleted_settings"] = True
 	except Exception as e:
-		raise HTTPException(status_code=500, detail=f"Failed to delete user settings: {e}")
+		profile_cleanup = {"ok": False, "error": f"profile delete failed: {e}"}
 	try:
 		crud.delete_profile_by_user_id(db, user_id)
+		profile_cleanup["deleted_profile"] = True
 	except Exception as e:
-		raise HTTPException(status_code=500, detail=f"Failed to delete user profile: {e}")
-	_try_delete_avatar_file(old_filename)
+		profile_cleanup = {"ok": False, "error": f"profile delete failed: {e}"}
+	try:
+		_try_delete_avatar_file(old_filename)
+		profile_cleanup["deleted_avatar"] = True
+	except Exception as e:
+		profile_cleanup = {"ok": False, "error": f"profile delete failed: {e}"}
 	friends_cleanup = None
 	try:
 		friends_cleanup = await friends_service_client.delete_friends_in_friends_service(user_id)
@@ -249,7 +275,46 @@ async def delete_user(user_id: int = Depends(_current_user_id), db: Session = De
 		friends_cleanup = {"ok": False, "error": "friends-service unavailable"}
 	except httpx.HTTPStatusError as e:
 		friends_cleanup = {"ok": False, "status": e.response.status_code}
-	return {"ok": True, "user_service": res, "friends_cleanup": friends_cleanup}	
+	try:
+		chat_cleanup = await chat_service_client.cleanup_user(user_id=user_id)
+	except httpx.RequestError:
+		chat_cleanup = {"ok": False, "error": "chat-service unavailable"}
+	except httpx.HTTPStatusError as e:
+		chat_cleanup = {"ok": False, "status": e.response.status_code}
+	try:
+		game_cleanup = await game_service_client.cleanup_user(user_id=user_id)
+	except httpx.RequestError:
+		game_cleanup = {"ok": False, "error": "game-service unavailable"}
+	except httpx.HTTPStatusError as e:
+		game_cleanup = {"ok": False, "status": e.response.status_code}
+	payload = {"ok": True,
+			"deleted_at": datetime.now(timezone.utc).isoformat(),
+			"profile_service": profile_cleanup,
+			"user_service": user,
+			"friends_cleanup": friends_cleanup,
+			"chat_cleanup": chat_cleanup,
+			"game_cleanup": game_cleanup
+	}
+	email_post_send = False
+	if user_email:
+		try:
+			await email_config.send_deletion_confirmation(
+                email_to=user_email,
+                username=username or "Utilisateur",
+                payload=payload,
+            )
+			email_post_send = True
+		except Exception as e:
+			print(f"[WARN] Failed to send post-deletion email: {e}")
+			payload["confirmation_email_sent"] = False
+			payload["email_error"] = str(e)
+	payload["confirmation_email_sent"] = {
+			"pre_deletion_email": email_sent,
+			"post_deletion_email": email_post_send
+	}
+
+	content = json.dumps(payload, indent=2, ensure_ascii=False)
+	return Response(content=content, media_type="application/json", headers={"Content-Disposition": "attachment; filename=my_transcendence_deleted-data.json"})
 
 
 
@@ -295,3 +360,57 @@ async def get_avatar(filename: str):
 	if not os.path.isfile(path):
 		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Avatar not found")
 	return FileResponse(path)
+
+@app.get("/me/export")
+async def export_my_data(user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
+	profile_obj = crud.get_profile_by_user_id(db, user_id)
+	settings_obj = crud.get_user_settings(db, user_id)
+	profile = schemas.ProfileOut.model_validate(profile_obj).model_dump(mode="json") if profile_obj else None
+	settings = schemas.UserSettingOut.model_validate(settings_obj).model_dump(mode="json") if settings_obj else None
+	user_email = None
+	username = None
+	try:
+		user = await user_service_client.fetch_user_in_user_service(user_id)
+		user_email = user.get("email")
+		username = user.get("username")
+	except Exception:
+		user = {"id": user_id}
+	try:
+		friends = await friends_service_client.fetch_friends_list_in_friends_service(user_id)
+	except Exception:
+		friends = []
+	try:
+		matches = await game_service_client.fetch_my_matches(user_id=user_id)
+	except Exception:
+		matches = []
+	chat = {"rooms": [], "messages_by_room": {}}
+	try:
+		rooms = await chat_service_client.fetch_rooms(user_id=user_id)
+		chat["rooms"] = rooms
+		for room in rooms:
+			room_id = int(room.get("id") or 0)
+			if room_id > 0:
+				chat["messages_by_room"][str(room_id)] = await chat_service_client.fetch_room_messages(user_id=user_id, room_id=room_id)
+	except Exception:
+		pass
+	email_send = False
+	if user_email:
+		try:
+			await email_config.send_data_export_confirmation(
+                email_to=user_email,
+                username=username or "Utilisateur",
+            )
+			email_send = True
+		except Exception as e:
+			print(f"[WARN] Failed to send post-deletion email: {e}")
+	payload = {
+		"user": user,
+		"profile": profile,
+		"settings": settings,
+		"friends": friends,
+		"matches": matches,
+		"chat": chat,
+		"email_sent": email_send,
+	}
+	content = json.dumps(payload, indent=2, ensure_ascii=False)
+	return Response(content=content, media_type="application/json", headers={"Content-Disposition": "attachment; filename=my_transcendence_data.json"})
