@@ -1,7 +1,7 @@
 from . import models
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import text, or_
+from sqlalchemy import or_
 
 def get_user_by_identifier(db: Session, identifier: str) -> models.User | None:
 	return (
@@ -9,10 +9,11 @@ def get_user_by_identifier(db: Session, identifier: str) -> models.User | None:
 		.filter(or_(models.User.email == identifier, models.User.username == identifier)).first()
 	)
 
-
-# def get_user_by_username(db: Session, username: str) -> models.User | None:
-# 	return db.query(models.User).filter(models.User.username == username).first()
-
+def get_user_by_id(db: Session, user_id: str) -> models.User | None:
+	return (
+		db.query(models.User)
+		.filter((models.User.id == user_id)).first()
+	)
 
 def existing_user(db: Session, email: str) -> bool:
 	return (db.query(models.User).filter(models.User.email == email).first() is not None)
