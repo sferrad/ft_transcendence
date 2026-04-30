@@ -25,6 +25,7 @@
 #     => inconvénient: la révocation est temporairement non appliquée pendant la panne
 
 import jwt
+import asyncio
 from fastapi import Header, HTTPException, status, Request
 from jwt import InvalidTokenError
 import hashlib
@@ -103,7 +104,7 @@ async def blacklist_jwt(token: str, payload: dict) -> None:
     if ttl <= 0:
         return
     key = _blacklist_key(token, payload)
-    await redis_client.setex(key, ttl, "1")
+    await asyncio.wait_for(redis_client.setex(key, ttl, "1"), timeout=1.0)
 
 
 # Vérifie si le token est révoqué.
@@ -118,7 +119,7 @@ async def blacklist_jwt(token: str, payload: dict) -> None:
 async def is_blacklisted(token: str, payload: dict) -> bool:
     key = _blacklist_key(token, payload)
     try:
-        return bool(await redis_client.exists(key))
+        return bool(await asyncio.wait_for(redis_client.exists(key), timeout=1.0))
     except Exception:
         # Si Redis est down, on ne bloque pas toute l'API.
         return False
