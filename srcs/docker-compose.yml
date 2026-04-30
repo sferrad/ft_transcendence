@@ -29,6 +29,10 @@ volumes:
   grafana-data:
   alertmanager-data:
   avatar-profile-service:
+  node_modules-frontend:
+  redis-data:
+  prometheus-data:
+  alertmanager-data-extra:
 
 ## DATABASES ####
 
@@ -505,8 +509,8 @@ services:
       - CHOKIDAR_USEPOLLING=true
     volumes:
       # Source monté en live, mais node_modules reste dans le conteneur.
-      - ./frontend:/app
-      - /app/node_modules
+    - ./frontend:/app
+    - node_modules-frontend:/app/node_modules
     expose:
       - "3000"
     networks:
@@ -551,6 +555,8 @@ services:
       context: ./backend/redis
       dockerfile: Dockerfile
     image: redis
+    volumes:
+      - redis-data:/data
     expose:
       - "6379"
     networks:
@@ -568,6 +574,8 @@ services:
       context: ./monitoring/prometheus
       dockerfile: Dockerfile
     image: prometheus
+    volumes:
+    - prometheus-data:/prometheus
     ports:
       - "9090:9090"
     networks:
@@ -611,6 +619,9 @@ services:
       context: ./monitoring/alertmanager
       dockerfile: Dockerfile
     image: alertmanager
+    volumes:
+      - alertmanager-data-extra:/alertmanager
+      - alertmanager-data:/var/lib/alertmanager
     expose:
       - "9093"
     networks:
@@ -618,8 +629,6 @@ services:
     depends_on:
       prometheus:
         condition: service_healthy
-    volumes:
-      - alertmanager-data:/var/lib/alertmanager
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:9093/-/ready || exit 1"]
       interval: 20s
