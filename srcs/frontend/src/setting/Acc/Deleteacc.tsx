@@ -88,6 +88,11 @@ const DeleteAcc = () => {
     const [message, setMessage] = useState("");
     const [isError, setIsError] = useState(false);
 
+    const arcadeButtonBase =
+        "hb-tap font-arcade uppercase tracking-wide cursor-pointer border-0 shadow-[0px_4px_rgb(255,255,255),0px_-4px_rgb(255,255,255),4px_0px_rgb(255,255,255),-4px_0px_rgb(255,255,255),0px_4px_rgba(0,0,0,0.22),4px_4px_rgba(0,0,0,0.22),-4px_4px_rgba(0,0,0,0.22),inset_0px_4px_rgba(255,255,255,0.21)] no-underline inline-flex items-center justify-center gap-2 transition-transform duration-100 active:translate-y-0.5 max-w-full";
+    const arcadeActionButton =
+        `${arcadeButtonBase} w-full h-14 min-[481px]:h-16 px-6 min-[481px]:px-7 text-xl min-[481px]:text-3xl`;
+
     const handleDelete = async () => {
         setMessage("");
         setIsError(false);
@@ -140,7 +145,7 @@ const DeleteAcc = () => {
                         </div>
                         <div className="mb-4 flex items-center justify-between">
                             <button
-                                className="hb-tap font-arcade cursor-pointer px-6 py-3 text-xl min-[481px]:text-3xl text-black bg-gradient-to-b from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 rounded-lg transition-all duration-200 translate-button transform hover:scale-105 shadow-lg hover:shadow-xl w-full max-w-xs flex justify-center items-center"
+                                className={`${arcadeActionButton} bg-red-600 hover:bg-red-700 text-white`}
                                 type="button"
                                 onClick={handleDelete}
                             >

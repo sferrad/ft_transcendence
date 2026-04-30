@@ -94,6 +94,17 @@
     "Saving...": "Sauvegarde...",
     "Save": "Sauvegarder",
 
-    "No bio set yet.": "Aucune bio définie pour le moment."
+    "No bio set yet.": "Aucune bio définie pour le moment.",
+
+        
+    "Save Data": "Sauvegarder les données",
+    "Only JSON export is available for now.": "Seule l'exportation en format JSON est disponible pour le moment.",
+    "Failed to save data": "Échec de la sauvegarde des données",
+    "Your data export is ready for download.": "Votre exportation de données est prête à être téléchargée.",
+    "Request an export of your personal data. The download starts in your browser and we confirm by email.": "Demandez une exportation de vos données personnelles. Le téléchargement commence dans votre navigateur et nous confirmons par e-mail.",
+    "Your email": "Votre adresse e-mail",
+    "Format": "Format",
+    "Request Export": "Demander l'exportation",
+    "We will notify you when the export is ready.": "Nous vous notifierons lorsque l'exportation sera prête."
 }
 

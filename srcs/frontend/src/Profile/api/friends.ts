@@ -133,3 +133,16 @@ export async function unblockFriend(token: string, blockedUserId: number): Promi
         throw new Error(detail || `HTTP ${response.status}`);
     }
 }
+
+export async function removeFriend(token: string, friendUserId: number): Promise<void> {
+    const response = await fetch(`/api/friends/unfriend/${encodeURIComponent(String(friendUserId))}`, {
+        method: "DELETE",
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
+    if (!response.ok) {
+        const detail = await parseErrorDetail(response);
+        throw new Error(detail || `HTTP ${response.status}`);
+    }
+}

@@ -94,5 +94,15 @@
     "Saving...": "Saving...",
     "Save": "Save",
 
-    "No bio set yet.": "No bio set yet."
+    "No bio set yet.": "No bio set yet.",
+
+    "Save Data": "Save Data",
+    "Only JSON export is available for now.": "Only JSON export is available for now.",
+    "Failed to save data": "Failed to save data",
+    "Your data export is ready for download.": "Your data export is ready for download.",
+    "Request an export of your personal data. The download starts in your browser and we confirm by email.": "Request an export of your personal data. The download starts in your browser and we confirm by email.",
+    "Your email": "Your email",
+    "Format": "Format",
+    "Request Export": "Request Export",
+    "We will notify you when the export is ready.": "We will notify you when the export is ready."
 }
