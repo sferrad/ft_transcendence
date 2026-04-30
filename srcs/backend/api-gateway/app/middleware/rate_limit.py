@@ -9,6 +9,7 @@ import jwt
 WHITELIST = {
     "/health",
     "/metrics",
+    "/ws/health",
 }
 
 LIMITS = {

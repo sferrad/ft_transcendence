@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+import os
 from uuid import uuid4
 
 import jwt
@@ -14,8 +15,16 @@ def load_jwt_secret(app: FastAPI) -> None:
         secret_key, algorithm = read_jwt_secret()
     except Exception as exc:
         print(f"[startup] Read JWT secret failed: {exc}")
-        app.state.jwt_secret_key = None
-        app.state.jwt_algorithm = None
+        secret_key = os.getenv("JWT_SECRET_KEY")
+        algorithm = os.getenv("JWT_ALGORITHM", "HS256")
+        if not secret_key:
+            app.state.jwt_secret_key = None
+            app.state.jwt_algorithm = None
+            return
+
+        print("[startup] Using JWT secret from environment fallback")
+        app.state.jwt_secret_key = secret_key
+        app.state.jwt_algorithm = algorithm
         return
 
     app.state.jwt_secret_key = secret_key

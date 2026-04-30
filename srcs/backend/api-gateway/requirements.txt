@@ -6,3 +6,5 @@ PyJWT==2.11.0
 uvicorn[standard]==0.34.3
 redis
 prometheus_fastapi_instrumentator
+python-socketio==5.11.2
+python-engineio==4.11.1
