@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import type { MessageOut, ProfileOut, RoomOut } from "../Profile/types";
 import { createRoom, deleteRoom, getMessages, getRoomMembers, getRooms, joinRoom, leaveRoom, sendMessage } from "../Profile/api/chat";
 import { fetchProfileByUserId } from "../Profile/api/profile";
+import { useTranslation } from "react-i18next";
 
 type ChatButtonProps = {
     initialRoomId?: number | null;
@@ -26,6 +27,9 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
     const avatarBlobsRef = useRef<Record<number, string>>({});
     const prevMemberIdsRef = useRef<number[] | null>(null);
     const messageEndRef = useRef<HTMLDivElement | null>(null);
+
+
+    const { t } = useTranslation();
 
     const token = localStorage.getItem("access_token");
     const currentUserId = Number(localStorage.getItem("user_id") ?? "0");
@@ -116,7 +120,7 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
             const resolvedProfiles = await hydrateProfilesByUserIds(changedIds);
 
             const getMemberLabel = (id: number) => {
-                if (id === currentUserId) return "You";
+                if (id === currentUserId) return t("You");
                 const profile = resolvedProfiles[id] ?? profiles[id];
                 return profile?.display_name?.trim() || "A user";
             };
@@ -124,11 +128,11 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
             const nextEvents = [
                 ...joined.map((id) => ({
                     id: `join-${roomId}-${id}-${Date.now()}-${Math.random()}`,
-                    text: `${getMemberLabel(id)} joined the channel`,
+                    text: `${getMemberLabel(id)} ${t("joined the channel")}`,
                 })),
                 ...left.map((id) => ({
                     id: `leave-${roomId}-${id}-${Date.now()}-${Math.random()}`,
-                    text: `${getMemberLabel(id)} left the channel`,
+                    text: `${getMemberLabel(id)} ${t("left the channel")}`,
                 })),
             ];
 
@@ -207,7 +211,7 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
             await Promise.all([refreshMessages(selectedRoomId), refreshMembers(selectedRoomId)]);
         };
 
-        load().catch((error) => setStatus(error instanceof Error ? error.message : "Failed to fetch room data"));
+        load().catch((error) => setStatus(error instanceof Error ? error.message : t("Failed to fetch room data")));
 
         const intervalId = window.setInterval(() => {
             Promise.all([refreshMessages(selectedRoomId), refreshMembers(selectedRoomId)]).catch(() => undefined);
@@ -274,7 +278,7 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
             await refreshRooms();
             await Promise.all([refreshMessages(room.id), refreshMembers(room.id)]);
         } catch (error) {
-            setStatus(error instanceof Error ? error.message : "Failed to create room");
+            setStatus(error instanceof Error ? error.message : t("Failed to create room"));
         } finally {
             setIsCreatingRoom(false);
         }
@@ -287,7 +291,7 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
             setStatus(null);
             await Promise.all([refreshMessages(selectedRoomId), refreshMembers(selectedRoomId)]);
         } catch (error) {
-            setStatus(error instanceof Error ? error.message : "Failed to join room");
+            setStatus(error instanceof Error ? error.message : t("Failed to join room"));
         }
     };
 
@@ -302,7 +306,7 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
             setStatus(null);
             await refreshMessages(selectedRoomId);
         } catch (error) {
-            setStatus(error instanceof Error ? error.message : "Failed to send message");
+            setStatus(error instanceof Error ? error.message : t("Failed to send message"));
         } finally {
             setIsSubmittingMessage(false);
         }
@@ -320,14 +324,14 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
             setIsSidebarOpen(false);
             await refreshRooms();
         } catch (error) {
-            setStatus(error instanceof Error ? error.message : "Failed to leave room");
+            setStatus(error instanceof Error ? error.message : t("Failed to leave room"));
         }
     };
 
     const handleDeleteRoom = async () => {
         if (!token || selectedRoomId == null) return;
         if (selectedRoom && getDmOtherUserId(selectedRoom)) {
-            setStatus("This private channel cannot be deleted");
+            setStatus(t("This private channel cannot be deleted"));
             return;
         }
         try {
@@ -340,7 +344,7 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
             setIsSidebarOpen(false);
             await refreshRooms();
         } catch (error) {
-            setStatus(error instanceof Error ? error.message : "Failed to delete room");
+            setStatus(error instanceof Error ? error.message : t("Failed to delete room"));
         }
     };
 
@@ -370,21 +374,21 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
         <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[1.25rem] border-4 border-[#1f2937] bg-[#f5efe2] shadow-[10px_10px_0_#1f2937] min-[481px]:rounded-[1.5rem]">
             <div className="flex items-center justify-between border-b-4 border-[#1f2937] bg-[#18212f] px-4 py-3 text-white">
                 <div>
-                    <div className="text-xs uppercase tracking-[0.24em] text-white/70">Chat</div>
-                    <h2 className="text-lg font-semibold">Messages directs</h2>
+                    <div className="text-xs uppercase tracking-[0.24em] text-white/70">{t("Chat")}</div>
+                    <h2 className="text-lg font-semibold">{t("Messages directs")}</h2>
                 </div>
                 <div className="flex items-center gap-2">
                     <button
                         onClick={() => setIsSidebarOpen(true)}
                         className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-white transition hover:bg-white/20 lg:hidden"
                     >
-                        Rooms
+                        {t("Rooms")}
                     </button>
                     <button
                         onClick={refreshRooms}
                         className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-white transition hover:bg-white/20"
                     >
-                        Refresh
+                        {t("Refresh")}
                     </button>
                 </div>
             </div>
@@ -406,22 +410,22 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
                 >
                     <div className="border-b-2 border-[#1f2937]/15 px-3 py-3 min-[481px]:px-4 min-[481px]:py-4">
                         <div className="mb-2 flex items-center justify-between lg:hidden">
-                            <label className="block text-xs font-bold uppercase tracking-[0.18em] text-[#374151]">Channels</label>
+                            <label className="block text-xs font-bold uppercase tracking-[0.18em] text-[#374151]">{t("Channels")}</label>
                             <button
                                 type="button"
                                 onClick={() => setIsSidebarOpen(false)}
                                 className="rounded-full border-2 border-[#1f2937] bg-white px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#1f2937]"
                             >
-                                Close
+                                {t("Close")}
                             </button>
                         </div>
                         <label className="mb-2 hidden text-xs font-bold uppercase tracking-[0.18em] text-[#374151] lg:block">
-                            Create channel
+                            {t("Create channel")}
                         </label>
                         <div className="flex gap-2">
                             <input
                                 type="text"
-                                placeholder="Room name"
+                                placeholder={t("Room name")}
                                 value={roomName}
                                 onChange={(e) => setRoomName(e.target.value)}
                                 className="min-w-0 flex-1 rounded-xl border-2 border-[#1f2937] bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-500"
@@ -431,18 +435,18 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
                                 disabled={isCreatingRoom}
                                 className="rounded-xl border-2 border-[#1f2937] bg-[#4AD95A] px-3 py-2 text-sm font-semibold text-[#1f2937] shadow-[3px_3px_0_#1f2937] transition hover:translate-x-[1px] hover:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
                             >
-                                {isCreatingRoom ? "..." : "Create"}
+                                {isCreatingRoom ? t("Creating...") : t("Create")}
                             </button>
                         </div>
                     </div>
 
                     <div className="min-h-0 flex-1 overflow-auto px-3 py-3">
                         <div className="mb-3 flex items-center justify-between px-1 text-xs font-bold uppercase tracking-[0.18em] text-[#374151]">
-                            <span>Channels</span>
+                            <span>{t("Channels")}</span>
                             <span>{visibleRooms.length}</span>
                         </div>
                         <div className="space-y-2">
-                            {visibleRooms.length === 0 && <p className="px-2 py-3 text-sm text-[#6b7280]">No rooms yet.</p>}
+                            {visibleRooms.length === 0 && <p className="px-2 py-3 text-sm text-[#6b7280]">{t("No rooms yet.")}</p>}
                             {visibleRooms.map((room) => {
                                 const isSelected = room.id === selectedRoomId;
                                 const isRoomOwner = currentUserId > 0 && room.owner_user_id === currentUserId;
@@ -464,7 +468,7 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
                                             <div className="min-w-0">
                                                 <div className="truncate text-sm font-semibold text-[#1f2937]">{getRoomDisplayName(room)}</div>
                                                 <div className="mt-1 flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-[#6b7280]">
-                                                    <span>{isDm ? "Direct message" : room.is_private ? "Private" : "Public"}</span>
+                                                    <span>{isDm ? t("Direct message") : room.is_private ? t("Private") : t("Public")}</span>
                                                     {!isDm && (
                                                         <>
                                                             <span>•</span>
@@ -476,12 +480,12 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
                                             <div className="flex flex-col items-end gap-1">
                                                 {isRoomOwner && (
                                                     <span className="rounded-full bg-[#1f2937] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white">
-                                                        Owner
+                                                        {t("Owner")}
                                                     </span>
                                                 )}
                                                 {isSelected && (
                                                     <span className="rounded-full bg-blue-600 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white">
-                                                        Active
+                                                        {t("Active")}
                                                     </span>
                                                 )}
                                             </div>
@@ -505,11 +509,11 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
                                         {!isSelectedRoomDm && (
                                             <>
                                                 <span>•</span>
-                                                <span>Owner #{selectedRoom.owner_user_id}</span>
+                                                <span>{t("Owner")} #{selectedRoom.owner_user_id}</span>
                                             </>
                                         )}
                                         <span>•</span>
-                                        <span>{memberIds.length} member{memberIds.length > 1 ? "s" : ""}</span>
+                                        <span>{memberIds.length} {t("member")}{memberIds.length > 1 ? t("s") : ""}</span>
                                     </div>
                                 </div>
 
@@ -518,28 +522,28 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
                                         onClick={handleJoinRoom}
                                         className="rounded-xl border-2 border-[#1f2937] bg-[#4AD95A] px-3 py-2 text-sm font-semibold text-[#1f2937] shadow-[3px_3px_0_#1f2937] transition hover:translate-x-[1px] hover:translate-y-[1px]"
                                     >
-                                        Join
+                                        {t("Join")}
                                     </button>
                                     <button
                                         onClick={handleLeaveRoom}
                                         className="rounded-xl border-2 border-[#1f2937] bg-white px-3 py-2 text-sm font-semibold text-[#1f2937] shadow-[3px_3px_0_#1f2937] transition hover:translate-x-[1px] hover:translate-y-[1px]"
                                     >
-                                        Leave
+                                        {t("Leave")}
                                     </button>
                                     {isOwner && !isSelectedRoomDm && (
                                         <button
                                             onClick={handleDeleteRoom}
                                             className="rounded-xl border-2 border-[#1f2937] bg-[#ef4444] px-3 py-2 text-sm font-semibold text-white shadow-[3px_3px_0_#1f2937] transition hover:translate-x-[1px] hover:translate-y-[1px]"
                                         >
-                                            Delete channel
+                                            {t("Delete channel")}
                                         </button>
                                     )}
                                 </div>
                             </div>
                         ) : (
                             <div className="py-2">
-                                <div className="text-xs uppercase tracking-[0.22em] text-[#6b7280]">Current channel</div>
-                                <div className="text-xl font-bold text-[#1f2937]">Select a channel</div>
+                                <div className="text-xs uppercase tracking-[0.22em] text-[#6b7280]">{t("Current channel")}</div>
+                                <div className="text-xl font-bold text-[#1f2937]">{t("Select a channel")}</div>
                             </div>
                         )}
                     </div>
@@ -550,7 +554,7 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
                         <div className="flex min-h-full flex-col justify-end gap-3">
                             {messages.length === 0 && systemEvents.length === 0 && (
                                 <div className="rounded-2xl border-2 border-dashed border-[#1f2937]/20 bg-white/60 px-4 py-6 text-center text-sm text-[#6b7280]">
-                                    No messages yet in this room.
+                                    {t("No messages yet in this room.")}
                                 </div>
                             )}
 
@@ -587,7 +591,7 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
                                             }`}
                                         >
                                             <div className={`mb-1 text-xs font-bold uppercase tracking-[0.18em] ${isMine ? "text-white/70" : "text-[#6b7280]"}`}>
-                                                {isMine ? "You" : displayName}
+                                                {isMine ? t("You") : displayName}
                                             </div>
                                             <div className="break-words text-sm leading-6 sm:text-[0.95rem]">{message.content}</div>
                                         </div>
@@ -635,7 +639,7 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
                             <div className="flex items-center gap-2">
                                 <input
                                     type="text"
-                                    placeholder="Write a message..."
+                                    placeholder={t("Write a message...")}
                                     value={messageText}
                                     onChange={(e) => setMessageText(e.target.value)}
                                     className="min-w-0 flex-1 rounded-2xl border-2 border-[#1f2937] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 sm:px-4 sm:py-3"
@@ -645,12 +649,12 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
                                     disabled={selectedRoomId == null || isSubmittingMessage}
                                     className="rounded-2xl border-2 border-[#1f2937] bg-[#1f2937] px-3 py-2.5 text-sm font-semibold text-white shadow-[3px_3px_0_#1f2937] transition hover:translate-x-[1px] hover:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60 sm:px-4 sm:py-3"
                                 >
-                                    {isSubmittingMessage ? "..." : "Send"}
+                                    {isSubmittingMessage ? "..." : t("Send")}
                                 </button>
                             </div>
 
                             <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#6b7280] sm:text-xs">
-                                <span>{selectedRoom ? `Connected to ${getRoomDisplayName(selectedRoom)}` : "No channel selected"}</span>
+                                <span>{selectedRoom ? `Connected to ${getRoomDisplayName(selectedRoom)}` : t("No channel selected")}</span>
                                 <span>{messages.length} message{messages.length > 1 ? "s" : ""}</span>
                             </div>
                         </form>
