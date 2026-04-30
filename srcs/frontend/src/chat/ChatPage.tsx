@@ -21,15 +21,15 @@ function ChatPage() {
             <div className="mx-auto flex h-full min-h-0 w-full max-w-7xl flex-col gap-3">
                 <div className="flex items-center justify-between rounded-2xl border-4 border-[#1f2937] bg-[#18212f] px-4 py-3 text-white shadow-[8px_8px_0_#1f2937]">
                     <div>
-                        <div className="text-xs uppercase tracking-[0.24em] text-white/70">Chat</div>
-                        <h1 className="text-lg font-semibold sm:text-2xl">Salon de discussion</h1>
+                        <div className="text-xs uppercase tracking-[0.24em] text-white/70">{t("Chat")}</div>
+                        <h1 className="text-lg font-semibold sm:text-2xl">{t("Chat")}</h1>
                     </div>
                     <button
                         type="button"
                         onClick={() => navigate("/")}
                         className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-white transition hover:bg-white/20 sm:px-4"
                     >
-                        Back home
+                        {t("Back home")}
                     </button>
                 </div>
 
