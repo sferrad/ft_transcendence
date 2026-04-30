@@ -33,6 +33,10 @@ const Settingacc = ({ onClose }: { onClose: () => void }) => {
                 <span className="text-2xl">❌</span>
                 <span className='text-xl min-[481px]:text-3xl font-arcade'>{t("Delete Account")}</span>
                 </button>
+                <button onClick={() => navigate('/settings/save-data')} className="w-full text-left px-4 py-3 text-xl text-gray-800 hover:bg-blue-100 rounded-lg transition-all duration-150 hover:scale-105 hover:shadow-md flex items-center gap-3">
+                <span className="text-2xl">💾</span>
+                <span className='text-xl min-[481px]:text-3xl font-arcade'>{t("Save Data")}</span>
+                </button>
             </div>
         </div>
     );
