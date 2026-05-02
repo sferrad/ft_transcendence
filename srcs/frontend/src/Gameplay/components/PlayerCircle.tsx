@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 
 interface PlayerCircleProps {
   x: number
@@ -11,65 +11,48 @@ interface PlayerCircleProps {
 }
 
 function nationToFaceSrc(nation: string): string {
-  const key = nation?.trim().toLowerCase() || ''
-  // Be defensive: import.meta may not be available in some tooling/runtime
-  const base = (typeof import !== 'undefined' && typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL) ? import.meta.env.BASE_URL : '/'
+  const key = nation.trim().toLowerCase()
+  const base = import.meta.env.BASE_URL
 
-  try {
-    if (key === 'morocco' || key === 'maroc') return `${base}assets/perso/morocco-face.png`
-    if (key === 'tunisia' || key === 'tunisie') return `${base}assets/perso/tunisian-face.png`
-  } catch (e) {
-    // fallback handled below
-  }
-
-  return `${base}assets/perso/algerian-face.png`
+  if (key === 'morocco' || key === 'maroc') return `${base}assets/perso/morocco-face.png`
+  if (key === 'tunisia' || key === 'tunisie') return `${base}assets/perso/tunisia-face.png`
+  return `${base}assets/perso/algeria-face.png`
 }
 
 export function PlayerCircle({ x, y, radius, color, nation = 'Algeria', isKicking = false, facingRight = true }: PlayerCircleProps) {
   const [imgFailed, setImgFailed] = useState(false)
 
-  // We'll load the image to read its natural height and use that as the
-  // square side. If loading fails or hasn't completed yet we fall back to
-  // a size relative to `radius`.
-  const [naturalHeight, setNaturalHeight] = useState<number | null>(null)
+  // We'll render a square frame (crop) whose side corresponds to the visual
+  // frame height we want; using a square container + `object-fit: cover`
+  // ensures the PNG is cropped centered around its native center (so the
+  // crop side effectively maps to the PNG height when scaled).
+  const spriteFrameH = radius * 2.35
+  const spriteFrameSize = spriteFrameH // square side
+  const spriteLeft = x - spriteFrameSize / 2
+  const spriteTop = y - radius * 2.4  // Élevé pour que le PNG reste visible
+  const spriteZoom = 2.2
   const faceSrc = nationToFaceSrc(nation)
+  
+  // Calcul de la hauteur réelle du PNG rendu (ratio 1408x768)
+  const pngAspectRatio = 1408 / 768  // ≈ 1.833
+  const pngRenderHeight = spriteFrameSize / pngAspectRatio
 
-  useEffect(() => {
-    setNaturalHeight(null)
-    setImgFailed(false)
-    const img = new Image()
-    img.src = faceSrc
-    img.onload = () => setNaturalHeight(img.naturalHeight || null)
-    img.onerror = () => setImgFailed(true)
-    useEffect(() => {
-      setNaturalHeight(null)
-      setImgFailed(false)
-      if (typeof window === 'undefined' || !faceSrc) return
+  const footW = Math.max(28, radius * 1.18)
+  const footH = Math.max(13, radius * 0.54)
 
-      let mounted = true
-      try {
-        const img = new window.Image()
-        img.src = faceSrc
-        img.onload = () => {
-          if (!mounted) return
-          try {
-            const h = Number(img.naturalHeight || img.height || 0)
-            setNaturalHeight(h > 0 ? h : null)
-          } catch (_) {
-            setNaturalHeight(null)
-          }
-        }
-        img.onerror = () => {
-          if (!mounted) return
-          setImgFailed(true)
-        }
-        return () => {
-          mounted = false
-        }
-      } catch (e) {
-        setImgFailed(true)
-      }
-    }, [faceSrc])
+  // Le pied suit un arc naturel: repos sous le corps, tir vers l'avant.
+  const restAngle = 1.5
+  const kickAngle = 0
+  const kickProgress = isKicking ? 1 : 0
+  const localAngle = restAngle + (kickAngle - restAngle) * kickProgress
+  const footAngleRad = facingRight ? localAngle : Math.PI - localAngle
+  // Le pivot du pied reste accroché au bas du sprite, la hitbox gameplay reste inchangée.
+  const footPivotX = x + (facingRight ? radius * 0.2 : -radius * 0.2)
+  const footPivotY = y + radius
+  const footDistance = radius * (isKicking ? 0.94 : 0.82)
+
+  const footCenterX = footPivotX + Math.cos(footAngleRad) * footDistance
+  const footCenterY = footPivotY + Math.sin(footAngleRad) * footDistance
   const rotation = (footAngleRad * 180) / Math.PI + (isKicking ? 0 : 6)
 
   return (
@@ -83,8 +66,6 @@ export function PlayerCircle({ x, y, radius, color, nation = 'Algeria', isKickin
             top: spriteTop,
             width: spriteFrameSize,
             height: spriteFrameSize,
-            borderRadius: 0,
-            overflow: 'hidden',
             pointerEvents: 'none',
             display: 'flex',
             alignItems: 'center',
@@ -96,17 +77,14 @@ export function PlayerCircle({ x, y, radius, color, nation = 'Algeria', isKickin
             alt={nation}
             onError={() => setImgFailed(true)}
             style={{
-              width: 'auto',
-              height: '100%',
-              objectFit: 'cover',
-              objectPosition: 'center center',
+              width: spriteFrameSize,
+              height: 'auto',
               transform: `scaleX(${facingRight ? 1 : -1}) scale(${spriteZoom})`,
-              transformOrigin: '50% 50%',
+              transformOrigin: 'center center',
               imageRendering: 'pixelated',
               filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.55))',
               pointerEvents: 'none',
               userSelect: 'none',
-              display: 'block',
             }}
           />
         </div>
@@ -114,10 +92,10 @@ export function PlayerCircle({ x, y, radius, color, nation = 'Algeria', isKickin
 
       <div style={{
         position: 'absolute',
-        left: x - radius,
-        top: y - radius,
-        width: radius * 2,
-        height: radius * 2,
+        left: spriteLeft,
+        top: spriteTop,
+        width: spriteFrameSize,
+        height: pngRenderHeight,
         borderRadius: 0,
         backgroundColor: imgFailed ? 'rgba(255,255,255,0.12)' : 'transparent',
         boxShadow: imgFailed ? `0 0 0 2px ${color}` : 'none',

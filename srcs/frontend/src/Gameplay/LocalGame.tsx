@@ -32,6 +32,8 @@ const LocalGame = () => {
 
   const player1Name = searchParams.get('player1') || 'Joueur 1'
   const player2Name = searchParams.get('player2') || 'Joueur 2'
+  const player1Nation = searchParams.get('p1Nation') || 'Algeria'
+  const player2Nation = searchParams.get('p2Nation') || 'Algeria'
 
   const { gameState, goalFlash, restart } = useGameLoop(player1Name, player2Name, false)
 
@@ -94,6 +96,7 @@ const LocalGame = () => {
             y={gameState.player1.y}
             radius={gameState.player1.radius}
             color="#3b82f6"
+            nation={player1Nation}
             isKicking={gameState.player1.isKicking}
             facingRight={true}
           />
@@ -102,6 +105,7 @@ const LocalGame = () => {
             y={gameState.player2.y}
             radius={gameState.player2.radius}
             color="#ef4444"
+            nation={player2Nation}
             isKicking={gameState.player2.isKicking}
             facingRight={false}
           />
