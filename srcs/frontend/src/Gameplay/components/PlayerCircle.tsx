@@ -11,11 +11,17 @@ interface PlayerCircleProps {
 }
 
 function nationToFaceSrc(nation: string): string {
-  const key = nation.trim().toLowerCase()
-  const base = import.meta.env.BASE_URL
+  const key = nation?.trim().toLowerCase() || ''
+  // Be defensive: import.meta may not be available in some tooling/runtime
+  const base = (typeof import !== 'undefined' && typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL) ? import.meta.env.BASE_URL : '/'
 
-  if (key === 'morocco' || key === 'maroc') return `${base}assets/perso/morocco-face.png`
-  if (key === 'tunisia' || key === 'tunisie') return `${base}assets/perso/tunisian-face.png`
+  try {
+    if (key === 'morocco' || key === 'maroc') return `${base}assets/perso/morocco-face.png`
+    if (key === 'tunisia' || key === 'tunisie') return `${base}assets/perso/tunisian-face.png`
+  } catch (e) {
+    // fallback handled below
+  }
+
   return `${base}assets/perso/algerian-face.png`
 }
 
@@ -35,35 +41,35 @@ export function PlayerCircle({ x, y, radius, color, nation = 'Algeria', isKickin
     img.src = faceSrc
     img.onload = () => setNaturalHeight(img.naturalHeight || null)
     img.onerror = () => setImgFailed(true)
-    return () => {
-      img.onload = null
-      img.onerror = null
-    }
-  }, [faceSrc])
+    useEffect(() => {
+      setNaturalHeight(null)
+      setImgFailed(false)
+      if (typeof window === 'undefined' || !faceSrc) return
 
-  // If we have the image natural height, use it as the square side. Otherwise
-  // fallback to a size proportional to the gameplay `radius`.
-  const spriteFrameSize = naturalHeight || Math.round(radius * 2.35)
-  const spriteLeft = x - spriteFrameSize / 2
-  const spriteTop = y - spriteFrameSize / 2
-  const spriteZoom = 2.2
-
-  const footW = Math.max(28, radius * 1.18)
-  const footH = Math.max(13, radius * 0.54)
-
-  // Le pied suit un arc naturel: repos sous le corps, tir vers l'avant.
-  const restAngle = 1.5
-  const kickAngle = 0
-  const kickProgress = isKicking ? 1 : 0
-  const localAngle = restAngle + (kickAngle - restAngle) * kickProgress
-  const footAngleRad = facingRight ? localAngle : Math.PI - localAngle
-  // Le pivot du pied reste accroché au bas du sprite, la hitbox gameplay reste inchangée.
-  const footPivotX = x + (facingRight ? radius * 0.2 : -radius * 0.2)
-  const footPivotY = spriteTop + spriteFrameH * 0.92
-  const footDistance = radius * (isKicking ? 0.94 : 0.82)
-
-  const footCenterX = footPivotX + Math.cos(footAngleRad) * footDistance
-  const footCenterY = footPivotY + Math.sin(footAngleRad) * footDistance
+      let mounted = true
+      try {
+        const img = new window.Image()
+        img.src = faceSrc
+        img.onload = () => {
+          if (!mounted) return
+          try {
+            const h = Number(img.naturalHeight || img.height || 0)
+            setNaturalHeight(h > 0 ? h : null)
+          } catch (_) {
+            setNaturalHeight(null)
+          }
+        }
+        img.onerror = () => {
+          if (!mounted) return
+          setImgFailed(true)
+        }
+        return () => {
+          mounted = false
+        }
+      } catch (e) {
+        setImgFailed(true)
+      }
+    }, [faceSrc])
   const rotation = (footAngleRad * 180) / Math.PI + (isKicking ? 0 : 6)
 
   return (
