@@ -5,6 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from fastapi import Header
 from prometheus_fastapi_instrumentator import Instrumentator
+from socketio import ASGIApp, AsyncServer
+import logging
 
 from .middleware.rate_limit import rate_limit_middleware
 from .security import load_jwt_secret, create_access_token
@@ -17,9 +19,42 @@ from .user_service_client import (
     UserServiceUnavailableError,
     UserServiceError
 )
+from .websocket_handlers import register_websocket_handlers
 
+logger = logging.getLogger(__name__)
 
+# Create FastAPI app
 app = FastAPI(title="api-gateway")
+
+# En mode DEV (WEBSOCKET_CORS_ORIGINS non défini), accepter toutes les origines
+# Pour éviter de modifier l'env à chaque changement de PC/réseau (école)
+WEBSOCKET_CORS_ORIGINS = os.getenv("WEBSOCKET_CORS_ORIGINS")
+if not WEBSOCKET_CORS_ORIGINS:
+    # Mode DEV: accepter toutes les origines
+    WEBSOCKET_CORS_ORIGINS = "*"
+else:
+    # Mode PROD: utiliser la liste spécifiée
+    WEBSOCKET_CORS_ORIGINS = [
+        origin.strip()
+        for origin in WEBSOCKET_CORS_ORIGINS.split(",")
+        if origin.strip()
+    ]
+
+# Setup Socket.IO
+sio = AsyncServer(
+    async_mode="asgi",
+    cors_allowed_origins=WEBSOCKET_CORS_ORIGINS,
+    ping_timeout=60,
+    ping_interval=25,
+    logger=False,
+    engineio_logger=False,
+)
+
+# Wrap with ASGI app
+socket_app = ASGIApp(sio, other_asgi_app=app, socketio_path="/ws/socket.io")
+register_websocket_handlers(sio)
+
+logger.info("WebSocket (Socket.IO) registered on /ws/socket.io")
 
 Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
@@ -66,6 +101,18 @@ PROFILE_SERVICE_URL = os.getenv("PROFILE_SERVICE_URL", "http://profile-service:8
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "api-gateway"}
+
+@app.get("/ws/health")
+async def websocket_health():
+    """WebSocket server health check"""
+    from .websocket_manager import get_manager
+    manager = get_manager()
+    stats = await manager.get_stats()
+    return {
+        "status": "ok",
+        "service": "api-gateway-websocket",
+        "stats": stats
+    }
 
 # Login: vérifie les identifiants et renvoie un JWT.
 
