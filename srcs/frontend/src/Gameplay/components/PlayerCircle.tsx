@@ -1,13 +1,38 @@
+import { useState } from 'react'
+
 interface PlayerCircleProps {
   x: number
   y: number
   radius: number
   color: string
+  nation?: string
   isKicking?: boolean
   facingRight?: boolean
 }
 
-export function PlayerCircle({ x, y, radius, color, isKicking = false, facingRight = true }: PlayerCircleProps) {
+function nationToFaceSrc(nation: string): string {
+  const key = nation.trim().toLowerCase()
+  const base = import.meta.env.BASE_URL
+
+  if (key === 'morocco' || key === 'maroc') return `${base}assets/perso/morocco-face.png`
+  if (key === 'tunisia' || key === 'tunisie') return `${base}assets/perso/tunisian-face.png`
+  return `${base}assets/perso/algerian-face.png`
+}
+
+export function PlayerCircle({ x, y, radius, color, nation = 'Algeria', isKicking = false, facingRight = true }: PlayerCircleProps) {
+  const [imgFailed, setImgFailed] = useState(false)
+
+  // We'll render a square frame (crop) whose side corresponds to the visual
+  // frame height we want; using a square container + `object-fit: cover`
+  // ensures the PNG is cropped centered around its native center (so the
+  // crop side effectively maps to the PNG height when scaled).
+  const spriteFrameH = radius * 2.35
+  const spriteFrameSize = spriteFrameH // square side
+  const spriteLeft = x - spriteFrameSize / 2
+  const spriteTop = y - radius * 1.95
+  const spriteZoom = 2.2
+  const faceSrc = nationToFaceSrc(nation)
+
   const footW = Math.max(28, radius * 1.18)
   const footH = Math.max(13, radius * 0.54)
 
@@ -17,16 +42,55 @@ export function PlayerCircle({ x, y, radius, color, isKicking = false, facingRig
   const kickProgress = isKicking ? 1 : 0
   const localAngle = restAngle + (kickAngle - restAngle) * kickProgress
   const footAngleRad = facingRight ? localAngle : Math.PI - localAngle
-  // On garde le pied accroché au bas du corps avec un léger décalage vers l'arrière.
-  const footDistance = radius * (isKicking ? 0.98 : 0.85)
+  // Le pivot du pied reste accroché au bas du sprite, la hitbox gameplay reste inchangée.
+  const footPivotX = x + (facingRight ? radius * 0.2 : -radius * 0.2)
+  const footPivotY = spriteTop + spriteFrameH * 0.92
+  const footDistance = radius * (isKicking ? 0.94 : 0.82)
 
-  const footCenterX = x + Math.cos(footAngleRad) * footDistance - (facingRight ? radius * 0.4 : -radius * 0.4)
-  const footCenterY = y + Math.sin(footAngleRad) * footDistance + radius * 0.1
+  const footCenterX = footPivotX + Math.cos(footAngleRad) * footDistance
+  const footCenterY = footPivotY + Math.sin(footAngleRad) * footDistance
   const rotation = (footAngleRad * 180) / Math.PI + (isKicking ? 0 : 6)
 
   return (
     <div style={{ position: 'absolute', left: 0, top: 0 }}>
-      {/* Corps */}
+      {/* Visage/joueur: visuel uniquement, collisions inchangées (rayon dans le moteur). */}
+      {!imgFailed && (
+        <div
+          style={{
+            position: 'absolute',
+            left: spriteLeft,
+            top: spriteTop,
+            width: spriteFrameSize,
+            height: spriteFrameSize,
+            borderRadius: '50%',
+            overflow: 'hidden',
+            pointerEvents: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <img
+            src={faceSrc}
+            alt={nation}
+            onError={() => setImgFailed(true)}
+            style={{
+              width: 'auto',
+              height: '100%',
+              objectFit: 'cover',
+              objectPosition: 'center center',
+              transform: `scaleX(${facingRight ? 1 : -1}) scale(${spriteZoom})`,
+              transformOrigin: '50% 50%',
+              imageRendering: 'pixelated',
+              filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.55))',
+              pointerEvents: 'none',
+              userSelect: 'none',
+              display: 'block',
+            }}
+          />
+        </div>
+      )}
+
       <div style={{
         position: 'absolute',
         left: x - radius,
@@ -34,9 +98,10 @@ export function PlayerCircle({ x, y, radius, color, isKicking = false, facingRig
         width: radius * 2,
         height: radius * 2,
         borderRadius: '50%',
-        backgroundColor: color,
-        boxShadow: `0 3px 8px rgba(0,0,0,0.4)`,
+        backgroundColor: imgFailed ? 'rgba(255,255,255,0.12)' : 'transparent',
+        boxShadow: imgFailed ? `0 0 0 2px ${color}` : 'none',
       }} />
+
       {/* Pied */}
       <div style={{
         position: 'absolute',
