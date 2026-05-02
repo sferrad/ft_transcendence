@@ -136,6 +136,16 @@ async def leave_socket_room(sio: AsyncServer, sid: str, room_name: str) -> Clien
     return await get_manager().leave_room(sid, room_name)
 
 
+async def _cleanup_chat_room_on_disconnect(
+    sio: AsyncServer,
+    sid: str,
+    session: ClientSession,
+    room_name: str,
+) -> None:
+    """Cleanup local socket state on disconnect without removing membership or broadcasting."""
+    await leave_socket_room(sio, sid, room_name)
+
+
 def register_websocket_handlers(sio: AsyncServer) -> None:
     manager = get_manager()
 
@@ -158,28 +168,22 @@ def register_websocket_handlers(sio: AsyncServer) -> None:
             return
 
         for room_name in rooms:
-            room_members = await manager.get_room_members(room_name)
             if room_name.startswith("game:"):
-                event = "game.user_left"
-                payload = {
-                    "game_room_id": public_room_id(room_name),
-                    "user_id": removed.user_id,
-                    "username": removed.username,
-                    "room_members": room_members,
-                    "timestamp": utc_now(),
-                }
+                room_members = await manager.get_room_members(room_name)
+                await manager.broadcast_to_room(
+                    sio,
+                    room_name,
+                    "game.user_left",
+                    {
+                        "game_room_id": public_room_id(room_name),
+                        "user_id": removed.user_id,
+                        "username": removed.username,
+                        "room_members": room_members,
+                        "timestamp": utc_now(),
+                    },
+                )
             elif room_name.startswith("chat:"):
-                event = "chat.user_left"
-                payload = {
-                    "room_id": int(public_room_id(room_name)),
-                    "user_id": removed.user_id,
-                    "username": removed.username,
-                    "room_members": room_members,
-                    "timestamp": utc_now(),
-                }
-            else:
-                continue
-            await manager.broadcast_to_room(sio, room_name, event, payload)
+                await _cleanup_chat_room_on_disconnect(sio, sid, removed, room_name)
 
     @sio.on("game.join")
     async def game_join(sid: str, data: dict[str, Any] | None) -> None:
@@ -313,10 +317,13 @@ def register_websocket_handlers(sio: AsyncServer) -> None:
 
     @sio.on("chat.join")
     async def chat_join(sid: str, data: dict[str, Any] | None) -> None:
+        """Join a chat room: validate → notify service → join locally → broadcast."""
         session = await manager.get_session(sid)
         if session is None:
             await emit_error(sio, sid, "Session not found", "not_authenticated")
             return
+
+        # Validate data
         if not isinstance(data, dict) or data.get("room_id") is None:
             await emit_error(sio, sid, "Missing room_id")
             return
@@ -327,13 +334,28 @@ def register_websocket_handlers(sio: AsyncServer) -> None:
             await emit_error(sio, sid, "Invalid room_id")
             return
 
-        status_code, body = await chat_service_request("POST", f"/rooms/{public_room_id(room_name)}/join", user_id=session.user_id)
+        # Step 1: Notify chat service
+        status_code, body = await chat_service_request(
+            "POST",
+            f"/rooms/{public_room_id(room_name)}/join",
+            user_id=session.user_id,
+        )
         if status_code >= 400:
             await emit_error(sio, sid, str(body.get("detail", "Unable to join room")), "chat_join_failed")
             return
 
-        await join_socket_room(sio, sid, room_name)
+        # Step 2: Add to socket room and manager
+        joined_session = await join_socket_room(sio, sid, room_name)
+        if joined_session is None:
+            await emit_error(sio, sid, "Failed to join room locally", "internal_error")
+            # Try to rollback on service
+            await chat_service_request("POST", f"/rooms/{public_room_id(room_name)}/leave", user_id=session.user_id)
+            return
+
+        # Step 3: Get updated room members
         room_members = await manager.get_room_members(room_name)
+
+        # Step 4: Notify other users
         await manager.broadcast_to_room(
             sio,
             room_name,
@@ -347,6 +369,8 @@ def register_websocket_handlers(sio: AsyncServer) -> None:
             },
             skip_sid=sid,
         )
+
+        # Step 5: Confirm to joining user
         await sio.emit(
             "chat.joined",
             {
@@ -357,65 +381,15 @@ def register_websocket_handlers(sio: AsyncServer) -> None:
             to=sid,
         )
 
-    @sio.on("chat.message")
-    async def chat_message(sid: str, data: dict[str, Any] | None) -> None:
+    @sio.on("chat.leave")
+    async def chat_leave(sid: str, data: dict[str, Any] | None) -> None:
+        """Leave a chat room: validate → notify service → leave locally → broadcast."""
         session = await manager.get_session(sid)
         if session is None:
             await emit_error(sio, sid, "Session not found", "not_authenticated")
             return
-        if not isinstance(data, dict):
-            await emit_error(sio, sid, "Invalid chat message payload")
-            return
 
-        content = str(data.get("content") or "").strip()
-        if not content:
-            await emit_error(sio, sid, "Message content is empty")
-            return
-        if len(content) > MAX_CHAT_MESSAGE_CHARS:
-            await emit_error(sio, sid, f"Message too long (max {MAX_CHAT_MESSAGE_CHARS} chars)")
-            return
-
-        try:
-            room_name = chat_room_name(data.get("room_id"))
-        except (TypeError, ValueError):
-            await emit_error(sio, sid, "Invalid room_id")
-            return
-
-        if room_name not in await manager.get_session_rooms(sid, "chat:"):
-            await emit_error(sio, sid, "Join the chat room before sending messages", "not_in_room")
-            return
-
-        status_code, body = await chat_service_request(
-            "POST",
-            f"/rooms/{public_room_id(room_name)}/messages",
-            user_id=session.user_id,
-            json_body={"content": content},
-        )
-        if status_code >= 400:
-            await emit_error(sio, sid, str(body.get("detail", "Unable to send message")), "chat_message_failed")
-            return
-
-        await manager.broadcast_to_room(
-            sio,
-            room_name,
-            "chat.message",
-            {
-                "id": body.get("id"),
-                "room_id": body.get("room_id", int(public_room_id(room_name))),
-                "sender_user_id": body.get("sender_user_id", session.user_id),
-                "user_id": body.get("sender_user_id", session.user_id),
-                "username": session.username,
-                "content": body.get("content", content),
-                "created_at": body.get("created_at"),
-                "timestamp": utc_now(),
-            },
-        )
-
-    @sio.on("chat.leave")
-    async def chat_leave(sid: str, data: dict[str, Any] | None) -> None:
-        session = await manager.get_session(sid)
-        if session is None:
-            return
+        # Validate data
         if not isinstance(data, dict) or data.get("room_id") is None:
             await emit_error(sio, sid, "Missing room_id")
             return
@@ -426,13 +400,28 @@ def register_websocket_handlers(sio: AsyncServer) -> None:
             await emit_error(sio, sid, "Invalid room_id")
             return
 
-        status_code, body = await chat_service_request("POST", f"/rooms/{public_room_id(room_name)}/leave", user_id=session.user_id)
+        # Check if actually in room
+        if room_name not in await manager.get_session_rooms(sid, "chat:"):
+            await emit_error(sio, sid, "Not in this chat room", "not_in_room")
+            return
+
+        # Step 1: Notify chat service
+        status_code, body = await chat_service_request(
+            "POST",
+            f"/rooms/{public_room_id(room_name)}/leave",
+            user_id=session.user_id,
+        )
         if status_code >= 400:
             await emit_error(sio, sid, str(body.get("detail", "Unable to leave room")), "chat_leave_failed")
             return
 
+        # Step 2: Remove from socket room
         await leave_socket_room(sio, sid, room_name)
+
+        # Step 3: Get remaining room members
         room_members = await manager.get_room_members(room_name)
+
+        # Step 4: Notify other users
         await manager.broadcast_to_room(
             sio,
             room_name,
@@ -442,10 +431,76 @@ def register_websocket_handlers(sio: AsyncServer) -> None:
                 "user_id": session.user_id,
                 "username": session.username,
                 "room_members": room_members,
+                "reason": "leave",
                 "timestamp": utc_now(),
             },
         )
-        await sio.emit("chat.left", {"room_id": int(public_room_id(room_name)), "timestamp": utc_now()}, to=sid)
+
+        # Step 5: Confirm to leaving user
+        await sio.emit(
+            "chat.left",
+            {"room_id": int(public_room_id(room_name)), "timestamp": utc_now()},
+            to=sid,
+        )
+
+    @sio.on("chat.message")
+    async def chat_message(sid: str, data: dict[str, Any] | None) -> None:
+        """Send a message to a chat room."""
+        session = await manager.get_session(sid)
+        if session is None:
+            await emit_error(sio, sid, "Session not found", "not_authenticated")
+            return
+
+        # Validate data
+        if not isinstance(data, dict):
+            await emit_error(sio, sid, "Invalid chat message payload")
+            return
+
+        content = str(data.get("content") or "").strip()
+        if not content:
+            await emit_error(sio, sid, "Message content is empty")
+            return
+        if len(content) > MAX_CHAT_MESSAGE_CHARS:
+            await emit_error(sio, sid, f"Message too long (max {MAX_CHAT_MESSAGE_CHARS} chars)", "message_too_long")
+            return
+
+        try:
+            room_name = chat_room_name(data.get("room_id"))
+        except (TypeError, ValueError):
+            await emit_error(sio, sid, "Invalid room_id")
+            return
+
+        # Check if user is in this room
+        if room_name not in await manager.get_session_rooms(sid, "chat:"):
+            await emit_error(sio, sid, "Join the chat room before sending messages", "not_in_room")
+            return
+
+        # Send to chat service
+        status_code, body = await chat_service_request(
+            "POST",
+            f"/rooms/{public_room_id(room_name)}/messages",
+            user_id=session.user_id,
+            json_body={"content": content},
+        )
+        if status_code >= 400:
+            await emit_error(sio, sid, str(body.get("detail", "Unable to send message")), "chat_message_failed")
+            return
+
+        # Broadcast to all in room
+        await manager.broadcast_to_room(
+            sio,
+            room_name,
+            "chat.message",
+            {
+                "id": body.get("id"),
+                "room_id": int(public_room_id(room_name)),
+                "sender_user_id": body.get("sender_user_id", session.user_id),
+                "username": session.username,
+                "content": body.get("content", content),
+                "created_at": body.get("created_at"),
+                "timestamp": utc_now(),
+            },
+        )
 
     @sio.on("ping")
     async def ping(sid: str) -> None:

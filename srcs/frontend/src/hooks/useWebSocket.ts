@@ -34,6 +34,15 @@ export interface ChatMessage {
   timestamp?: string;
 }
 
+export interface ChatMemberEvent {
+  room_id: number;
+  user_id: number;
+  username?: string;
+  type: 'joined' | 'left';
+  reason?: string;
+  timestamp?: string;
+}
+
 const normalizeSocketUrl = (rawUrl: string) => {
   const withoutSocketPath = rawUrl.replace(/\/ws\/socket\.io\/?$/, '').replace(/\/ws\/?$/, '');
   if (withoutSocketPath.startsWith('ws://')) {
@@ -246,12 +255,12 @@ export function useChatWebSocket(roomId?: number) {
   const { socket, connected, emit, on, off, error } = useWebSocket({ enabled: Boolean(roomId) });
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [roomMembers, setRoomMembers] = useState<number[]>([]);
+  const [memberEvent, setMemberEvent] = useState<ChatMemberEvent | null>(null);
+  const [lastMessage, setLastMessage] = useState<ChatMessage | null>(null);
 
   useEffect(() => {
-    if (connected && roomId) {
-      emit('chat.join', { room_id: roomId });
-    }
-  }, [connected, roomId, emit]);
+    setMemberEvent(null);
+  }, [roomId]);
 
   useEffect(() => {
     if (!socket) return;
@@ -259,7 +268,8 @@ export function useChatWebSocket(roomId?: number) {
     const handleJoined: EventHandler = (payload) => {
       const data = asPayload(payload);
       setRoomMembers(numberList(data.room_members));
-      setMessages([]);
+      setMemberEvent(null);
+      setLastMessage(null);
     };
 
     const handleMessage: EventHandler = (payload) => {
@@ -276,30 +286,58 @@ export function useChatWebSocket(roomId?: number) {
       };
       if (Number.isFinite(message.room_id) && Number.isFinite(message.sender_user_id) && message.content) {
         setMessages((prev) => [...prev, message]);
+        setLastMessage(message);
       }
     };
 
-    const handleMembersChanged: EventHandler = (payload) => {
+
+    const handleUserJoined: EventHandler = (payload) => {
       const data = asPayload(payload);
       setRoomMembers(numberList(data.room_members));
+      setMemberEvent({
+        room_id: Number(data.room_id),
+        user_id: Number(data.user_id),
+        username: data.username === undefined ? undefined : String(data.username),
+        type: 'joined',
+        reason: data.reason === undefined ? undefined : String(data.reason),
+        timestamp: data.timestamp === undefined ? undefined : String(data.timestamp),
+      });
+    };
+
+    const handleUserLeft: EventHandler = (payload) => {
+      const data = asPayload(payload);
+      setRoomMembers(numberList(data.room_members));
+      setMemberEvent({
+        room_id: Number(data.room_id),
+        user_id: Number(data.user_id),
+        username: data.username === undefined ? undefined : String(data.username),
+        type: 'left',
+        reason: data.reason === undefined ? undefined : String(data.reason),
+        timestamp: data.timestamp === undefined ? undefined : String(data.timestamp),
+      });
     };
 
     on('chat.joined', handleJoined);
     on('chat.message', handleMessage);
-    on('chat.user_joined', handleMembersChanged);
-    on('chat.user_left', handleMembersChanged);
+    on('chat.user_joined', handleUserJoined);
+    on('chat.user_left', handleUserLeft);
 
     return () => {
       off('chat.joined', handleJoined);
       off('chat.message', handleMessage);
-      off('chat.user_joined', handleMembersChanged);
-      off('chat.user_left', handleMembersChanged);
+      off('chat.user_joined', handleUserJoined);
+      off('chat.user_left', handleUserLeft);
     };
   }, [socket, on, off]);
 
   const sendMessage = useCallback((content: string) => {
     if (!roomId) return false;
     return emit('chat.message', { room_id: roomId, content });
+  }, [roomId, emit]);
+
+  const joinRoom = useCallback(() => {
+    if (!roomId) return false;
+    return emit('chat.join', { room_id: roomId });
   }, [roomId, emit]);
 
   const leaveRoom = useCallback(() => {
@@ -316,7 +354,10 @@ export function useChatWebSocket(roomId?: number) {
     error,
     messages,
     roomMembers,
+    memberEvent,
+    lastMessage,
     sendMessage,
+    joinRoom,
     leaveRoom,
   };
 }
