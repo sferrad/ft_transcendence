@@ -2,12 +2,16 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSearchParams } from "react-router-dom";
 import { ChatButton } from "./ChatButton";
+import { useTranslation } from "react-i18next";
 
 function ChatPage() {
+    const { t } = useTranslation();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const roomIdParam = searchParams.get("roomId");
     const initialRoomId = roomIdParam ? Number(roomIdParam) : null;
+
+    // localStorage.setItem("access_token", "debug_token"); // TODO: Remove this line after implementing proper authentication
 
     useEffect(() => {
         const token = localStorage.getItem("access_token");
