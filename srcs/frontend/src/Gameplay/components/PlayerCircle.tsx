@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { getPlayerVisualLayout, PLAYER_SPRITE_ASPECT_RATIO, PLAYER_SPRITE_TOP_OFFSET, PLAYER_SPRITE_ZOOM, getPlayerSpriteFrameSize } from '../playerSpriteGeometry'
 
 interface PlayerCircleProps {
   x: number
@@ -21,39 +22,16 @@ function nationToFaceSrc(nation: string): string {
 
 export function PlayerCircle({ x, y, radius, color, nation = 'Algeria', isKicking = false, facingRight = true }: PlayerCircleProps) {
   const [imgFailed, setImgFailed] = useState(false)
+  const base = import.meta.env.BASE_URL
 
-  // We'll render a square frame (crop) whose side corresponds to the visual
-  // frame height we want; using a square container + `object-fit: cover`
-  // ensures the PNG is cropped centered around its native center (so the
-  // crop side effectively maps to the PNG height when scaled).
-  const spriteFrameH = radius * 2.35
-  const spriteFrameSize = spriteFrameH // square side
+  const spriteFrameSize = getPlayerSpriteFrameSize(radius)
   const spriteLeft = x - spriteFrameSize / 2
-  const spriteTop = y - radius * 2.4  // Élevé pour que le PNG reste visible
-  const spriteZoom = 2.2
+  const spriteTop = y - radius * PLAYER_SPRITE_TOP_OFFSET
   const faceSrc = nationToFaceSrc(nation)
-  
-  // Calcul de la hauteur réelle du PNG rendu (ratio 1408x768)
-  const pngAspectRatio = 1408 / 768  // ≈ 1.833
-  const pngRenderHeight = spriteFrameSize / pngAspectRatio
-
-  const footW = Math.max(28, radius * 1.18)
-  const footH = Math.max(13, radius * 0.54)
-
-  // Le pied suit un arc naturel: repos sous le corps, tir vers l'avant.
-  const restAngle = 1.5
-  const kickAngle = 0
-  const kickProgress = isKicking ? 1 : 0
-  const localAngle = restAngle + (kickAngle - restAngle) * kickProgress
-  const footAngleRad = facingRight ? localAngle : Math.PI - localAngle
-  // Le pivot du pied reste accroché au bas du sprite, la hitbox gameplay reste inchangée.
-  const footPivotX = x + (facingRight ? radius * 0.2 : -radius * 0.2)
-  const footPivotY = y + radius
-  const footDistance = radius * (isKicking ? 0.94 : 0.82)
-
-  const footCenterX = footPivotX + Math.cos(footAngleRad) * footDistance
-  const footCenterY = footPivotY + Math.sin(footAngleRad) * footDistance
-  const rotation = (footAngleRad * 180) / Math.PI + (isKicking ? 0 : 6)
+  const pngRenderHeight = spriteFrameSize / PLAYER_SPRITE_ASPECT_RATIO
+  const spriteZoom = PLAYER_SPRITE_ZOOM
+  const layout = getPlayerVisualLayout(x, y, radius, isKicking, facingRight)
+  const shoeSrc = `${base}assets/shoes.png`
 
   return (
     <div style={{ position: 'absolute', left: 0, top: 0 }}>
@@ -70,6 +48,7 @@ export function PlayerCircle({ x, y, radius, color, nation = 'Algeria', isKickin
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            transform: layout.mirrored ? 'scaleX(-1)' : 'none',
           }}
         >
           <img
@@ -79,7 +58,7 @@ export function PlayerCircle({ x, y, radius, color, nation = 'Algeria', isKickin
             style={{
               width: spriteFrameSize,
               height: 'auto',
-              transform: `scaleX(${facingRight ? 1 : -1}) scale(${spriteZoom})`,
+              transform: `scale(${spriteZoom})`,
               transformOrigin: 'center center',
               imageRendering: 'pixelated',
               filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.55))',
@@ -102,22 +81,38 @@ export function PlayerCircle({ x, y, radius, color, nation = 'Algeria', isKickin
       }} />
 
       {/* Pied */}
-      <div style={{
-        position: 'absolute',
-        left: footCenterX - footW / 2,
-        top: footCenterY - footH / 2,
-        width: footW,
-        height: footH,
-        borderRadius: 6,
-        backgroundColor: isKicking ? '#ffffff' : '#e0e0e0',
-        border: `2.5px solid ${color}`,
-        transform: `rotate(${rotation}deg)`,
-        transformOrigin: 'center center',
-        transition: isKicking
-          ? 'transform 0.06s ease-out'
-          : 'transform 0.12s ease-out',
-        boxShadow: isKicking ? `0 2px 8px rgba(255,255,255,0.5)` : 'none',
-      }} />
+      <div
+        style={{
+          position: 'absolute',
+          left: layout.shoe.left,
+          top: layout.shoe.top,
+          width: layout.shoe.width,
+          height: layout.shoe.height,
+          transform: `rotate(${(layout.shoe.rotation * 180) / Math.PI}deg) scaleX(${layout.shoe.mirrored ? -1 : 1})`,
+          transformOrigin: 'center center',
+          transition: isKicking
+            ? 'transform 0.06s ease-out'
+            : 'transform 0.12s ease-out',
+          pointerEvents: 'none',
+          userSelect: 'none',
+        }}
+      >
+        <img
+          src={shoeSrc}
+          alt="shoe"
+          onError={() => setImgFailed(true)}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'contain',
+            display: 'block',
+            imageRendering: 'auto',
+            pointerEvents: 'none',
+            userSelect: 'none',
+            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.4))',
+          }}
+        />
+      </div>
     </div>
   )
 }

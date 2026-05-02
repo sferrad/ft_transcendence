@@ -5,6 +5,7 @@ import { PlayerCircle } from './components/PlayerCircle'
 import { Score } from './components/Score'
 import { GameOver } from './components/GameOver'
 import { GoalPost } from './components/GoalPost'
+import { Field } from './Field'
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from './gameEngine'
 import { getCurrentUser } from '../utils/auth'
 import { useState, useEffect } from 'react'
@@ -66,6 +67,8 @@ const Gameplay = () => {
           border: '2px solid #4b5563',
           borderRadius: 4,
         }}>
+          <Field />
+
           <Score
             leftScore={gameState.player1.score}
             rightScore={gameState.player2.score}
