@@ -507,6 +507,8 @@ services:
     environment:
       # Podman/Docker detect file changes more reliably with polling here.
       - CHOKIDAR_USEPOLLING=true
+      # Vite dev proxy target for /api and /ws when opening the frontend directly.
+      - VITE_DEV_PROXY_TARGET=http://waf
     volumes:
       # Source monté en live, mais node_modules reste dans le conteneur.
     - ./frontend:/app

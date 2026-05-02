@@ -2,12 +2,18 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSearchParams } from "react-router-dom";
 import { ChatButton } from "./ChatButton";
+import { useTranslation } from "react-i18next";
+import { useChatNotifications } from "../hooks/useChatNotifications";
 
 function ChatPage() {
+    const { t } = useTranslation();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const roomIdParam = searchParams.get("roomId");
     const initialRoomId = roomIdParam ? Number(roomIdParam) : null;
+    const { hasUnread } = useChatNotifications({ enabled: Boolean(localStorage.getItem("access_token")) });
+
+    // localStorage.setItem("access_token", "debug_token"); // TODO: Remove this line after implementing proper authentication
 
     useEffect(() => {
         const token = localStorage.getItem("access_token");
@@ -22,7 +28,12 @@ function ChatPage() {
                 <div className="flex items-center justify-between rounded-2xl border-4 border-[#1f2937] bg-[#18212f] px-4 py-3 text-white shadow-[8px_8px_0_#1f2937]">
                     <div>
                         <div className="text-xs uppercase tracking-[0.24em] text-white/70">{t("Chat")}</div>
-                        <h1 className="text-lg font-semibold sm:text-2xl">{t("Chat")}</h1>
+                        <div className="flex items-center gap-2">
+                            <h1 className="text-lg font-semibold sm:text-2xl">{t("Chat")}</h1>
+                            {hasUnread && (
+                                <span className="inline-flex h-2.5 w-2.5 rounded-full bg-red-500 shadow-[0_0_0_2px_rgba(15,23,42,0.6)]" aria-hidden="true" />
+                            )}
+                        </div>
                     </div>
                     <button
                         type="button"

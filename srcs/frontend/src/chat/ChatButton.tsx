@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { MessageOut, ProfileOut, RoomOut } from "../Profile/types";
-import { createRoom, deleteRoom, getMessages, getRoomMembers, getRooms, joinRoom, leaveRoom, sendMessage } from "../Profile/api/chat";
+import { createRoom, deleteRoom, getMessages, getRoomMembers, getRooms } from "../Profile/api/chat";
 import { fetchProfileByUserId } from "../Profile/api/profile";
 import { useTranslation } from "react-i18next";
+import { useChatWebSocket } from "../hooks/useWebSocket";
+import { setRoomLastSeen, useChatNotifications } from "../hooks/useChatNotifications";
 
 type ChatButtonProps = {
     initialRoomId?: number | null;
@@ -20,12 +22,14 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
     const [profiles, setProfiles] = useState<Record<number, ProfileOut>>({});
     const [avatarBlobs, setAvatarBlobs] = useState<Record<number, string>>({});
     const [memberIds, setMemberIds] = useState<number[]>([]);
+    const [roomMemberIds, setRoomMemberIds] = useState<number[]>([]);
     const [systemEvents, setSystemEvents] = useState<Array<{ id: string; text: string }>>([]);
     const [isCreatingRoom, setIsCreatingRoom] = useState(false);
     const [isSubmittingMessage, setIsSubmittingMessage] = useState(false);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const avatarBlobsRef = useRef<Record<number, string>>({});
-    const prevMemberIdsRef = useRef<number[] | null>(null);
+    const seenMemberEventRef = useRef<Set<string>>(new Set());
+    const membersLoadedRoomIdRef = useRef<number | null>(null);
     const messageEndRef = useRef<HTMLDivElement | null>(null);
 
 
@@ -33,6 +37,16 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
 
     const token = localStorage.getItem("access_token");
     const currentUserId = Number(localStorage.getItem("user_id") ?? "0");
+
+    const {
+        roomMembers: wsRoomMembers,
+        memberEvent: wsMemberEvent,
+        lastMessage: wsLastMessage,
+        connected: wsConnected,
+        sendMessage: sendWsMessage,
+        joinRoom: joinWsRoom,
+        leaveRoom: leaveWsRoom,
+    } = useChatWebSocket(selectedRoomId ?? undefined);
 
     const refreshRooms = async () => {
         if (!token) return;
@@ -76,11 +90,11 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
         });
     }, [rooms, currentUserId]);
 
-    const refreshMessages = async (roomId: number) => {
-        if (!token) return;
-        const data = await getMessages(token, roomId);
-        setMessages(data);
-    };
+    const { unreadRoomIds, hasUnread } = useChatNotifications({
+        enabled: Boolean(token),
+        rooms: visibleRooms,
+        pollIntervalMs: 10000,
+    });
 
     const hydrateProfilesByUserIds = async (userIds: number[]) => {
         if (!token) return {} as Record<number, ProfileOut>;
@@ -107,42 +121,6 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
         return { ...existing, ...fetchedMap };
     };
 
-    const refreshMembers = async (roomId: number) => {
-        if (!token) return;
-        const data = await getRoomMembers(token, roomId);
-        setMemberIds(data);
-
-        const previousMembers = prevMemberIdsRef.current;
-        if (previousMembers) {
-            const joined = data.filter((id) => !previousMembers.includes(id));
-            const left = previousMembers.filter((id) => !data.includes(id));
-            const changedIds = Array.from(new Set([...joined, ...left]));
-            const resolvedProfiles = await hydrateProfilesByUserIds(changedIds);
-
-            const getMemberLabel = (id: number) => {
-                if (id === currentUserId) return t("You");
-                const profile = resolvedProfiles[id] ?? profiles[id];
-                return profile?.display_name?.trim() || "A user";
-            };
-
-            const nextEvents = [
-                ...joined.map((id) => ({
-                    id: `join-${roomId}-${id}-${Date.now()}-${Math.random()}`,
-                    text: `${getMemberLabel(id)} ${t("joined the channel")}`,
-                })),
-                ...left.map((id) => ({
-                    id: `leave-${roomId}-${id}-${Date.now()}-${Math.random()}`,
-                    text: `${getMemberLabel(id)} ${t("left the channel")}`,
-                })),
-            ];
-
-            if (nextEvents.length > 0) {
-                setSystemEvents((prev) => [...prev, ...nextEvents].slice(-40));
-            }
-        }
-
-        prevMemberIdsRef.current = data;
-    };
 
     const hydrateProfiles = async (nextMessages: MessageOut[]) => {
         const uniqueUserIds = Array.from(new Set(nextMessages.map((m) => m.sender_user_id)));
@@ -198,27 +176,137 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
         setSelectedRoomId(null);
         setMessages([]);
         setMemberIds([]);
+        setRoomMemberIds([]);
         setSystemEvents([]);
     }, [visibleRooms, selectedRoomId]);
 
     useEffect(() => {
         if (selectedRoomId == null) return;
-
-        prevMemberIdsRef.current = null;
         setSystemEvents([]);
+        setRoomMemberIds([]);
+        setMemberIds([]);
+        membersLoadedRoomIdRef.current = null;
+    }, [selectedRoomId]);
 
-        const load = async () => {
-            await Promise.all([refreshMessages(selectedRoomId), refreshMembers(selectedRoomId)]);
+    useEffect(() => {
+        if (!token || selectedRoomId == null) return;
+        getRoomMembers(token, selectedRoomId)
+            .then((ids) => {
+                setRoomMemberIds(ids);
+                membersLoadedRoomIdRef.current = selectedRoomId;
+                if (ids.includes(currentUserId) && wsConnected) {
+                    joinWsRoom();
+                }
+            })
+            .catch(() => {
+                setRoomMemberIds([]);
+                setStatus(null);
+                membersLoadedRoomIdRef.current = null;
+            });
+    }, [token, selectedRoomId, currentUserId, wsConnected, joinWsRoom, t]);
+
+    useEffect(() => {
+        if (!wsConnected || selectedRoomId == null) return;
+        if (membersLoadedRoomIdRef.current !== selectedRoomId) return;
+        if (!roomMemberIds.includes(currentUserId)) return;
+        joinWsRoom();
+    }, [wsConnected, selectedRoomId, roomMemberIds, currentUserId, joinWsRoom]);
+
+    const isMember = useMemo(() => {
+        if (!selectedRoomId || currentUserId <= 0) return false;
+        return roomMemberIds.includes(currentUserId);
+    }, [selectedRoomId, currentUserId, roomMemberIds]);
+
+
+    useEffect(() => {
+        if (!token || selectedRoomId == null) return;
+        if (!isMember) {
+            setMessages([]);
+            return;
+        }
+        getMessages(token, selectedRoomId)
+            .then((data) => setMessages(data))
+            .catch(() => setStatus(t("Failed to fetch messages")));
+    }, [token, selectedRoomId, isMember, t]);
+
+    useEffect(() => {
+        if (!wsLastMessage || selectedRoomId == null) return;
+        if (wsLastMessage.room_id !== selectedRoomId) return;
+
+        setMessages((prev) => {
+            if (wsLastMessage.id !== undefined && prev.some((message) => message.created_at && wsLastMessage.created_at && message.created_at === wsLastMessage.created_at && message.sender_user_id === wsLastMessage.sender_user_id && message.content === wsLastMessage.content)) {
+                return prev;
+            }
+            if (wsLastMessage.id !== undefined && (prev as Array<MessageOut & { id?: number }>).some((message) => message.id === wsLastMessage.id)) {
+                return prev;
+            }
+            return [
+                ...prev,
+                {
+                    sender_user_id: wsLastMessage.sender_user_id,
+                    room_id: wsLastMessage.room_id,
+                    content: wsLastMessage.content,
+                    created_at: wsLastMessage.created_at ?? wsLastMessage.timestamp ?? null,
+                },
+            ];
+        });
+    }, [wsLastMessage, selectedRoomId]);
+
+    useEffect(() => {
+        if (selectedRoomId == null || !isMember) return;
+        if (messages.length === 0) {
+            setRoomLastSeen(selectedRoomId, Date.now());
+            return;
+        }
+        const lastMessage = messages[messages.length - 1];
+        const lastTimestamp = lastMessage.created_at ? Date.parse(lastMessage.created_at) : Date.now();
+        setRoomLastSeen(selectedRoomId, Number.isFinite(lastTimestamp) ? lastTimestamp : Date.now());
+    }, [messages, selectedRoomId, isMember]);
+
+    useEffect(() => {
+        if (selectedRoomId == null) return;
+        setMemberIds(wsRoomMembers);
+    }, [wsRoomMembers, selectedRoomId]);
+
+    useEffect(() => {
+        if (!wsMemberEvent || selectedRoomId == null) return;
+        if (wsMemberEvent.room_id !== selectedRoomId) return;
+        if (!isMember) return;
+        const selectedRoomForEvents = visibleRooms.find((room) => room.id === selectedRoomId) ?? null;
+        if (!selectedRoomForEvents || selectedRoomForEvents.is_private) return;
+        if (wsMemberEvent.reason !== "join" && wsMemberEvent.reason !== "leave") return;
+        if (wsMemberEvent.reason === "join" && wsMemberEvent.type !== "joined") return;
+        if (wsMemberEvent.reason === "leave" && wsMemberEvent.type !== "left") return;
+
+        const eventKey = `${wsMemberEvent.room_id}:${wsMemberEvent.user_id}:${wsMemberEvent.type}:${wsMemberEvent.reason}:${wsMemberEvent.timestamp ?? ""}`;
+        if (seenMemberEventRef.current.has(eventKey)) return;
+        seenMemberEventRef.current.add(eventKey);
+        if (seenMemberEventRef.current.size > 200) {
+            seenMemberEventRef.current.clear();
+        }
+
+        const resolveLabel = async () => {
+            const userId = wsMemberEvent.user_id;
+            if (!Number.isFinite(userId) || userId <= 0) return "A user";
+            if (userId === currentUserId) return t("You");
+            const resolvedProfiles = await hydrateProfilesByUserIds([userId]);
+            const profile = resolvedProfiles[userId] ?? profiles[userId];
+            return profile?.display_name?.trim() || wsMemberEvent.username || "A user";
         };
 
-        load().catch((error) => setStatus(error instanceof Error ? error.message : t("Failed to fetch room data")));
-
-        const intervalId = window.setInterval(() => {
-            Promise.all([refreshMessages(selectedRoomId), refreshMembers(selectedRoomId)]).catch(() => undefined);
-        }, 4000);
-
-        return () => window.clearInterval(intervalId);
-    }, [selectedRoomId, token]);
+        resolveLabel()
+            .then((label) => {
+                const verb = wsMemberEvent.type === "joined" ? t("joined the channel") : t("left the channel");
+                setSystemEvents((prev) => [
+                    ...prev,
+                    {
+                        id: `${wsMemberEvent.type}-${selectedRoomId}-${wsMemberEvent.user_id}-${Date.now()}-${Math.random()}`,
+                        text: `${label} ${verb}`,
+                    },
+                ].slice(-40));
+            })
+            .catch(() => undefined);
+    }, [wsMemberEvent, selectedRoomId, visibleRooms, currentUserId, profiles, t]);
 
     useEffect(() => {
         if (!messages.length) return;
@@ -276,7 +364,6 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
             setIsSidebarOpen(false);
             setStatus(null);
             await refreshRooms();
-            await Promise.all([refreshMessages(room.id), refreshMembers(room.id)]);
         } catch (error) {
             setStatus(error instanceof Error ? error.message : t("Failed to create room"));
         } finally {
@@ -287,9 +374,13 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
     const handleJoinRoom = async () => {
         if (!token || selectedRoomId == null) return;
         try {
-            await joinRoom(token, selectedRoomId);
+            const joined = joinWsRoom();
+            if (!joined) {
+                setStatus(t("Unable to join room"));
+                return;
+            }
+            setRoomMemberIds((prev) => (prev.includes(currentUserId) ? prev : [...prev, currentUserId]));
             setStatus(null);
-            await Promise.all([refreshMessages(selectedRoomId), refreshMembers(selectedRoomId)]);
         } catch (error) {
             setStatus(error instanceof Error ? error.message : t("Failed to join room"));
         }
@@ -301,10 +392,9 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
 
         try {
             setIsSubmittingMessage(true);
-            await sendMessage(token, selectedRoomId, { content: messageText.trim() });
+            sendWsMessage(messageText.trim());
             setMessageText("");
             setStatus(null);
-            await refreshMessages(selectedRoomId);
         } catch (error) {
             setStatus(error instanceof Error ? error.message : t("Failed to send message"));
         } finally {
@@ -315,11 +405,17 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
     const handleLeaveRoom = async () => {
         if (!token || selectedRoomId == null) return;
         try {
-            await leaveRoom(token, selectedRoomId);
+            const left = leaveWsRoom();
+            if (!left) {
+                setStatus(t("Unable to leave room"));
+                return;
+            }
             setStatus(null);
+            setRoomMemberIds((prev) => prev.filter((id) => id !== currentUserId));
             setSelectedRoomId(null);
             setMessages([]);
             setMemberIds([]);
+            setRoomMemberIds([]);
             setSystemEvents([]);
             setIsSidebarOpen(false);
             await refreshRooms();
@@ -353,6 +449,8 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
         [visibleRooms, selectedRoomId]
     );
 
+
+
     const isOwner = Boolean(selectedRoom && currentUserId > 0 && selectedRoom.owner_user_id === currentUserId);
     const isSelectedRoomDm = Boolean(selectedRoom && getDmOtherUserId(selectedRoom));
 
@@ -375,7 +473,12 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
             <div className="flex items-center justify-between border-b-4 border-[#1f2937] bg-[#18212f] px-4 py-3 text-white">
                 <div>
                     <div className="text-xs uppercase tracking-[0.24em] text-white/70">{t("Chat")}</div>
-                    <h2 className="text-lg font-semibold">{t("Messages directs")}</h2>
+                    <div className="flex items-center gap-2">
+                        <h2 className="text-lg font-semibold">{t("Messages directs")}</h2>
+                        {hasUnread && (
+                            <span className="inline-flex h-2.5 w-2.5 rounded-full bg-red-500 shadow-[0_0_0_2px_rgba(15,23,42,0.6)]" aria-hidden="true" />
+                        )}
+                    </div>
                 </div>
                 <div className="flex items-center gap-2">
                     <button
@@ -449,8 +552,9 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
                             {visibleRooms.length === 0 && <p className="px-2 py-3 text-sm text-[#6b7280]">{t("No rooms yet.")}</p>}
                             {visibleRooms.map((room) => {
                                 const isSelected = room.id === selectedRoomId;
-                                const isRoomOwner = currentUserId > 0 && room.owner_user_id === currentUserId;
                                 const isDm = Boolean(getDmOtherUserId(room));
+                                const isRoomOwner = !isDm && currentUserId > 0 && room.owner_user_id === currentUserId;
+                                const hasUnreadRoom = unreadRoomIds.includes(room.id);
                                 return (
                                     <button
                                         key={room.id}
@@ -466,7 +570,12 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
                                     >
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="min-w-0">
-                                                <div className="truncate text-sm font-semibold text-[#1f2937]">{getRoomDisplayName(room)}</div>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="truncate text-sm font-semibold text-[#1f2937]">{getRoomDisplayName(room)}</div>
+                                                    {hasUnreadRoom && !isSelected && (
+                                                        <span className="inline-flex h-2 w-2 rounded-full bg-red-500" aria-hidden="true" />
+                                                    )}
+                                                </div>
                                                 <div className="mt-1 flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-[#6b7280]">
                                                     <span>{isDm ? t("Direct message") : room.is_private ? t("Private") : t("Public")}</span>
                                                     {!isDm && (
@@ -518,18 +627,22 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
                                 </div>
 
                                 <div className="flex flex-wrap gap-2">
-                                    <button
-                                        onClick={handleJoinRoom}
-                                        className="rounded-xl border-2 border-[#1f2937] bg-[#4AD95A] px-3 py-2 text-sm font-semibold text-[#1f2937] shadow-[3px_3px_0_#1f2937] transition hover:translate-x-[1px] hover:translate-y-[1px]"
-                                    >
-                                        {t("Join")}
-                                    </button>
-                                    <button
-                                        onClick={handleLeaveRoom}
-                                        className="rounded-xl border-2 border-[#1f2937] bg-white px-3 py-2 text-sm font-semibold text-[#1f2937] shadow-[3px_3px_0_#1f2937] transition hover:translate-x-[1px] hover:translate-y-[1px]"
-                                    >
-                                        {t("Leave")}
-                                    </button>
+                                    {!isMember && (
+                                        <button
+                                            onClick={handleJoinRoom}
+                                            className="rounded-xl border-2 border-[#1f2937] bg-[#4AD95A] px-3 py-2 text-sm font-semibold text-[#1f2937] shadow-[3px_3px_0_#1f2937] transition hover:translate-x-[1px] hover:translate-y-[1px]"
+                                        >
+                                            {t("Join")}
+                                        </button>
+                                    )}
+                                    {isMember && (
+                                        <button
+                                            onClick={handleLeaveRoom}
+                                            className="rounded-xl border-2 border-[#1f2937] bg-white px-3 py-2 text-sm font-semibold text-[#1f2937] shadow-[3px_3px_0_#1f2937] transition hover:translate-x-[1px] hover:translate-y-[1px]"
+                                        >
+                                            {t("Leave")}
+                                        </button>
+                                    )}
                                     {isOwner && !isSelectedRoomDm && (
                                         <button
                                             onClick={handleDeleteRoom}
@@ -633,20 +746,22 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
                             className="flex flex-col gap-2.5"
                             onSubmit={(event) => {
                                 event.preventDefault();
+                                if (!isMember) return;
                                 handleSendMessage();
                             }}
                         >
                             <div className="flex items-center gap-2">
                                 <input
                                     type="text"
-                                    placeholder={t("Write a message...")}
+                                    placeholder={isMember ? t("Write a message...") : t("Join the channel to chat")}
                                     value={messageText}
                                     onChange={(e) => setMessageText(e.target.value)}
-                                    className="min-w-0 flex-1 rounded-2xl border-2 border-[#1f2937] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 sm:px-4 sm:py-3"
+                                    disabled={!isMember}
+                                    className="min-w-0 flex-1 rounded-2xl border-2 border-[#1f2937] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-60 sm:px-4 sm:py-3"
                                 />
                                 <button
                                     type="submit"
-                                    disabled={selectedRoomId == null || isSubmittingMessage}
+                                    disabled={selectedRoomId == null || isSubmittingMessage || !isMember}
                                     className="rounded-2xl border-2 border-[#1f2937] bg-[#1f2937] px-3 py-2.5 text-sm font-semibold text-white shadow-[3px_3px_0_#1f2937] transition hover:translate-x-[1px] hover:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60 sm:px-4 sm:py-3"
                                 >
                                     {isSubmittingMessage ? "..." : t("Send")}
