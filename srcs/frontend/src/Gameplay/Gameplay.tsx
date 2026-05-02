@@ -34,6 +34,8 @@ const Gameplay = () => {
   const user = getCurrentUser()
   const playerName = user?.username || searchParams.get('playerName') || 'Joueur'
   const aiName = searchParams.get('player2') || searchParams.get('ai') || 'CPU'
+  const playerNation = searchParams.get('player') || 'Algeria'
+  const aiNation = searchParams.get('ai') || 'Algeria'
 
   const { gameState, goalFlash, restart } = useGameLoop(playerName, aiName, true)
 
@@ -96,6 +98,7 @@ const Gameplay = () => {
             y={gameState.player1.y}
             radius={gameState.player1.radius}
             color="#3b82f6"
+            nation={playerNation}
             isKicking={gameState.player1.isKicking}
             facingRight={true}
           />
@@ -104,6 +107,7 @@ const Gameplay = () => {
             y={gameState.player2.y}
             radius={gameState.player2.radius}
             color="#ef4444"
+            nation={aiNation}
             isKicking={gameState.player2.isKicking}
             facingRight={false}
           />
