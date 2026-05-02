@@ -10,21 +10,6 @@ async function parseErrorDetail(response: Response): Promise<string | null> {
     return null;
 }
 
-export async function uploadMyAvatar(token: string, file: File): Promise<ProfileOut> {
-    const formData = new FormData();
-    formData.append("avatar", file);
-    const response = await fetch("/api/profile/me/avatar", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-    });
-    if (!response.ok) {
-        const detail = await parseErrorDetail(response);
-        throw new Error(detail || `HTTP ${response.status}`);
-    }
-    return await response.json();
-}
-
 export async function fetchMyProfile(token: string): Promise<ProfileOut> {
     const response = await fetch("/api/profile/me", {
         headers: { Authorization: `Bearer ${token}` },
@@ -70,4 +55,24 @@ export async function updateMyAvatar(token: string, avatarUrl: string): Promise<
         const detail = await parseErrorDetail(response);
         throw new Error(detail || `HTTP ${response.status}`);
     }
+}
+
+export async function uploadMyAvatar(token: string, file: File): Promise<ProfileOut> {
+    const formData = new FormData();
+    formData.append("avatar", file);
+
+    const response = await fetch("/api/profile/me/avatar", {
+        method: "POST",
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+    });
+
+    if (!response.ok) {
+        const detail = await parseErrorDetail(response);
+        throw new Error(detail || `HTTP ${response.status}`);
+    }
+
+    return await response.json();
 }

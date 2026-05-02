@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { MessageOut, ProfileOut, RoomOut } from "../Profile/types";
-import { createRoom, deleteRoom, getMessages, getRoomMembers, getRooms, joinRoom, leaveRoom, sendMessage } from "../Profile/api/chat";
+import { createRoom, deleteRoom, getRooms, joinRoom, leaveRoom } from "../Profile/api/chat";
 import { fetchProfileByUserId } from "../Profile/api/profile";
 import { useTranslation } from "react-i18next";
+import { useChatWebSocket } from "../hooks/useWebSocket";
 
 type ChatButtonProps = {
     initialRoomId?: number | null;
@@ -33,6 +34,12 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
 
     const token = localStorage.getItem("access_token");
     const currentUserId = Number(localStorage.getItem("user_id") ?? "0");
+
+    const {
+        messages: wsMessages,
+        roomMembers: wsRoomMembers,
+        sendMessage: sendWsMessage,
+    } = useChatWebSocket(selectedRoomId ?? undefined);
 
     const refreshRooms = async () => {
         if (!token) return;
@@ -76,12 +83,6 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
         });
     }, [rooms, currentUserId]);
 
-    const refreshMessages = async (roomId: number) => {
-        if (!token) return;
-        const data = await getMessages(token, roomId);
-        setMessages(data);
-    };
-
     const hydrateProfilesByUserIds = async (userIds: number[]) => {
         if (!token) return {} as Record<number, ProfileOut>;
 
@@ -107,15 +108,13 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
         return { ...existing, ...fetchedMap };
     };
 
-    const refreshMembers = async (roomId: number) => {
-        if (!token) return;
-        const data = await getRoomMembers(token, roomId);
-        setMemberIds(data);
+    const refreshMembers = async (nextMemberIds: number[]) => {
+        setMemberIds(nextMemberIds);
 
         const previousMembers = prevMemberIdsRef.current;
         if (previousMembers) {
-            const joined = data.filter((id) => !previousMembers.includes(id));
-            const left = previousMembers.filter((id) => !data.includes(id));
+            const joined = nextMemberIds.filter((id) => !previousMembers.includes(id));
+            const left = previousMembers.filter((id) => !nextMemberIds.includes(id));
             const changedIds = Array.from(new Set([...joined, ...left]));
             const resolvedProfiles = await hydrateProfilesByUserIds(changedIds);
 
@@ -127,11 +126,11 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
 
             const nextEvents = [
                 ...joined.map((id) => ({
-                    id: `join-${roomId}-${id}-${Date.now()}-${Math.random()}`,
+                    id: `join-${selectedRoomId}-${id}-${Date.now()}-${Math.random()}`,
                     text: `${getMemberLabel(id)} ${t("joined the channel")}`,
                 })),
                 ...left.map((id) => ({
-                    id: `leave-${roomId}-${id}-${Date.now()}-${Math.random()}`,
+                    id: `leave-${selectedRoomId}-${id}-${Date.now()}-${Math.random()}`,
                     text: `${getMemberLabel(id)} ${t("left the channel")}`,
                 })),
             ];
@@ -141,7 +140,7 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
             }
         }
 
-        prevMemberIdsRef.current = data;
+        prevMemberIdsRef.current = nextMemberIds;
     };
 
     const hydrateProfiles = async (nextMessages: MessageOut[]) => {
@@ -203,22 +202,19 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
 
     useEffect(() => {
         if (selectedRoomId == null) return;
-
         prevMemberIdsRef.current = null;
         setSystemEvents([]);
+    }, [selectedRoomId]);
 
-        const load = async () => {
-            await Promise.all([refreshMessages(selectedRoomId), refreshMembers(selectedRoomId)]);
-        };
+    useEffect(() => {
+        if (selectedRoomId == null) return;
+        setMessages(wsMessages as MessageOut[]);
+    }, [wsMessages, selectedRoomId]);
 
-        load().catch((error) => setStatus(error instanceof Error ? error.message : t("Failed to fetch room data")));
-
-        const intervalId = window.setInterval(() => {
-            Promise.all([refreshMessages(selectedRoomId), refreshMembers(selectedRoomId)]).catch(() => undefined);
-        }, 4000);
-
-        return () => window.clearInterval(intervalId);
-    }, [selectedRoomId, token]);
+    useEffect(() => {
+        if (selectedRoomId == null) return;
+        refreshMembers(wsRoomMembers).catch(() => undefined);
+    }, [wsRoomMembers, selectedRoomId]);
 
     useEffect(() => {
         if (!messages.length) return;
@@ -276,7 +272,6 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
             setIsSidebarOpen(false);
             setStatus(null);
             await refreshRooms();
-            await Promise.all([refreshMessages(room.id), refreshMembers(room.id)]);
         } catch (error) {
             setStatus(error instanceof Error ? error.message : t("Failed to create room"));
         } finally {
@@ -289,7 +284,6 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
         try {
             await joinRoom(token, selectedRoomId);
             setStatus(null);
-            await Promise.all([refreshMessages(selectedRoomId), refreshMembers(selectedRoomId)]);
         } catch (error) {
             setStatus(error instanceof Error ? error.message : t("Failed to join room"));
         }
@@ -301,10 +295,9 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
 
         try {
             setIsSubmittingMessage(true);
-            await sendMessage(token, selectedRoomId, { content: messageText.trim() });
+            sendWsMessage(messageText.trim());
             setMessageText("");
             setStatus(null);
-            await refreshMessages(selectedRoomId);
         } catch (error) {
             setStatus(error instanceof Error ? error.message : t("Failed to send message"));
         } finally {
