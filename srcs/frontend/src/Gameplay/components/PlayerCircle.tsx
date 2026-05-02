@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 interface PlayerCircleProps {
   x: number
@@ -22,16 +22,31 @@ function nationToFaceSrc(nation: string): string {
 export function PlayerCircle({ x, y, radius, color, nation = 'Algeria', isKicking = false, facingRight = true }: PlayerCircleProps) {
   const [imgFailed, setImgFailed] = useState(false)
 
-  // We'll render a square frame (crop) whose side corresponds to the visual
-  // frame height we want; using a square container + `object-fit: cover`
-  // ensures the PNG is cropped centered around its native center (so the
-  // crop side effectively maps to the PNG height when scaled).
-  const spriteFrameH = radius * 2.35
-  const spriteFrameSize = spriteFrameH // square side
-  const spriteLeft = x - spriteFrameSize / 2
-  const spriteTop = y - radius * 1.95
-  const spriteZoom = 2.2
+  // We'll load the image to read its natural height and use that as the
+  // square side. If loading fails or hasn't completed yet we fall back to
+  // a size relative to `radius`.
+  const [naturalHeight, setNaturalHeight] = useState<number | null>(null)
   const faceSrc = nationToFaceSrc(nation)
+
+  useEffect(() => {
+    setNaturalHeight(null)
+    setImgFailed(false)
+    const img = new Image()
+    img.src = faceSrc
+    img.onload = () => setNaturalHeight(img.naturalHeight || null)
+    img.onerror = () => setImgFailed(true)
+    return () => {
+      img.onload = null
+      img.onerror = null
+    }
+  }, [faceSrc])
+
+  // If we have the image natural height, use it as the square side. Otherwise
+  // fallback to a size proportional to the gameplay `radius`.
+  const spriteFrameSize = naturalHeight || Math.round(radius * 2.35)
+  const spriteLeft = x - spriteFrameSize / 2
+  const spriteTop = y - spriteFrameSize / 2
+  const spriteZoom = 2.2
 
   const footW = Math.max(28, radius * 1.18)
   const footH = Math.max(13, radius * 0.54)
