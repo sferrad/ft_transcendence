@@ -6,6 +6,7 @@ import Profile from './Profile/Profile';
 import Charselectsolo from './Solo/Charselect';
 import LocalCharselect from './Local/Charselect';
 import Gameplay from './Gameplay/Gameplay';
+import LocalGame from './Gameplay/LocalGame';
 import NotFound from './error/404';
 import Settingpage from './setting/Settingpage';
 import ChangePass from './setting/Acc/Changepass';
@@ -44,6 +45,7 @@ const App = () => {
         <Route path="/solo-select" element={<Charselectsolo />} />
         <Route path="/local-select" element={<LocalCharselect />} />
         <Route path="/solo-gameplay" element={<Gameplay />} />
+        <Route path="/local-gameplay" element={<LocalGame />} />
         <Route path="/settings" element={<Settingpage />} />
         <Route path="/settings/change-password" element={<ChangePass />} />
         <Route path="/settings/change-email" element={<ChangeMail />} />
