@@ -62,7 +62,7 @@ export function PlayerCircle({ x, y, radius, color, nation = 'Algeria', isKickin
             top: spriteTop,
             width: spriteFrameSize,
             height: spriteFrameSize,
-            borderRadius: '50%',
+            borderRadius: 0,
             overflow: 'hidden',
             pointerEvents: 'none',
             display: 'flex',
@@ -97,7 +97,7 @@ export function PlayerCircle({ x, y, radius, color, nation = 'Algeria', isKickin
         top: y - radius,
         width: radius * 2,
         height: radius * 2,
-        borderRadius: '50%',
+        borderRadius: 0,
         backgroundColor: imgFailed ? 'rgba(255,255,255,0.12)' : 'transparent',
         boxShadow: imgFailed ? `0 0 0 2px ${color}` : 'none',
       }} />
