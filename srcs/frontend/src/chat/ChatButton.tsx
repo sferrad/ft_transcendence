@@ -5,6 +5,7 @@ import { createRoom, deleteRoom, getMessages, getRoomMembers, getRooms } from ".
 import { fetchProfileByUserId } from "../Profile/api/profile";
 import { useTranslation } from "react-i18next";
 import { useChatWebSocket } from "../hooks/useWebSocket";
+import { setRoomLastSeen, useChatNotifications } from "../hooks/useChatNotifications";
 
 type ChatButtonProps = {
     initialRoomId?: number | null;
@@ -88,6 +89,12 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
             return currentUserId > 0 && (currentUserId === a || currentUserId === b);
         });
     }, [rooms, currentUserId]);
+
+    const { unreadRoomIds, hasUnread } = useChatNotifications({
+        enabled: Boolean(token),
+        rooms: visibleRooms,
+        pollIntervalMs: 10000,
+    });
 
     const hydrateProfilesByUserIds = async (userIds: number[]) => {
         if (!token) return {} as Record<number, ProfileOut>;
@@ -244,6 +251,17 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
             ];
         });
     }, [wsLastMessage, selectedRoomId]);
+
+    useEffect(() => {
+        if (selectedRoomId == null || !isMember) return;
+        if (messages.length === 0) {
+            setRoomLastSeen(selectedRoomId, Date.now());
+            return;
+        }
+        const lastMessage = messages[messages.length - 1];
+        const lastTimestamp = lastMessage.created_at ? Date.parse(lastMessage.created_at) : Date.now();
+        setRoomLastSeen(selectedRoomId, Number.isFinite(lastTimestamp) ? lastTimestamp : Date.now());
+    }, [messages, selectedRoomId, isMember]);
 
     useEffect(() => {
         if (selectedRoomId == null) return;
@@ -455,7 +473,12 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
             <div className="flex items-center justify-between border-b-4 border-[#1f2937] bg-[#18212f] px-4 py-3 text-white">
                 <div>
                     <div className="text-xs uppercase tracking-[0.24em] text-white/70">{t("Chat")}</div>
-                    <h2 className="text-lg font-semibold">{t("Messages directs")}</h2>
+                    <div className="flex items-center gap-2">
+                        <h2 className="text-lg font-semibold">{t("Messages directs")}</h2>
+                        {hasUnread && (
+                            <span className="inline-flex h-2.5 w-2.5 rounded-full bg-red-500 shadow-[0_0_0_2px_rgba(15,23,42,0.6)]" aria-hidden="true" />
+                        )}
+                    </div>
                 </div>
                 <div className="flex items-center gap-2">
                     <button
@@ -531,6 +554,7 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
                                 const isSelected = room.id === selectedRoomId;
                                 const isDm = Boolean(getDmOtherUserId(room));
                                 const isRoomOwner = !isDm && currentUserId > 0 && room.owner_user_id === currentUserId;
+                                const hasUnreadRoom = unreadRoomIds.includes(room.id);
                                 return (
                                     <button
                                         key={room.id}
@@ -546,7 +570,12 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
                                     >
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="min-w-0">
-                                                <div className="truncate text-sm font-semibold text-[#1f2937]">{getRoomDisplayName(room)}</div>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="truncate text-sm font-semibold text-[#1f2937]">{getRoomDisplayName(room)}</div>
+                                                    {hasUnreadRoom && !isSelected && (
+                                                        <span className="inline-flex h-2 w-2 rounded-full bg-red-500" aria-hidden="true" />
+                                                    )}
+                                                </div>
                                                 <div className="mt-1 flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-[#6b7280]">
                                                     <span>{isDm ? t("Direct message") : room.is_private ? t("Private") : t("Public")}</span>
                                                     {!isDm && (
