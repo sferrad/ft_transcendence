@@ -72,7 +72,7 @@ const Charselectsolo = () => {
                             type="text"
                             value={player2Name}
                             onChange={(event) => setPlayer2Name(event.target.value)}
-                            placeholder="Invite"
+                            placeholder="Player 2"
                             className="w-full max-w-[20rem] rounded-none border-4 border-white bg-black/50 px-4 py-3 font-arcade text-center text-white text-base min-[481px]:text-lg min-[769px]:text-2xl outline-none placeholder:text-white/60 shadow-[0px_4px_rgb(255,255,255),0px_-4px_rgb(255,255,255),4px_0px_rgb(255,255,255),-4px_0px_rgb(255,255,255),0px_4px_rgba(0,0,0,0.22),4px_4px_rgba(0,0,0,0.22),-4px_4px_rgba(0,0,0,0.22),inset_0px_4px_rgba(255,255,255,0.21)]"
                         />
                         <div className="mt-32 min-[481px]:mt-20 min-[769px]:mt-24">
@@ -86,7 +86,7 @@ const Charselectsolo = () => {
                         const player1DisplayName = isPlayer1Locked
                             ? (currentUser?.username || "Player 1")
                             : (player1Name.trim() || "Player 1");
-                        const opponentName = player2Name.trim() || "Invite";
+                        const opponentName = player2Name.trim() || "Player 2";
                         navigate(`/local-gameplay?player1=${encodeURIComponent(player1DisplayName)}&player2=${encodeURIComponent(opponentName)}`);
                     }}
                     className="font-arcade text-black bg-[#4AD95A] px-8 py-5 min-[481px]:px-7 min-[481px]:py-3 min-[769px]:px-9 min-[769px]:py-4 m-2 text-base min-[481px]:text-lg min-[769px]:text-4xl border-0 shadow-[0px_4px_rgb(255,255,255),0px_-4px_rgb(255,255,255),4px_0px_rgb(255,255,255),-4px_0px_rgb(255,255,255),0px_4px_rgba(0,0,0,0.22),4px_4px_rgba(0,0,0,0.22),-4px_4px_rgba(0,0,0,0.22),inset_0px_4px_rgba(255,255,255,0.21)] cursor-pointer no-underline inline-block transition-transform duration-100 active:translate-y-0.5 w-fit max-w-full"
