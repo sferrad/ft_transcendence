@@ -26,14 +26,19 @@ logger = logging.getLogger(__name__)
 # Create FastAPI app
 app = FastAPI(title="api-gateway")
 
-WEBSOCKET_CORS_ORIGINS = [
-    origin.strip()
-    for origin in os.getenv(
-        "WEBSOCKET_CORS_ORIGINS",
-        "http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080,http://127.0.0.1:8080,https://localhost:8443,https://127.0.0.1:8443",
-    ).split(",")
-    if origin.strip()
-]
+# En mode DEV (WEBSOCKET_CORS_ORIGINS non défini), accepter toutes les origines
+# Pour éviter de modifier l'env à chaque changement de PC/réseau (école)
+WEBSOCKET_CORS_ORIGINS = os.getenv("WEBSOCKET_CORS_ORIGINS")
+if not WEBSOCKET_CORS_ORIGINS:
+    # Mode DEV: accepter toutes les origines
+    WEBSOCKET_CORS_ORIGINS = "*"
+else:
+    # Mode PROD: utiliser la liste spécifiée
+    WEBSOCKET_CORS_ORIGINS = [
+        origin.strip()
+        for origin in WEBSOCKET_CORS_ORIGINS.split(",")
+        if origin.strip()
+    ]
 
 # Setup Socket.IO
 sio = AsyncServer(
