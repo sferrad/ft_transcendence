@@ -30,8 +30,29 @@ def are_friends(db: Session, user_id: int, friend_id: int) -> bool:
 	)
 
 
+def get_rejected_request_between(db: Session, from_user_id: int, to_user_id: int) -> models.FriendsRequest | None:
+	return (
+		db.query(models.FriendsRequest)
+		.filter(
+			models.FriendsRequest.status == "rejected",
+				and_(models.FriendsRequest.from_user_id == from_user_id, models.FriendsRequest.to_user_id == to_user_id),
+		)
+		.first()
+	)
+
 def create_friend_request(db: Session, from_user_id: int, to_user_id: int) -> models.FriendsRequest:
 	request = models.FriendsRequest(from_user_id=from_user_id, to_user_id=to_user_id)
+	existing_request = get_rejected_request_between(db, from_user_id, to_user_id)
+	if existing_request:
+		existing_request.status = "pending"
+		try:
+			db.add(existing_request)
+			db.commit()
+			db.refresh(existing_request)
+			return existing_request
+		except SQLAlchemyError:
+			db.rollback()
+			raise
 	try:
 		db.add(request)
 		db.commit()
@@ -40,6 +61,8 @@ def create_friend_request(db: Session, from_user_id: int, to_user_id: int) -> mo
 	except SQLAlchemyError:
 		db.rollback()
 		raise
+
+
 
 
 def get_friend_request(db: Session, request_id: int) -> models.FriendsRequest | None:
@@ -163,9 +186,15 @@ def unfriend_user(db: Session, user_id: int, friend_user_id: int) -> bool:
 		.filter(or_(and_(models.Friends.user_id == user_id, models.Friends.friend_id == friend_user_id), and_(models.Friends.user_id == friend_user_id, models.Friends.friend_id == user_id)))
 		.delete(synchronize_session=False)
 	)
+	request_deleted =db.query(models.FriendsRequest).filter(
+		or_(
+			and_(models.FriendsRequest.from_user_id == user_id, models.FriendsRequest.to_user_id == friend_user_id),
+			and_(models.FriendsRequest.from_user_id == friend_user_id, models.FriendsRequest.to_user_id == user_id),
+		)
+	).delete(synchronize_session=False)
 	try:
 		db.commit()
 	except SQLAlchemyError:
 		db.rollback()
 		raise
-	return deleted > 0
+	return (deleted > 0 or request_deleted > 0)
