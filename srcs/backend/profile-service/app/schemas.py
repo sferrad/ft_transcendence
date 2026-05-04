@@ -41,7 +41,6 @@ class InternalProfileCreate(BaseModel):
 	display_name: str
 
 class UserSettingIn(BaseModel):
-	language: Optional[languageEnum] = None
 	sound: Optional[bool] = None
 	music: Optional[bool] = None
 
