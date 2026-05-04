@@ -34,4 +34,3 @@ class UserSetting(Base):
 
     sound = Column(Boolean, nullable=False, default=False)
     music = Column(Boolean, nullable=False, default=False)
-    language = Column(Enum(languageEnum), nullable=False, default=languageEnum.fr)
