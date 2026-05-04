@@ -1,11 +1,14 @@
+import { type CSSProperties } from 'react'
+
 interface ScoreProps {
   leftScore: number
   rightScore: number
   leftName: string
   rightName: string
+  style?: CSSProperties
 }
 
-export function Score({ leftScore, rightScore, leftName, rightName }: ScoreProps) {
+export function Score({ leftScore, rightScore, leftName, rightName, style }: ScoreProps) {
   return (
     <div style={{
       position: 'absolute',
@@ -16,6 +19,7 @@ export function Score({ leftScore, rightScore, leftName, rightName }: ScoreProps
       color: 'white',
       fontSize: 32,
       fontWeight: 'bold',
+      ...style,
     }}>
       <span>{leftName}: {leftScore}</span>
       <span>{rightName}: {rightScore}</span>

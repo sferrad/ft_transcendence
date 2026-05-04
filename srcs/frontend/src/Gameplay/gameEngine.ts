@@ -1,6 +1,7 @@
 import { type GameState, type Ball, type Player, type Goal } from './types'
 import { type Keys } from './inputHandler'
 import { getPlayerVisualLayout, getPlayerShoeBounds } from './playerSpriteGeometry'
+import { getGoalVisualBounds } from './goalGeometry'
 
 export const CANVAS_WIDTH = 1800
 export const CANVAS_HEIGHT = 1000
@@ -139,6 +140,8 @@ const SHOOT_SPEED = 9
 const SHOOT_UP_RATIO = 1.9
 const KICK_ANIM_FRAMES = 5
 const KICK_RANGE = 25
+const BALL_SUBSTEP_RATIO = 0.45
+const BALL_MAX_SUBSTEPS = 24
 
 type RectCollision = {
   nx: number
@@ -190,15 +193,30 @@ function resolveCircleOrientedRectCollision(ball: Ball, rect: ReturnType<typeof 
   return { nx: -sin, ny: cos, overlap: ball.radius + penBottom }
 }
 
+function resolveCircleCircleCollision(ball: Ball, cx: number, cy: number, radius: number): RectCollision | null {
+  const dx = ball.x - cx
+  const dy = ball.y - cy
+  const distSq = dx * dx + dy * dy
+  const radSum = ball.radius + radius
+  if (distSq > radSum * radSum) return null
+
+  if (distSq > 0) {
+    const dist = Math.sqrt(distSq)
+    return { nx: dx / dist, ny: dy / dist, overlap: radSum - dist }
+  }
+
+  // Degenerate case: centers coincide. Push out along X.
+  return { nx: 1, ny: 0, overlap: radSum }
+}
+
 function resolvePlayerCollision(ball: Ball, player: Player, facingRight: boolean): RectCollision | null {
   const layout = getPlayerVisualLayout(player.x, player.y, player.radius, player.isKicking, facingRight)
-  const headCollision = resolveCircleOrientedRectCollision(ball, {
-    centerX: (layout.head.left + layout.head.right) / 2,
-    centerY: (layout.head.top + layout.head.bottom) / 2,
-    width: layout.head.right - layout.head.left,
-    height: layout.head.bottom - layout.head.top,
-    rotation: 0,
-  } as ReturnType<typeof getPlayerShoeBounds>)
+  const headCx = (layout.head.left + layout.head.right) / 2
+  const headCy = (layout.head.top + layout.head.bottom) / 2
+  const headW = layout.head.right - layout.head.left
+  const headH = layout.head.bottom - layout.head.top
+  const headR = Math.max(headW, headH) / 2
+  const headCollision = resolveCircleCircleCollision(ball, headCx, headCy, headR)
   const shoeCollision = resolveCircleOrientedRectCollision(ball, layout.shoe)
 
   if (headCollision && shoeCollision) {
@@ -291,13 +309,55 @@ function updatePlayers(state: GameState, keys: Keys): void {
   // On corrige uniquement le chevauchement pour empêcher le croisement.
   preventPlayerOverlap(p1, p2)
 
+  p1.x = Math.max(PLAYER_RADIUS, Math.min(CANVAS_WIDTH - PLAYER_RADIUS, p1.x))
+  p2.x = Math.max(PLAYER_RADIUS, Math.min(CANVAS_WIDTH - PLAYER_RADIUS, p2.x))
+  p1.y = Math.min(p1.y, PLAYER_FLOOR_Y)
+  p2.y = Math.min(p2.y, PLAYER_FLOOR_Y)
+
   tryShoot(p1, state.ball, true,  keys.g)
   tryShoot(p2, state.ball, false, keys.m)
 }
 
 function preventPlayerOverlap(player1: Player, player2: Player): void {
-  void player1
-  void player2
+  const dx = player2.x - player1.x
+  const dy = player2.y - player1.y
+  const minDist = player1.radius + player2.radius
+  const distSq = dx * dx + dy * dy
+
+  if (distSq >= minDist * minDist) return
+
+  let nx = 1
+  let ny = 0
+  let dist = Math.sqrt(distSq)
+
+  if (dist > 1e-6) {
+    nx = dx / dist
+    ny = dy / dist
+  } else {
+    // Cas dégénéré: on sépare horizontalement selon les positions courantes.
+    nx = player1.x <= player2.x ? 1 : -1
+    ny = 0
+    dist = 0
+  }
+
+  const overlap = minDist - dist
+  const push = overlap * 0.5
+  player1.x -= nx * push
+  player1.y -= ny * push
+  player2.x += nx * push
+  player2.y += ny * push
+
+  const rvx = player2.vx - player1.vx
+  const rvy = player2.vy - player1.vy
+  const vn = rvx * nx + rvy * ny
+
+  if (vn < 0) {
+    const impulse = -vn * 0.5
+    player1.vx -= nx * impulse
+    player1.vy -= ny * impulse
+    player2.vx += nx * impulse
+    player2.vy += ny * impulse
+  }
 }
 
 function ballHitsPlayer(ball: Ball, player: Player, facingRight: boolean): boolean {
@@ -342,12 +402,11 @@ function resolveBallPlayerCollision(ball: Ball, player: Player, playerVx: number
 }
 
 function checkCrossbarCollision(ball: Ball, goal: Goal): void {
-  // La barre est traitée comme un rectangle physique, pas comme une simple ligne.
-  const barX = goal.side === 'left'
-    ? goal.postWidth
-    : goal.x - goal.innerWidth
-  const barW = goal.innerWidth
-  const barY = goal.crossbarY
+  // Barre de collision alignée sur le haut visuel de la cage SVG.
+  const visual = getGoalVisualBounds(goal)
+  const barX = visual.left
+  const barW = visual.width
+  const barY = visual.top
   const barH = goal.crossbarHeight
   const closestX = Math.max(barX, Math.min(ball.x, barX + barW))
   const closestY = Math.max(barY, Math.min(ball.y, barY + barH))
@@ -371,33 +430,40 @@ function checkCrossbarCollision(ball: Ball, goal: Goal): void {
   }
 }
 
-function checkGoal(state: GameState): void {
+function checkGoal(state: GameState): boolean {
   // ← Guard en premier : on n'entre dans aucun bloc si la partie est déjà finie
-  if (state.status !== 'playing') return
+  if (state.status !== 'playing') return false
 
   const ball = state.ball
   const g1 = state.goal1
   const g2 = state.goal2
-  // Le but est validé seulement si tout le ballon a franchi la barre.
-  const leftCrossbarBottom = g1.crossbarY + g1.crossbarHeight
-  const rightCrossbarBottom = g2.crossbarY + g2.crossbarHeight
+  const leftVisual = getGoalVisualBounds(g1)
+  const rightVisual = getGoalVisualBounds(g2)
 
-  if (ball.x - ball.radius <= g1.postWidth && ball.y - ball.radius > leftCrossbarBottom) {
+  const leftThreshold = leftVisual.entryThreshold
+  const rightThreshold = rightVisual.entryThreshold
+
+  // But validé quand le ballon a pénétré de 20% dans l'ouverture visuelle de la cage.
+  if (ball.x - ball.radius <= leftThreshold && ball.y - ball.radius > leftVisual.barBottom) {
     state.player2.score += 1
     checkWinner(state)
     resetBall(state)
     resetPlayers(state)
+    return true
   }
 
   // Re-vérifier après le premier but éventuel (partie peut être finie)
-  if (state.status !== 'playing') return
+  if (state.status !== 'playing') return true
 
-  if (ball.x + ball.radius >= g2.x && ball.y - ball.radius > rightCrossbarBottom) {
+  if (ball.x + ball.radius >= rightThreshold && ball.y - ball.radius > rightVisual.barBottom) {
     state.player1.score += 1
     checkWinner(state)
     resetBall(state)
     resetPlayers(state)
+    return true
   }
+
+  return false
 }
 
 function resolveBallWorldBounds(ball: Ball, g1: Goal, g2: Goal): void {
@@ -416,8 +482,8 @@ function resolveBallWorldBounds(ball: Ball, g1: Goal, g2: Goal): void {
     ball.vx *= BALL_FRICTION
   }
 
-  const leftCrossbarBottom = g1.crossbarY + g1.crossbarHeight
-  const rightCrossbarBottom = g2.crossbarY + g2.crossbarHeight
+  const leftCrossbarBottom = getGoalVisualBounds(g1).barBottom
+  const rightCrossbarBottom = getGoalVisualBounds(g2).barBottom
 
   if (ball.x - ball.radius <= 0 && ball.y - ball.radius < leftCrossbarBottom) {
     ball.x = ball.radius
@@ -434,27 +500,39 @@ function updateBall(state: GameState): void {
   const g1 = state.goal1
   const g2 = state.goal2
 
-  ball.vy += GRAVITY_BALL
-  ball.x += ball.vx
-  ball.y += ball.vy
+  const projectedVx = ball.vx
+  const projectedVy = ball.vy + GRAVITY_BALL
+  const projectedTravel = Math.hypot(projectedVx, projectedVy)
+  const stepDistance = Math.max(1, ball.radius * BALL_SUBSTEP_RATIO)
+  const steps = Math.max(1, Math.min(BALL_MAX_SUBSTEPS, Math.ceil(projectedTravel / stepDistance)))
+  const stepGravity = GRAVITY_BALL / steps
 
-  if (ballHitsPlayer(ball, state.player1, true)) {
-    const p1Vx = state.player1.isKicking
-      ? (state.player1.x < CANVAS_WIDTH / 2 ? KICK_SPEED : -KICK_SPEED)
-      : state.player1.vx
-    resolveBallPlayerCollision(ball, state.player1, p1Vx, state.player1.vy, true)
-  }
-  if (ballHitsPlayer(ball, state.player2, false)) {
-    const p2Vx = state.player2.isKicking
-      ? (state.player2.x > CANVAS_WIDTH / 2 ? -KICK_SPEED : KICK_SPEED)
-      : state.player2.vx
-    resolveBallPlayerCollision(ball, state.player2, p2Vx, state.player2.vy, false)
-  }
+  for (let i = 0; i < steps; i++) {
+    ball.vy += stepGravity
+    ball.x += ball.vx / steps
+    ball.y += ball.vy / steps
 
-  checkCrossbarCollision(ball, g1)
-  checkCrossbarCollision(ball, g2)
-  resolveBallWorldBounds(ball, g1, g2)
-  checkGoal(state)
+    for (let pass = 0; pass < 2; pass++) {
+      if (ballHitsPlayer(ball, state.player1, true)) {
+        const p1Vx = state.player1.isKicking
+          ? (state.player1.x < CANVAS_WIDTH / 2 ? KICK_SPEED : -KICK_SPEED)
+          : state.player1.vx
+        resolveBallPlayerCollision(ball, state.player1, p1Vx, state.player1.vy, true)
+      }
+      if (ballHitsPlayer(ball, state.player2, false)) {
+        const p2Vx = state.player2.isKicking
+          ? (state.player2.x > CANVAS_WIDTH / 2 ? -KICK_SPEED : KICK_SPEED)
+          : state.player2.vx
+        resolveBallPlayerCollision(ball, state.player2, p2Vx, state.player2.vy, false)
+      }
+    }
+
+    checkCrossbarCollision(ball, g1)
+    checkCrossbarCollision(ball, g2)
+    resolveBallWorldBounds(ball, g1, g2)
+
+    if (checkGoal(state)) break
+  }
 }
 
 function updateAI(state: GameState): void {
@@ -490,6 +568,10 @@ function updateAI(state: GameState): void {
 
   // Même correction minimale en solo pour garder les corps séparés.
   preventPlayerOverlap(state.player1, ai)
+  state.player1.x = Math.max(PLAYER_RADIUS, Math.min(CANVAS_WIDTH - PLAYER_RADIUS, state.player1.x))
+  ai.x = Math.max(PLAYER_RADIUS, Math.min(CANVAS_WIDTH - PLAYER_RADIUS, ai.x))
+  state.player1.y = Math.min(state.player1.y, PLAYER_FLOOR_Y)
+  ai.y = Math.min(ai.y, PLAYER_FLOOR_Y)
 
   const dx = ball.x - ai.x
   const dy = ball.y - ai.y

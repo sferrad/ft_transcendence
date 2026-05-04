@@ -34,7 +34,7 @@ export function PlayerCircle({ x, y, radius, color, nation = 'Algeria', isKickin
   const shoeSrc = `${base}assets/shoes.png`
 
   return (
-    <div style={{ position: 'absolute', left: 0, top: 0 }}>
+    <div style={{ position: 'absolute', left: 0, top: 0, zIndex: 10 }}>
       {/* Visage/joueur: visuel uniquement, collisions inchangées (rayon dans le moteur). */}
       {!imgFailed && (
         <div

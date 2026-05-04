@@ -17,6 +17,7 @@ export function Ball({ x, y, radius }: BallProps) {
       height: size,
       pointerEvents: 'none',
       userSelect: 'none',
+      zIndex: 20,
     }}>
       <img
         src={`${base}assets/ball.png`}
