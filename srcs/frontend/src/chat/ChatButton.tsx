@@ -93,6 +93,7 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
         memberEvent: wsMemberEvent,
         lastMessage: wsLastMessage,
         connected: wsConnected,
+        error: wsError,
         sendMessage: sendWsMessage,
         joinRoom: joinWsRoom,
         leaveRoom: leaveWsRoom,
@@ -327,6 +328,16 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
         if (selectedRoomId == null || isSelectedRoomDm) return;
         setMemberIds(wsRoomMembers);
     }, [wsRoomMembers, selectedRoomId, isSelectedRoomDm]);
+
+    useEffect(() => {
+        if (!wsError) return;
+        const message = wsError.message || "";
+        if (message.toLowerCase().includes("blocked")) {
+            setStatus(t("Cannot send message to blocked user"));
+            return;
+        }
+        setStatus(message);
+    }, [wsError, t]);
 
     useEffect(() => {
         if (!wsMemberEvent || selectedRoomId == null || isSelectedRoomDm) return;
