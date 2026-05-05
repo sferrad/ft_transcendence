@@ -2,7 +2,7 @@ import { useSearchParams } from 'react-router-dom'
 import { GameModeView } from './GameModeView'
 import { getCurrentUser } from '../utils/auth'
 
-const Gameplay = () => {
+const SoloMode = () => {
   const [searchParams] = useSearchParams()
 
   const user = getCurrentUser()
@@ -23,4 +23,4 @@ const Gameplay = () => {
   )
 }
 
-export default Gameplay
+export default SoloMode
