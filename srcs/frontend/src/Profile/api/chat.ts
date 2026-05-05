@@ -1,4 +1,4 @@
-import type { RoomOut, RoomCreate, MessageOut, MessageCreate, JoinRoomOut, LeaveRoomOut, DeleteRoomOut } from "../types";
+import type { RoomOut, RoomCreate, MessageOut, MessageCreate, JoinRoomOut, LeaveRoomOut, DeleteRoomOut, PrivateMessageOut } from "../types";
 
 async function parseErrorDetail(response: Response): Promise<string | null> {
     try {
@@ -114,6 +114,36 @@ export async function getRoomMembers(token: string, roomId: number): Promise<num
     if (!response.ok) {
         const detail = await parseErrorDetail(response);
         throw new Error(detail || "Failed to fetch room members");
+    }
+    const data = await response.json();
+    return data;
+}
+
+export async function getPrivateMessages(token: string, userId: number): Promise<PrivateMessageOut[]> {
+    const response = await fetch(`/api/chat/${encodeURIComponent(String(userId))}/messages`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) {
+        const detail = await parseErrorDetail(response);
+        throw new Error(detail || "Failed to fetch private messages");
+    }
+    const data = await response.json();
+    return data;
+}
+
+export async function sendPrivateMessage(token: string, userId: number, messageData: MessageCreate): Promise<PrivateMessageOut> {
+    const response = await fetch(`/api/chat/${encodeURIComponent(String(userId))}/messages`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(messageData),
+    });
+    if (!response.ok) {
+        const detail = await parseErrorDetail(response);
+        throw new Error(detail || "Failed to send private message");
     }
     const data = await response.json();
     return data;
