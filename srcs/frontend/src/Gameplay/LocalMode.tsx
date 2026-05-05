@@ -1,7 +1,7 @@
 import { useSearchParams } from 'react-router-dom'
 import { GameModeView } from './GameModeView'
 
-const LocalGame = () => {
+const LocalMode = () => {
   const [searchParams] = useSearchParams()
 
   const player1Name = searchParams.get('player1') || 'Joueur 1'
@@ -21,4 +21,4 @@ const LocalGame = () => {
   )
 }
 
-export default LocalGame
+export default LocalMode

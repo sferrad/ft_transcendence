@@ -3,25 +3,41 @@ import { type Keys } from './inputHandler'
 import { getPlayerVisualLayout, getPlayerShoeBounds } from './playerSpriteGeometry'
 import { getGoalVisualBounds } from './goalGeometry'
 
+// Dimensions du canvas de jeu
 export const CANVAS_WIDTH = 1800
 export const CANVAS_HEIGHT = 1000
+// Score nécessaire pour gagner la partie
 const WINNING_SCORE = 5
 
+// Rayon de collision du joueur (en pixels)
 const PLAYER_RADIUS = 30
+// Largeur des poteaux de but (en pixels)
 const GOAL_POST_WIDTH = 15
+// Hauteur totale du but (en pixels)
 const GOAL_HEIGHT = 195
+// Largeur intérieure de l'ouverture du but (en pixels)
 export const GOAL_INNER_WIDTH = 70
+// Hauteur de la barre transversale du but (en pixels)
 const CROSSBAR_HEIGHT = 10
+// Position Y du sol (70% de la hauteur du canvas)
 const GROUND_Y = CANVAS_HEIGHT * 0.7
+// Position Y où le joueur se tient au sol
 const PLAYER_FLOOR_Y = GROUND_Y - PLAYER_RADIUS
 
-const GRAVITY_BALL = 0.35
+// Accélération de la gravité appliquée à la balle
+const GRAVITY_BALL = 0.8
+// Coefficient d'amortissement des rebonds (0 = arrêt, 1 = rebond parfait)
 const BOUNCE_DAMPING = 0.8
-const BALL_FRICTION = 0.97
+// Coefficient de friction de la balle au sol (ralentit la balle)
+const BALL_FRICTION = 0.6
+// Vitesse Y minimale pour que la balle continue à rebondir
 const MIN_BOUNCE_VY = 1.8
 
+// Vitesse de tir (distance parcourue par la balle lors d'un tir)
 const KICK_SPEED = 50
+// Accélération de la gravité appliquée au joueur
 const GRAVITY_PLAYER = 0.5
+// Force du saut (valeur négative pour aller vers le haut)
 const JUMP_FORCE = -13
 // Impulsion initiale du dash: plus grand = dash plus agressif.
 const DASH_IMPULSE = 70
@@ -30,11 +46,14 @@ const DASH_DECAY = 0.8
 // Seuil d'arrêt pour couper la micro-glisse en fin de dash.
 const DASH_STOP_EPSILON = 0.3
 
-// Boost horizontal temporaire conservé d'une frame à l'autre.
+// Boost horizontal temporaire conservé d'une frame à l'autre pour chaque joueur [joueur1, joueur2]
 const dashBoosts = [0, 0]
 
+// Position X de départ du joueur 1 (à gauche)
 const PLAYER1_START_X = 180
+// Position X de départ du joueur 2 (à droite)
 const PLAYER2_START_X = CANVAS_WIDTH - 180
+// Position Y de départ des deux joueurs (sur le sol)
 const PLAYER_START_Y = PLAYER_FLOOR_Y
 
 function createGoals(): { goal1: Goal; goal2: Goal } {
@@ -136,13 +155,22 @@ function checkWinner(state: GameState): void {
   }
 }
 
+// Vitesse de tir de base pour les mouvements secondaires
 const SHOOT_SPEED = 9
+// Ratio de la composante verticale du tir par rapport à la composante horizontale
 const SHOOT_UP_RATIO = 1.9
+// Nombre de frames pour l'animation du coup de pied
 const KICK_ANIM_FRAMES = 5
+// Distance maximale à laquelle la balle peut être frappée
 const KICK_RANGE = 25
+// Ratio pour déterminer la distance d'un pas lors de la mise à jour de la balle
 const BALL_SUBSTEP_RATIO = 0.45
+// Nombre maximum de sous-étapes pour mettre à jour la position de la balle
 const BALL_MAX_SUBSTEPS = 24
 
+// Type de collision pour un rectangle (ou forme orientée)
+// nx, ny: composantes du vecteur normal de collision
+// overlap: distance de pénétration entre les objets
 type RectCollision = {
   nx: number
   ny: number
@@ -377,10 +405,13 @@ function resolveBallPlayerCollision(ball: Ball, player: Player, playerVx: number
   }
 
   // Impulsion de rebond avec séparation minimale pour éviter que le ballon colle au joueur.
+  // Relative velocity entre la balle et le joueur
   const rvx = ball.vx - playerVx
   const rvy = ball.vy - playerVy
+  // Composante de vélocité relative le long de la normale de collision
   const vn = rvx * collision.nx + rvy * collision.ny
 
+  // Coefficient de restitution: détermine le "rebond" de la collision (0 = mou, 1 = élastique)
   const PLAYER_RESTITUTION = 0.45
   if (vn < 0) {
     const impulse = -(1 + PLAYER_RESTITUTION) * vn
@@ -388,10 +419,12 @@ function resolveBallPlayerCollision(ball: Ball, player: Player, playerVx: number
     ball.vy += impulse * collision.ny
   }
 
+  // Ratio de transfert de la vélocité du joueur à la balle
   const PLAYER_VEL_TRANSFER = 0.2
   ball.vx += playerVx * PLAYER_VEL_TRANSFER
   ball.vy += playerVy * PLAYER_VEL_TRANSFER
 
+  // Vitesse minimale de sortie garantie pour que la balle quitte le joueur
   const minOutSpeed = 1.6
   const outSpeed = ball.vx * collision.nx + ball.vy * collision.ny
   if (outSpeed < minOutSpeed) {
@@ -540,7 +573,9 @@ function updateAI(state: GameState): void {
   const ball = state.ball
   const floor = PLAYER_FLOOR_Y
 
+  // Vitesse normale de l'IA quand elle attaque
   const AI_SPEED_NORMAL = 4.5
+  // Vitesse de défense accélérée quand la balle se rapproche du but
   const AI_SPEED_DEFEND = 7.5
 
   const ballHeadingToAIGoal = ball.vx < -2
