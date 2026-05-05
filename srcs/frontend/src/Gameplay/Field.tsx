@@ -10,14 +10,31 @@ const FIELD_TOP = GROUND_Y - 80
 
 function drawFootballField(ctx: CanvasRenderingContext2D, width: number, height: number): void {
   // Remplir avec couleur herbe
-  ctx.fillStyle = '#2d5016'
+  ctx.fillStyle = '#3b7b10'
   ctx.fillRect(0, 0, width, height)
 
-  // Herbe avec légère variation texture
-  ctx.fillStyle = 'rgba(45, 80, 22, 0.3)'
-  for (let i = 0; i < height; i += 10) {
-    ctx.fillRect(0, i, width, 5)
+  // Bandes verticales légèrement plus foncées pour effet de profondeur
+  const STRIPE_WIDTH = 80
+  const STRIPE_GAP = STRIPE_WIDTH * 2
+  const STRIPE_COLOR = 'rgba(21,61,10,0.14)'
+  // Skew pour simuler l'inclinaison vers l'arrière (parallélogrammes)
+  const SKEW = 18
+  for (let x = -STRIPE_WIDTH; x < width + STRIPE_WIDTH; x += STRIPE_GAP) {
+    ctx.beginPath()
+    ctx.moveTo(x + SKEW, 0)
+    ctx.lineTo(x + STRIPE_WIDTH + SKEW, 0)
+    ctx.lineTo(x + STRIPE_WIDTH, height)
+    ctx.lineTo(x, height)
+    ctx.closePath()
+    ctx.fillStyle = STRIPE_COLOR
+    ctx.fill()
   }
+
+  // // Herbe avec légère variation texture
+  // ctx.fillStyle = 'rgba(45, 80, 22, 0.3)'
+  // for (let i = 0; i < height; i += 10) {
+  //   ctx.fillRect(0, i, width, 5)
+  // }
 
   // Lignes blanches du terrain
   ctx.strokeStyle = '#ffffff'
