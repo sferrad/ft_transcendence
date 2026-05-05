@@ -45,6 +45,7 @@ export function GameModeView({ mode, player1Name, player2Name, player1Nation, pl
         color="#3b82f6"
         nation={player1Nation}
         isKicking={gameState.player1.isKicking}
+        kickTimer={gameState.player1.kickTimer}
         facingRight={true}
       />
       <PlayerCircle
@@ -54,6 +55,7 @@ export function GameModeView({ mode, player1Name, player2Name, player1Nation, pl
         color="#ef4444"
         nation={player2Nation}
         isKicking={gameState.player2.isKicking}
+        kickTimer={gameState.player2.kickTimer}
         facingRight={false}
       />
 

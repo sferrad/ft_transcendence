@@ -29,6 +29,9 @@ export const PLAYER_SHOE_MIN_SIZE = 26
 // Taille maximale du rayon (limite pour éviter des débordements)
 export const PLAYER_RADIUS_MAX = 50
 
+// Nombre de frames de l'animation de coup de pied (utilisé pour calculer la progression)
+export const KICK_ANIM_FRAMES = 5
+
 // ===== HELPERS =====
 /**
  * Valide et retourne le rayon du joueur (avec limites)

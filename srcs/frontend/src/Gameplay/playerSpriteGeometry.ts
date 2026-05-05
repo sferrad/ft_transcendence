@@ -83,9 +83,10 @@ export function getPlayerVisualLayout(
   radius: number,
   isKicking: boolean,
   facingRight: boolean,
+  kickProgress: number,
 ): PlayerVisualLayout {
   const head = getPlayerHeadBounds(x, y, radius)
-  const shoe = getPlayerShoeBounds(x, y, radius, isKicking, facingRight)
+  const shoe = getPlayerShoeBounds(x, y, radius, isKicking, facingRight, kickProgress, head)
 
   return {
     head,
@@ -100,44 +101,80 @@ export function getPlayerShoeBounds(
   radius: number,
   isKicking: boolean,
   facingRight: boolean,
+  kickProgress: number,
+  head: PlayerHeadBounds,
 ): PlayerShoeBounds {
-  const baseAngleRad = isKicking ? -0.55 : 0
-  const footPivotX = x + radius * 0.2
-  const footPivotY = y + radius
-  const footDistance = radius * (isKicking ? 0.94 : 0.82)
-  const footCenterX = footPivotX + Math.cos(baseAngleRad) * footDistance
-  const footCenterY = footPivotY + Math.sin(baseAngleRad) * footDistance
   const width = Math.max(26, radius * PLAYER_SHOE_SIZE_RATIO)
   const height = width
-  const left = footCenterX - width / 2
-  const top = footCenterY - height * PLAYER_SHOE_TOP_RATIO
+  const clampedKick = Math.min(1, Math.max(0, kickProgress))
+  const headCenterY = (head.top + head.bottom) / 2
 
-  if (facingRight) {
+  // Pose de repos: position PNG d'origine (naturelle)
+  const baseAngleRad = 0
+  const footPivotX = x + radius * 0.6
+  const footPivotY = y + radius * 0.8
+  const footDistance = radius
+  const baseCenterX = footPivotX + Math.cos(baseAngleRad) * footDistance
+  const baseCenterY = footPivotY + Math.sin(baseAngleRad) * footDistance
+
+  if (!isKicking || clampedKick <= 0) {
+    const left = baseCenterX - width / 2
+    const top = baseCenterY - height * PLAYER_SHOE_TOP_RATIO
+
+    if (facingRight) {
+      return {
+        left,
+        top,
+        right: left + width,
+        bottom: top + height,
+        centerX: left + width / 2,
+        centerY: top + height / 2,
+        width,
+        height,
+        rotation: baseAngleRad,
+        mirrored: false,
+      }
+    }
+
+    const mirroredLeft = 2 * x - (left + width)
     return {
-      left,
+      left: mirroredLeft,
       top,
-      right: left + width,
+      right: mirroredLeft + width,
       bottom: top + height,
-      centerX: left + width / 2,
+      centerX: mirroredLeft + width / 2,
       centerY: top + height / 2,
       width,
       height,
-      rotation: baseAngleRad,
-      mirrored: false,
+      rotation: -baseAngleRad,
+      mirrored: true,
     }
   }
 
-  const mirroredLeft = 2 * x - (left + width)
+  // Pose de kick: chaussure devant la tête et verticale vers le haut.
+  const targetCenterX = facingRight
+    ? head.right + width * 0.3
+    : head.left - width * 0.3
+  const targetCenterY = headCenterY - height * 0.09
+
+  // Transition progressive vers la pose cible pendant le kick.
+  const footCenterX = baseCenterX + (targetCenterX - baseCenterX) * clampedKick
+  const footCenterY = baseCenterY + (targetCenterY - baseCenterY) * clampedKick
+  const rotation = -Math.PI / 2
+
+  const left = footCenterX - width / 2
+  const top = footCenterY - height / 2
+
   return {
-    left: mirroredLeft,
+    left,
     top,
-    right: mirroredLeft + width,
+    right: left + width,
     bottom: top + height,
-    centerX: mirroredLeft + width / 2,
+    centerX: left + width / 2,
     centerY: top + height / 2,
     width,
     height,
-    rotation: -baseAngleRad,
-    mirrored: true,
+    rotation,
+    mirrored: !facingRight,
   }
 }

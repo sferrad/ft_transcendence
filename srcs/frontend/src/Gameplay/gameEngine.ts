@@ -2,7 +2,7 @@ import { type GameState, type Ball, type Player, type Goal } from './types'
 import { type Keys } from './inputHandler'
 import { getPlayerVisualLayout, getPlayerShoeBounds } from './playerSpriteGeometry'
 import { getGoalVisualBounds } from './goalGeometry'
-import { PLAYER_BASE_RADIUS, calculatePlayerFloorY } from './playerConfig'
+import { PLAYER_BASE_RADIUS, calculatePlayerFloorY, KICK_ANIM_FRAMES } from './playerConfig'
 import {
   GOAL_BASE_HEIGHT,
   GOAL_BASE_INNER_WIDTH,
@@ -38,7 +38,7 @@ const BALL_FRICTION = 0.6
 const MIN_BOUNCE_VY = 1.8
 
 // Vitesse de tir (distance parcourue par la balle lors d'un tir)
-const KICK_SPEED = 50
+const KICK_SPEED = 20
 // Accélération de la gravité appliquée au joueur
 const GRAVITY_PLAYER = 0.5
 // Force du saut (valeur négative pour aller vers le haut)
@@ -166,8 +166,6 @@ function checkWinner(state: GameState): void {
 const SHOOT_SPEED = 9
 // Ratio de la composante verticale du tir par rapport à la composante horizontale
 const SHOOT_UP_RATIO = 1.9
-// Nombre de frames pour l'animation du coup de pied
-const KICK_ANIM_FRAMES = 5
 // Distance maximale à laquelle la balle peut être frappée
 const KICK_RANGE = 25
 // Ratio pour déterminer la distance d'un pas lors de la mise à jour de la balle
@@ -245,7 +243,8 @@ function resolveCircleCircleCollision(ball: Ball, cx: number, cy: number, radius
 }
 
 function resolvePlayerCollision(ball: Ball, player: Player, facingRight: boolean): RectCollision | null {
-  const layout = getPlayerVisualLayout(player.x, player.y, player.radius, player.isKicking, facingRight)
+  const kickProgress = player.kickTimer > 0 ? (KICK_ANIM_FRAMES - player.kickTimer + 1) / KICK_ANIM_FRAMES : 0
+  const layout = getPlayerVisualLayout(player.x, player.y, player.radius, player.isKicking, facingRight, kickProgress)
   const headCx = (layout.head.left + layout.head.right) / 2
   const headCy = (layout.head.top + layout.head.bottom) / 2
   const headW = layout.head.right - layout.head.left
@@ -270,7 +269,8 @@ function tryShoot(player: Player, ball: Ball, shootRight: boolean, wantShoot: bo
   player.isKicking = true
   player.kickTimer = KICK_ANIM_FRAMES
 
-  const layout = getPlayerVisualLayout(player.x, player.y, player.radius, player.isKicking, shootRight)
+  const kickProgress = player.kickTimer > 0 ? (KICK_ANIM_FRAMES - player.kickTimer + 1) / KICK_ANIM_FRAMES : 0
+  const layout = getPlayerVisualLayout(player.x, player.y, player.radius, player.isKicking, shootRight, kickProgress)
   const shoe = layout.shoe
 
   const maxRange = Math.max(shoe.width, shoe.height) / 2 + ball.radius + KICK_RANGE

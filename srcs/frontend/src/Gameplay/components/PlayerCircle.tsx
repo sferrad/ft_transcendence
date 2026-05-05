@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { getPlayerVisualLayout, PLAYER_SPRITE_ASPECT_RATIO, PLAYER_SPRITE_TOP_OFFSET, PLAYER_SPRITE_ZOOM, getPlayerSpriteFrameSize } from '../playerSpriteGeometry'
+import { KICK_ANIM_FRAMES } from '../playerConfig'
 
 interface PlayerCircleProps {
   x: number
@@ -8,6 +9,7 @@ interface PlayerCircleProps {
   color: string
   nation?: string
   isKicking?: boolean
+  kickTimer?: number
   facingRight?: boolean
 }
 
@@ -20,7 +22,7 @@ function nationToFaceSrc(nation: string): string {
   return `${base}assets/perso/algeria-face.png`
 }
 
-export function PlayerCircle({ x, y, radius, color, nation = 'Algeria', isKicking = false, facingRight = true }: PlayerCircleProps) {
+export function PlayerCircle({ x, y, radius, color, nation = 'Algeria', isKicking = false, kickTimer = 0, facingRight = true }: PlayerCircleProps) {
   const [imgFailed, setImgFailed] = useState(false)
   const base = import.meta.env.BASE_URL
 
@@ -30,7 +32,8 @@ export function PlayerCircle({ x, y, radius, color, nation = 'Algeria', isKickin
   const faceSrc = nationToFaceSrc(nation)
   const pngRenderHeight = spriteFrameSize / PLAYER_SPRITE_ASPECT_RATIO
   const spriteZoom = PLAYER_SPRITE_ZOOM
-  const layout = getPlayerVisualLayout(x, y, radius, isKicking, facingRight)
+  const kickProgress = isKicking && kickTimer > 0 ? (KICK_ANIM_FRAMES - kickTimer + 1) / KICK_ANIM_FRAMES : 0
+  const layout = getPlayerVisualLayout(x, y, radius, isKicking, facingRight, kickProgress)
   const shoeSrc = `${base}assets/shoes.png`
 
   return (
