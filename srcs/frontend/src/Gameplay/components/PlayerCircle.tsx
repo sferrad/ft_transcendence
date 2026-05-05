@@ -1,59 +1,121 @@
+import { useState } from 'react'
+import { getPlayerVisualLayout, PLAYER_SPRITE_ASPECT_RATIO, PLAYER_SPRITE_TOP_OFFSET, PLAYER_SPRITE_ZOOM, getPlayerSpriteFrameSize } from '../playerSpriteGeometry'
+import { KICK_ANIM_FRAMES } from '../playerConfig'
+
 interface PlayerCircleProps {
   x: number
   y: number
   radius: number
   color: string
+  nation?: string
   isKicking?: boolean
+  kickTimer?: number
   facingRight?: boolean
 }
 
-export function PlayerCircle({ x, y, radius, color, isKicking = false, facingRight = true }: PlayerCircleProps) {
-  const footW = Math.max(28, radius * 1.18)
-  const footH = Math.max(13, radius * 0.54)
+function nationToFaceSrc(nation: string): string {
+  const key = nation.trim().toLowerCase()
+  const base = import.meta.env.BASE_URL
 
-  // Le pied suit un arc naturel: repos sous le corps, tir vers l'avant.
-  const restAngle = 1.5
-  const kickAngle = 0
-  const kickProgress = isKicking ? 1 : 0
-  const localAngle = restAngle + (kickAngle - restAngle) * kickProgress
-  const footAngleRad = facingRight ? localAngle : Math.PI - localAngle
-  // On garde le pied accroché au bas du corps avec un léger décalage vers l'arrière.
-  const footDistance = radius * (isKicking ? 0.98 : 0.85)
+  if (key === 'morocco' || key === 'maroc') return `${base}assets/perso/morocco-face.png`
+  if (key === 'tunisia' || key === 'tunisie') return `${base}assets/perso/tunisia-face.png`
+  return `${base}assets/perso/algeria-face.png`
+}
 
-  const footCenterX = x + Math.cos(footAngleRad) * footDistance - (facingRight ? radius * 0.4 : -radius * 0.4)
-  const footCenterY = y + Math.sin(footAngleRad) * footDistance + radius * 0.1
-  const rotation = (footAngleRad * 180) / Math.PI + (isKicking ? 0 : 6)
+export function PlayerCircle({ x, y, radius, color, nation = 'Algeria', isKicking = false, kickTimer = 0, facingRight = true }: PlayerCircleProps) {
+  const [imgFailed, setImgFailed] = useState(false)
+  const base = import.meta.env.BASE_URL
+
+  const spriteFrameSize = getPlayerSpriteFrameSize(radius)
+  const spriteLeft = x - spriteFrameSize / 2
+  const spriteTop = y - radius * PLAYER_SPRITE_TOP_OFFSET
+  const faceSrc = nationToFaceSrc(nation)
+  const pngRenderHeight = spriteFrameSize / PLAYER_SPRITE_ASPECT_RATIO
+  const spriteZoom = PLAYER_SPRITE_ZOOM
+  const kickProgress = isKicking && kickTimer > 0 ? (KICK_ANIM_FRAMES - kickTimer + 1) / KICK_ANIM_FRAMES : 0
+  const layout = getPlayerVisualLayout(x, y, radius, isKicking, facingRight, kickProgress)
+  const shoeSrc = `${base}assets/shoes.png`
 
   return (
-    <div style={{ position: 'absolute', left: 0, top: 0 }}>
-      {/* Corps */}
+    <div style={{ position: 'absolute', left: 0, top: 0, zIndex: 10 }}>
+      {/* Visage/joueur: visuel uniquement, collisions inchangées (rayon dans le moteur). */}
+      {!imgFailed && (
+        <div
+          style={{
+            position: 'absolute',
+            left: spriteLeft,
+            top: spriteTop,
+            width: spriteFrameSize,
+            height: spriteFrameSize,
+            pointerEvents: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transform: layout.mirrored ? 'scaleX(-1)' : 'none',
+          }}
+        >
+          <img
+            src={faceSrc}
+            alt={nation}
+            onError={() => setImgFailed(true)}
+            style={{
+              width: spriteFrameSize,
+              height: 'auto',
+              transform: `scale(${spriteZoom})`,
+              transformOrigin: 'center center',
+              imageRendering: 'pixelated',
+              filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.55))',
+              pointerEvents: 'none',
+              userSelect: 'none',
+            }}
+          />
+        </div>
+      )}
+
       <div style={{
         position: 'absolute',
-        left: x - radius,
-        top: y - radius,
-        width: radius * 2,
-        height: radius * 2,
-        borderRadius: '50%',
-        backgroundColor: color,
-        boxShadow: `0 3px 8px rgba(0,0,0,0.4)`,
+        left: spriteLeft,
+        top: spriteTop,
+        width: spriteFrameSize,
+        height: pngRenderHeight,
+        borderRadius: 0,
+        backgroundColor: imgFailed ? 'rgba(255,255,255,0.12)' : 'transparent',
+        boxShadow: imgFailed ? `0 0 0 2px ${color}` : 'none',
       }} />
+
       {/* Pied */}
-      <div style={{
-        position: 'absolute',
-        left: footCenterX - footW / 2,
-        top: footCenterY - footH / 2,
-        width: footW,
-        height: footH,
-        borderRadius: 6,
-        backgroundColor: isKicking ? '#ffffff' : '#e0e0e0',
-        border: `2.5px solid ${color}`,
-        transform: `rotate(${rotation}deg)`,
-        transformOrigin: 'center center',
-        transition: isKicking
-          ? 'transform 0.06s ease-out'
-          : 'transform 0.12s ease-out',
-        boxShadow: isKicking ? `0 2px 8px rgba(255,255,255,0.5)` : 'none',
-      }} />
+      <div
+        style={{
+          position: 'absolute',
+          left: layout.shoe.left,
+          top: layout.shoe.top,
+          width: layout.shoe.width,
+          height: layout.shoe.height,
+          transform: `rotate(${(layout.shoe.rotation * 180) / Math.PI}deg) scaleX(${layout.shoe.mirrored ? -1 : 1})`,
+          transformOrigin: 'center center',
+          transition: isKicking
+            ? 'transform 0.06s ease-out'
+            : 'transform 0.12s ease-out',
+          pointerEvents: 'none',
+          userSelect: 'none',
+        }}
+      >
+        <img
+          src={shoeSrc}
+          alt="shoe"
+          onError={() => setImgFailed(true)}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'contain',
+            display: 'block',
+            imageRendering: 'auto',
+            pointerEvents: 'none',
+            userSelect: 'none',
+            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.4))',
+          }}
+        />
+      </div>
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import { type Goal } from '../types'
+import { getGoalVisualBounds } from '../goalGeometry'
 
 interface GoalPostProps {
   goal: Goal
@@ -6,28 +7,37 @@ interface GoalPostProps {
 
 export function GoalPost({ goal }: GoalPostProps) {
   const isLeft = goal.side === 'left'
+  const base = import.meta.env.BASE_URL
+  const visual = getGoalVisualBounds(goal)
 
   return (
-    <div style={{ position: 'absolute', left: 0, top: 0 }}>
-      {/* Poteau vertical */}
-      <div style={{
+    <div
+      style={{
         position: 'absolute',
-        left: goal.x,
-        top: goal.crossbarY,
-        width: goal.postWidth,
-        height: goal.postHeight,
-        backgroundColor: '#ffffff',
-      }} />
-
-      {/* Barre transversale */}
-      <div style={{
-        position: 'absolute',
-        left: isLeft ? goal.x : goal.x - goal.innerWidth,
-        top: goal.crossbarY,
-        width: goal.postWidth + goal.innerWidth,
-        height: goal.crossbarHeight,
-        backgroundColor: '#ffffff',
-      }} />
+        left: visual.left,
+        top: visual.top,
+        width: visual.width,
+        height: visual.height,
+        zIndex: 30,
+        pointerEvents: 'none',
+      }}
+    >
+      <img
+        src={`${base}assets/Cage.png`}
+        alt="goal cage"
+        style={{
+          width: '100%',
+          height: '100%',
+          maxWidth: '60vw',
+          maxHeight: '60vh',
+          objectFit: 'contain',
+          display: 'block',
+          transform: isLeft ? 'scaleX(-1)' : 'none',
+          transformOrigin: 'center',
+          userSelect: 'none',
+          pointerEvents: 'none',
+        }}
+      />
     </div>
   )
 }
