@@ -1,15 +1,22 @@
-import { useSearchParams } from 'react-router-dom'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import { GameModeView } from './GameModeView'
 import { getCurrentUser } from '../utils/auth'
 
+interface SoloModeState {
+  playerNation?: string
+  aiNation?: string
+}
+
 const SoloMode = () => {
+  const location = useLocation()
   const [searchParams] = useSearchParams()
+  const state = (location.state as SoloModeState | null) ?? null
 
   const user = getCurrentUser()
   const playerName = user?.username || searchParams.get('playerName') || 'Joueur'
   const aiName = searchParams.get('player2') || searchParams.get('ai') || 'CPU'
-  const playerNation = searchParams.get('player') || 'Algeria'
-  const aiNation = searchParams.get('ai') || 'Algeria'
+  const playerNation = state?.playerNation || searchParams.get('player') || 'Algeria'
+  const aiNation = state?.aiNation || searchParams.get('ai') || 'Algeria'
 
   return (
     <GameModeView
