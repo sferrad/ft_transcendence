@@ -50,5 +50,18 @@ class Message(Base):
     updated_at = Column(DateTime(timezone=True), nullable=True)
     room = relationship("Room", back_populates="messages")
 
+class PrivateMessage(Base):
+    __tablename__ = "private_messages"
 
-Index("idx_messages_room_id_created_at", Message.room_id, Message.created_at)
+    id = Column(Integer, primary_key=True, index=True)
+    sender_user_id = Column(Integer, index=True, nullable=False)
+    receiver_user_id = Column(Integer, index=True, nullable=False)
+
+    content = Column(Text, nullable=False)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), nullable=True)
+
+
+Index("idx_messages_room_id_created_at", Message.room_id, Message.created_at.desc(), Message.id.desc())
+Index("idx_private_messages_sender_receiver_created_at", PrivateMessage.receiver_user_id, PrivateMessage.sender_user_id, PrivateMessage.created_at.desc(), PrivateMessage.id.desc())

@@ -45,6 +45,13 @@ def chat_room_name(room_id: Any) -> str:
     return f"chat:{int(room_id)}"
 
 
+def dm_room_name(user_a: Any, user_b: Any) -> str:
+    a = int(user_a)
+    b = int(user_b)
+    low, high = (a, b) if a <= b else (b, a)
+    return f"dm:{low}-{high}"
+
+
 def public_room_id(room_name: str) -> str:
     return room_name.split(":", 1)[1] if ":" in room_name else room_name
 
@@ -501,6 +508,126 @@ def register_websocket_handlers(sio: AsyncServer) -> None:
                 "timestamp": utc_now(),
             },
         )
+
+    @sio.on("dm.join")
+    async def dm_join(sid: str, data: dict[str, Any] | None) -> None:
+        session = await manager.get_session(sid)
+        if session is None:
+            await emit_error(sio, sid, "Session not found", "not_authenticated")
+            return
+
+        if not isinstance(data, dict) or data.get("target_user_id") is None:
+            await emit_error(sio, sid, "Missing target_user_id")
+            return
+
+        try:
+            target_user_id = int(data.get("target_user_id"))
+        except (TypeError, ValueError):
+            await emit_error(sio, sid, "Invalid target_user_id")
+            return
+        if target_user_id <= 0 or target_user_id == session.user_id:
+            await emit_error(sio, sid, "Invalid target_user_id")
+            return
+
+        room_name = dm_room_name(session.user_id, target_user_id)
+        joined_session = await join_socket_room(sio, sid, room_name)
+        if joined_session is None:
+            await emit_error(sio, sid, "Failed to join DM room locally", "internal_error")
+            return
+
+        room_members = await manager.get_room_members(room_name)
+        await sio.emit(
+            "dm.joined",
+            {
+                "room": room_name,
+                "room_members": room_members,
+                "target_user_id": target_user_id,
+                "timestamp": utc_now(),
+            },
+            to=sid,
+        )
+
+    @sio.on("dm.leave")
+    async def dm_leave(sid: str, data: dict[str, Any] | None) -> None:
+        session = await manager.get_session(sid)
+        if session is None:
+            return
+
+        if not isinstance(data, dict) or data.get("target_user_id") is None:
+            await emit_error(sio, sid, "Missing target_user_id")
+            return
+
+        try:
+            target_user_id = int(data.get("target_user_id"))
+        except (TypeError, ValueError):
+            await emit_error(sio, sid, "Invalid target_user_id")
+            return
+        if target_user_id <= 0 or target_user_id == session.user_id:
+            await emit_error(sio, sid, "Invalid target_user_id")
+            return
+
+        room_name = dm_room_name(session.user_id, target_user_id)
+        if room_name not in await manager.get_session_rooms(sid, "dm:"):
+            return
+
+        await leave_socket_room(sio, sid, room_name)
+
+    @sio.on("dm.message")
+    async def dm_message(sid: str, data: dict[str, Any] | None) -> None:
+        session = await manager.get_session(sid)
+        if session is None:
+            await emit_error(sio, sid, "Session not found", "not_authenticated")
+            return
+
+        if not isinstance(data, dict):
+            await emit_error(sio, sid, "Invalid DM payload")
+            return
+
+        content = str(data.get("content") or "").strip()
+        if not content:
+            await emit_error(sio, sid, "Message content is empty")
+            return
+        if len(content) > MAX_CHAT_MESSAGE_CHARS:
+            await emit_error(sio, sid, f"Message too long (max {MAX_CHAT_MESSAGE_CHARS} chars)", "message_too_long")
+            return
+
+        try:
+            target_user_id = int(data.get("target_user_id"))
+        except (TypeError, ValueError):
+            await emit_error(sio, sid, "Invalid target_user_id")
+            return
+        if target_user_id <= 0 or target_user_id == session.user_id:
+            await emit_error(sio, sid, "Invalid target_user_id")
+            return
+
+        room_name = dm_room_name(session.user_id, target_user_id)
+        if room_name not in await manager.get_session_rooms(sid, "dm:"):
+            await emit_error(sio, sid, "Join the DM room before sending messages", "not_in_room")
+            return
+
+        status_code, body = await chat_service_request(
+            "POST",
+            f"/{target_user_id}/messages",
+            user_id=session.user_id,
+            json_body={"content": content},
+        )
+        if status_code >= 400:
+            await emit_error(sio, sid, str(body.get("detail", "Unable to send message")), "dm_message_failed")
+            return
+
+        payload = {
+            "id": body.get("id"),
+            "sender_user_id": body.get("sender_user_id", session.user_id),
+            "receiver_user_id": body.get("receiver_user_id", target_user_id),
+            "content": body.get("content", content),
+            "created_at": body.get("created_at"),
+            "timestamp": utc_now(),
+        }
+
+        room_members = await manager.get_room_members(room_name)
+        await manager.broadcast_to_room(sio, room_name, "dm.message", payload)
+        if target_user_id not in room_members:
+            await manager.send_to_user(sio, target_user_id, "dm.message", payload)
 
     @sio.on("ping")
     async def ping(sid: str) -> None:

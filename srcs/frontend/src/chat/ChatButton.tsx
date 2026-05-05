@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { MessageOut, ProfileOut, RoomOut } from "../Profile/types";
-import { createRoom, deleteRoom, getMessages, getRoomMembers, getRooms } from "../Profile/api/chat";
+import { createRoom, deleteRoom, getMessages, getPrivateMessages, getRoomMembers, getRooms } from "../Profile/api/chat";
 import { fetchProfileByUserId } from "../Profile/api/profile";
 import { useTranslation } from "react-i18next";
 import { useChatWebSocket } from "../hooks/useWebSocket";
@@ -37,16 +37,6 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
 
     const token = localStorage.getItem("access_token");
     const currentUserId = Number(localStorage.getItem("user_id") ?? "0");
-
-    const {
-        roomMembers: wsRoomMembers,
-        memberEvent: wsMemberEvent,
-        lastMessage: wsLastMessage,
-        connected: wsConnected,
-        sendMessage: sendWsMessage,
-        joinRoom: joinWsRoom,
-        leaveRoom: leaveWsRoom,
-    } = useChatWebSocket(selectedRoomId ?? undefined);
 
     const refreshRooms = async () => {
         if (!token) return;
@@ -90,11 +80,44 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
         });
     }, [rooms, currentUserId]);
 
-    const { unreadRoomIds, hasUnread } = useChatNotifications({
+    const selectedRoom = useMemo(
+        () => visibleRooms.find((room) => room.id === selectedRoomId) ?? null,
+        [visibleRooms, selectedRoomId]
+    );
+
+    const selectedDmUserId = useMemo(() => (selectedRoom ? getDmOtherUserId(selectedRoom) : null), [selectedRoom]);
+    const isSelectedRoomDm = Boolean(selectedRoom && selectedDmUserId);
+
+    const {
+        roomMembers: wsRoomMembers,
+        memberEvent: wsMemberEvent,
+        lastMessage: wsLastMessage,
+        connected: wsConnected,
+        error: wsError,
+        sendMessage: sendWsMessage,
+        joinRoom: joinWsRoom,
+        leaveRoom: leaveWsRoom,
+    } = useChatWebSocket(selectedRoomId ?? undefined, selectedDmUserId ?? undefined);
+
+    const { unreadRoomIds, hasUnread, lastMessageByRoomId } = useChatNotifications({
         enabled: Boolean(token),
         rooms: visibleRooms,
         pollIntervalMs: 10000,
     });
+
+    const orderedRooms = useMemo(() => {
+        const fallbackTimestamp = (room: RoomOut) => {
+            const parsed = room.created_at ? Date.parse(room.created_at) : NaN;
+            return Number.isFinite(parsed) ? parsed : 0;
+        };
+
+        return [...visibleRooms].sort((a, b) => {
+            const aTimestamp = lastMessageByRoomId[a.id] ?? fallbackTimestamp(a);
+            const bTimestamp = lastMessageByRoomId[b.id] ?? fallbackTimestamp(b);
+            if (aTimestamp === bTimestamp) return b.id - a.id;
+            return bTimestamp - aTimestamp;
+        });
+    }, [visibleRooms, lastMessageByRoomId]);
 
     const hydrateProfilesByUserIds = async (userIds: number[]) => {
         if (!token) return {} as Record<number, ProfileOut>;
@@ -189,7 +212,7 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
     }, [selectedRoomId]);
 
     useEffect(() => {
-        if (!token || selectedRoomId == null) return;
+        if (!token || selectedRoomId == null || isSelectedRoomDm) return;
         getRoomMembers(token, selectedRoomId)
             .then((ids) => {
                 setRoomMemberIds(ids);
@@ -203,19 +226,33 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
                 setStatus(null);
                 membersLoadedRoomIdRef.current = null;
             });
-    }, [token, selectedRoomId, currentUserId, wsConnected, joinWsRoom, t]);
+    }, [token, selectedRoomId, currentUserId, wsConnected, joinWsRoom, t, isSelectedRoomDm]);
 
     useEffect(() => {
-        if (!wsConnected || selectedRoomId == null) return;
+        if (!isSelectedRoomDm || selectedRoomId == null) return;
+        const ids = [currentUserId, selectedDmUserId ?? 0].filter((id) => Number.isFinite(id) && id > 0);
+        setRoomMemberIds(ids);
+        setMemberIds(ids);
+        membersLoadedRoomIdRef.current = selectedRoomId;
+    }, [isSelectedRoomDm, selectedRoomId, currentUserId, selectedDmUserId]);
+
+    useEffect(() => {
+        if (!wsConnected || selectedRoomId == null || isSelectedRoomDm) return;
         if (membersLoadedRoomIdRef.current !== selectedRoomId) return;
         if (!roomMemberIds.includes(currentUserId)) return;
         joinWsRoom();
-    }, [wsConnected, selectedRoomId, roomMemberIds, currentUserId, joinWsRoom]);
+    }, [wsConnected, selectedRoomId, roomMemberIds, currentUserId, joinWsRoom, isSelectedRoomDm]);
+
+    useEffect(() => {
+        if (!wsConnected || selectedRoomId == null || !isSelectedRoomDm || !selectedDmUserId) return;
+        joinWsRoom();
+    }, [wsConnected, selectedRoomId, isSelectedRoomDm, selectedDmUserId, joinWsRoom]);
 
     const isMember = useMemo(() => {
+        if (isSelectedRoomDm) return true;
         if (!selectedRoomId || currentUserId <= 0) return false;
         return roomMemberIds.includes(currentUserId);
-    }, [selectedRoomId, currentUserId, roomMemberIds]);
+    }, [selectedRoomId, currentUserId, roomMemberIds, isSelectedRoomDm]);
 
 
     useEffect(() => {
@@ -224,14 +261,38 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
             setMessages([]);
             return;
         }
+        if (isSelectedRoomDm) {
+            if (!selectedDmUserId) {
+                setMessages([]);
+                return;
+            }
+            getPrivateMessages(token, selectedDmUserId)
+                .then((data) =>
+                    setMessages(
+                        data.map((message) => ({
+                            sender_user_id: message.sender_user_id,
+                            room_id: selectedRoomId,
+                            content: message.content,
+                            created_at: message.created_at ?? null,
+                        }))
+                    )
+                )
+                .catch(() => setStatus(t("Failed to fetch messages")));
+            return;
+        }
         getMessages(token, selectedRoomId)
             .then((data) => setMessages(data))
             .catch(() => setStatus(t("Failed to fetch messages")));
-    }, [token, selectedRoomId, isMember, t]);
+    }, [token, selectedRoomId, isMember, t, isSelectedRoomDm, selectedDmUserId]);
 
     useEffect(() => {
         if (!wsLastMessage || selectedRoomId == null) return;
         if (wsLastMessage.room_id !== selectedRoomId) return;
+        if (isSelectedRoomDm && selectedDmUserId) {
+            const isFromPartner = wsLastMessage.sender_user_id === selectedDmUserId;
+            const isToPartner = wsLastMessage.receiver_user_id === selectedDmUserId;
+            if (!isFromPartner && !isToPartner) return;
+        }
 
         setMessages((prev) => {
             if (wsLastMessage.id !== undefined && prev.some((message) => message.created_at && wsLastMessage.created_at && message.created_at === wsLastMessage.created_at && message.sender_user_id === wsLastMessage.sender_user_id && message.content === wsLastMessage.content)) {
@@ -250,7 +311,7 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
                 },
             ];
         });
-    }, [wsLastMessage, selectedRoomId]);
+    }, [wsLastMessage, selectedRoomId, isSelectedRoomDm, selectedDmUserId]);
 
     useEffect(() => {
         if (selectedRoomId == null || !isMember) return;
@@ -264,12 +325,22 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
     }, [messages, selectedRoomId, isMember]);
 
     useEffect(() => {
-        if (selectedRoomId == null) return;
+        if (selectedRoomId == null || isSelectedRoomDm) return;
         setMemberIds(wsRoomMembers);
-    }, [wsRoomMembers, selectedRoomId]);
+    }, [wsRoomMembers, selectedRoomId, isSelectedRoomDm]);
 
     useEffect(() => {
-        if (!wsMemberEvent || selectedRoomId == null) return;
+        if (!wsError) return;
+        const message = wsError.message || "";
+        if (message.toLowerCase().includes("blocked")) {
+            setStatus(t("Cannot send message to blocked user"));
+            return;
+        }
+        setStatus(message);
+    }, [wsError, t]);
+
+    useEffect(() => {
+        if (!wsMemberEvent || selectedRoomId == null || isSelectedRoomDm) return;
         if (wsMemberEvent.room_id !== selectedRoomId) return;
         if (!isMember) return;
         const selectedRoomForEvents = visibleRooms.find((room) => room.id === selectedRoomId) ?? null;
@@ -306,7 +377,7 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
                 ].slice(-40));
             })
             .catch(() => undefined);
-    }, [wsMemberEvent, selectedRoomId, visibleRooms, currentUserId, profiles, t]);
+    }, [wsMemberEvent, selectedRoomId, visibleRooms, currentUserId, profiles, t, isSelectedRoomDm, isMember]);
 
     useEffect(() => {
         if (!messages.length) return;
@@ -372,7 +443,7 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
     };
 
     const handleJoinRoom = async () => {
-        if (!token || selectedRoomId == null) return;
+        if (!token || selectedRoomId == null || isSelectedRoomDm) return;
         try {
             const joined = joinWsRoom();
             if (!joined) {
@@ -403,7 +474,7 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
     };
 
     const handleLeaveRoom = async () => {
-        if (!token || selectedRoomId == null) return;
+        if (!token || selectedRoomId == null || isSelectedRoomDm) return;
         try {
             const left = leaveWsRoom();
             if (!left) {
@@ -444,15 +515,7 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
         }
     };
 
-    const selectedRoom = useMemo(
-        () => visibleRooms.find((room) => room.id === selectedRoomId) ?? null,
-        [visibleRooms, selectedRoomId]
-    );
-
-
-
     const isOwner = Boolean(selectedRoom && currentUserId > 0 && selectedRoom.owner_user_id === currentUserId);
-    const isSelectedRoomDm = Boolean(selectedRoom && getDmOtherUserId(selectedRoom));
 
     const handleAvatarError = (event: React.SyntheticEvent<HTMLImageElement>) => {
         event.currentTarget.src = "/assets/default-profile.jpg";
@@ -550,7 +613,7 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
                         </div>
                         <div className="space-y-2">
                             {visibleRooms.length === 0 && <p className="px-2 py-3 text-sm text-[#6b7280]">{t("No rooms yet.")}</p>}
-                            {visibleRooms.map((room) => {
+                            {orderedRooms.map((room) => {
                                 const isSelected = room.id === selectedRoomId;
                                 const isDm = Boolean(getDmOtherUserId(room));
                                 const isRoomOwner = !isDm && currentUserId > 0 && room.owner_user_id === currentUserId;
@@ -627,7 +690,7 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
                                 </div>
 
                                 <div className="flex flex-wrap gap-2">
-                                    {!isMember && (
+                                    {!isSelectedRoomDm && !isMember && (
                                         <button
                                             onClick={handleJoinRoom}
                                             className="rounded-xl border-2 border-[#1f2937] bg-[#4AD95A] px-3 py-2 text-sm font-semibold text-[#1f2937] shadow-[3px_3px_0_#1f2937] transition hover:translate-x-[1px] hover:translate-y-[1px]"
@@ -635,7 +698,7 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
                                             {t("Join")}
                                         </button>
                                     )}
-                                    {isMember && (
+                                    {!isSelectedRoomDm && isMember && (
                                         <button
                                             onClick={handleLeaveRoom}
                                             className="rounded-xl border-2 border-[#1f2937] bg-white px-3 py-2 text-sm font-semibold text-[#1f2937] shadow-[3px_3px_0_#1f2937] transition hover:translate-x-[1px] hover:translate-y-[1px]"

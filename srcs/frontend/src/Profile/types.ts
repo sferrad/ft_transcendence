@@ -60,6 +60,14 @@ export type MessageOut = {
     created_at?: string | null;
 };
 
+export type PrivateMessageOut = {
+    id: number;
+    sender_user_id: number;
+    receiver_user_id: number;
+    content: string;
+    created_at?: string | null;
+};
+
 export type MessageCreate = {
     content: string;
 };

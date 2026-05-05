@@ -27,6 +27,7 @@ export interface ChatMessage {
   id?: number;
   room_id: number;
   sender_user_id: number;
+  receiver_user_id?: number;
   user_id?: number;
   username?: string;
   content: string;
@@ -251,8 +252,8 @@ export function useGameWebSocket(gameRoomId?: string) {
   };
 }
 
-export function useChatWebSocket(roomId?: number) {
-  const { socket, connected, emit, on, off, error } = useWebSocket({ enabled: Boolean(roomId) });
+export function useChatWebSocket(roomId?: number, dmUserId?: number) {
+  const { socket, connected, emit, on, off, error } = useWebSocket({ enabled: Boolean(roomId || dmUserId) });
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [roomMembers, setRoomMembers] = useState<number[]>([]);
   const [memberEvent, setMemberEvent] = useState<ChatMemberEvent | null>(null);
@@ -278,6 +279,7 @@ export function useChatWebSocket(roomId?: number) {
         id: typeof data.id === 'number' ? data.id : undefined,
         room_id: Number(data.room_id),
         sender_user_id: Number(data.sender_user_id ?? data.user_id),
+        receiver_user_id: data.receiver_user_id === undefined ? undefined : Number(data.receiver_user_id),
         user_id: data.user_id === undefined ? undefined : Number(data.user_id),
         username: data.username === undefined ? undefined : String(data.username),
         content: String(data.content ?? ''),
@@ -285,6 +287,29 @@ export function useChatWebSocket(roomId?: number) {
         timestamp: data.timestamp === undefined ? undefined : String(data.timestamp),
       };
       if (Number.isFinite(message.room_id) && Number.isFinite(message.sender_user_id) && message.content) {
+        setMessages((prev) => [...prev, message]);
+        setLastMessage(message);
+      }
+    };
+
+    const handleDmMessage: EventHandler = (payload) => {
+      const data = asPayload(payload);
+      const message: ChatMessage = {
+        id: typeof data.id === 'number' ? data.id : undefined,
+        room_id: roomId ?? 0,
+        sender_user_id: Number(data.sender_user_id ?? data.user_id),
+        receiver_user_id: data.receiver_user_id === undefined ? undefined : Number(data.receiver_user_id),
+        user_id: data.user_id === undefined ? undefined : Number(data.user_id),
+        username: data.username === undefined ? undefined : String(data.username),
+        content: String(data.content ?? ''),
+        created_at: data.created_at === undefined ? undefined : String(data.created_at),
+        timestamp: data.timestamp === undefined ? undefined : String(data.timestamp),
+      };
+      if (dmUserId) {
+        const matchesPartner = message.sender_user_id === dmUserId || message.receiver_user_id === dmUserId;
+        if (!matchesPartner) return;
+      }
+      if (Number.isFinite(message.sender_user_id) && message.content) {
         setMessages((prev) => [...prev, message]);
         setLastMessage(message);
       }
@@ -321,32 +346,46 @@ export function useChatWebSocket(roomId?: number) {
     on('chat.message', handleMessage);
     on('chat.user_joined', handleUserJoined);
     on('chat.user_left', handleUserLeft);
+    on('dm.message', handleDmMessage);
 
     return () => {
       off('chat.joined', handleJoined);
       off('chat.message', handleMessage);
       off('chat.user_joined', handleUserJoined);
       off('chat.user_left', handleUserLeft);
+      off('dm.message', handleDmMessage);
     };
-  }, [socket, on, off]);
+  }, [socket, on, off, roomId]);
 
   const sendMessage = useCallback((content: string) => {
+    if (dmUserId) {
+      return emit('dm.message', { target_user_id: dmUserId, room_id: roomId, content });
+    }
     if (!roomId) return false;
     return emit('chat.message', { room_id: roomId, content });
-  }, [roomId, emit]);
+  }, [roomId, dmUserId, emit]);
 
   const joinRoom = useCallback(() => {
+    if (dmUserId) {
+      return emit('dm.join', { target_user_id: dmUserId, room_id: roomId });
+    }
     if (!roomId) return false;
     return emit('chat.join', { room_id: roomId });
-  }, [roomId, emit]);
+  }, [roomId, dmUserId, emit]);
 
   const leaveRoom = useCallback(() => {
+    if (dmUserId) {
+      const sent = emit('dm.leave', { target_user_id: dmUserId, room_id: roomId });
+      setMessages([]);
+      setRoomMembers([]);
+      return sent;
+    }
     if (!roomId) return false;
     const sent = emit('chat.leave', { room_id: roomId });
     setMessages([]);
     setRoomMembers([]);
     return sent;
-  }, [roomId, emit]);
+  }, [roomId, dmUserId, emit]);
 
   return {
     socket,

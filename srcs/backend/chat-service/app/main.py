@@ -4,7 +4,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from prometheus_fastapi_instrumentator import Instrumentator
 
-from . import models, schemas, crud
+from . import models, schemas, crud, friends_service_client
 from .database import get_db, init_db, init_engine
 
 app = FastAPI(title="chat-service")
@@ -98,6 +98,8 @@ def get_messages(room_id: int, limit: int = 50, user_id: int = Depends(_current_
 		raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a member")
 	return crud.list_messages(db, room_id=room_id, limit=min(max(limit, 1), 200))
 
+
+
 @app.post("/rooms/{room_id}/messages", response_model=schemas.MessageOut, status_code=201)
 def send_message(room_id: int, payload: schemas.MessageCreate, user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
 	room = crud.get_room(db, room_id=room_id)
@@ -125,3 +127,31 @@ def internal_cleanup_user(payload: dict, db: Session = Depends(get_db)):
 		return crud.cleanup_user_data(db, user_id=user_id)
 	except ValueError as e:
 		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@app.post("/{user_id}/messages", response_model=schemas.PrivateMessageOut, status_code=201)
+async def send_private_message(user_id: int, payload: schemas.MessageCreate, sender_user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
+	if user_id <= 0:
+		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid user id")
+	if user_id == sender_user_id:
+		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot send message to yourself")
+	try:
+		is_blocked = await friends_service_client.is_blocked(sender_user_id=sender_user_id, receiver_user_id=user_id)
+	except Exception as e:
+		raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error occurred while checking block status")
+	if is_blocked:
+		raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot send message to blocked user")
+	return crud.create_private_message(db, sender_user_id=sender_user_id, receiver_user_id=user_id, content=payload.content)
+
+@app.get("/{user_id}/messages", response_model=list[schemas.PrivateMessageOut])
+async def get_private_messages(user_id: int, limit: int = 50, sender_user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
+	if user_id <= 0:
+		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid user id")
+	return crud.list_private_messages(db, sender_user_id=sender_user_id, receiver_user_id=user_id, limit=min(max(limit, 1), 200))
+
+
+@app.get("/{user_id}/messages/export", response_model=list[schemas.PrivateMessageOut])
+async def export_my_private_messages(user_id: int, db: Session = Depends(get_db)):
+	if user_id <= 0:
+		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid user id")
+	return crud.list_my_private_messages(db, user_id=user_id, limit=10000)

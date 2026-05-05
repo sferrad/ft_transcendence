@@ -20,3 +20,9 @@ async def cleanup_user(*, user_id: int) -> dict:
         r = await client.post(f"{CHAT_SERVICE_URL}/internal/user/cleanup", json={"user_id": user_id})
     r.raise_for_status()
     return r.json()
+
+async def fetch_my_private_messages(*, user_id: int, limit: int = 10000) -> list[dict]:
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        response = await client.get(f"{CHAT_SERVICE_URL}/{user_id}/messages/export", params={"limit": limit}, headers={"X-User-Id": str(user_id)})
+    response.raise_for_status()
+    return response.json()
