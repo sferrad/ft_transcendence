@@ -1,4 +1,5 @@
 from __future__ import annotations
+from operator import and_, or_
 
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
@@ -125,3 +126,21 @@ def cleanup_user_data(db: Session, *, user_id: int) -> dict:
         db.rollback()
         raise
     
+
+def create_private_message(db: Session, *, sender_user_id: int, receiver_user_id: int, content: str) -> models.PrivateMessage:
+    message = models.PrivateMessage(sender_user_id=sender_user_id, receiver_user_id=receiver_user_id, content=content)
+    try:
+        db.add(message)
+        db.commit()
+        db.refresh(message)
+        return message
+    except SQLAlchemyError:
+        db.rollback()
+        raise 
+
+def list_private_messages(db: Session, *, sender_user_id: int, receiver_user_id: int, limit: int = 50) -> list[models.PrivateMessage]:
+    messages_list = db.query(models.PrivateMessage).filter(
+        or_(and_(models.PrivateMessage.sender_user_id == sender_user_id)(models.PrivateMessage.receiver_user_id == receiver_user_id)) |
+        (and_(models.PrivateMessage.sender_user_id == receiver_user_id)(models.PrivateMessage.receiver_user_id == sender_user_id))
+    ).order_by(models.PrivateMessage.created_at.desc(), models.PrivateMessage.id.desc()).limit(limit).all()
+    return list(reversed(messages_list))

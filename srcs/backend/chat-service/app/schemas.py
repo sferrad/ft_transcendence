@@ -40,3 +40,11 @@ class MessageOut(BaseModel):
     content: str
     created_at: Optional[datetime]
     model_config = ConfigDict(from_attributes=True)
+
+class PrivateMessageOut(BaseModel):
+    id: int
+    sender_user_id: int
+    receiver_user_id: int
+    content: str
+    created_at: Optional[datetime]
+    model_config = ConfigDict(from_attributes=True)
