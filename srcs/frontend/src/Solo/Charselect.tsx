@@ -49,7 +49,12 @@ const Charselectsolo = () => {
 
                 <button
                     onClick={() => {
-                        navigate(`/solo-gameplay?player=${encodeURIComponent(player)}&ai=${encodeURIComponent(ai)}`);
+                        navigate('/solo-gameplay', {
+                            state: {
+                                playerNation: player,
+                                aiNation: ai,
+                            },
+                        });
                     }}
                     className="font-arcade text-black bg-[#4AD95A] px-8 py-5 min-[481px]:px-7 min-[481px]:py-3 min-[769px]:px-9 min-[769px]:py-4 m-2 text-base min-[481px]:text-lg min-[769px]:text-4xl border-0 shadow-[0px_4px_rgb(255,255,255),0px_-4px_rgb(255,255,255),4px_0px_rgb(255,255,255),-4px_0px_rgb(255,255,255),0px_4px_rgba(0,0,0,0.22),4px_4px_rgba(0,0,0,0.22),-4px_4px_rgba(0,0,0,0.22),inset_0px_4px_rgba(255,255,255,0.21)] cursor-pointer no-underline inline-block transition-transform duration-100 active:translate-y-0.5 w-fit max-w-full"
                 >
