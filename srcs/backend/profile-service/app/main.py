@@ -383,7 +383,7 @@ async def export_my_data(user_id: int = Depends(_current_user_id), db: Session =
 		matches = await game_service_client.fetch_my_matches(user_id=user_id)
 	except Exception:
 		matches = []
-	chat = {"rooms": [], "messages_by_room": {}}
+	chat = {"rooms": [], "messages_by_room": {}, "my_private_messages": []}
 	try:
 		rooms = await chat_service_client.fetch_rooms(user_id=user_id)
 		chat["rooms"] = rooms
@@ -391,6 +391,10 @@ async def export_my_data(user_id: int = Depends(_current_user_id), db: Session =
 			room_id = int(room.get("id") or 0)
 			if room_id > 0:
 				chat["messages_by_room"][str(room_id)] = await chat_service_client.fetch_room_messages(user_id=user_id, room_id=room_id)
+	except Exception:
+		pass
+	try:
+		chat["my_private_messages"] = await chat_service_client.fetch_my_private_messages(user_id=user_id, limit=10000)
 	except Exception:
 		pass
 	email_send = False
