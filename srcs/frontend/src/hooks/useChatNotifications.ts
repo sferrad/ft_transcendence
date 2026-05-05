@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { MessageOut, RoomOut } from "../Profile/types";
-import { getMessages, getRoomMembers, getRooms } from "../Profile/api/chat";
+import type { MessageOut, PrivateMessageOut, RoomOut } from "../Profile/types";
+import { getMessages, getPrivateMessages, getRoomMembers, getRooms } from "../Profile/api/chat";
 
 type UseChatNotificationsOptions = {
     enabled?: boolean;
@@ -12,6 +12,7 @@ type UnreadState = {
     hasUnread: boolean;
     unreadCount: number;
     unreadRoomIds: number[];
+    lastMessageByRoomId: Record<number, number>;
 };
 
 const lastSeenKey = (roomId: number) => `chat:lastSeen:${roomId}`;
@@ -55,13 +56,27 @@ const isDmRoomForUser = (room: RoomOut, currentUserId: number) => {
     return currentUserId > 0 && (currentUserId === a || currentUserId === b);
 };
 
-const getMessageTimestamp = (message: MessageOut) => {
+const getDmOtherUserId = (room: RoomOut, currentUserId: number): number | null => {
+    const pair = parseDmPairFromRoomName(room.name);
+    if (!pair) return null;
+    const [a, b] = pair;
+    if (currentUserId === a) return b;
+    if (currentUserId === b) return a;
+    return null;
+};
+
+type MessageLike = {
+    sender_user_id: number;
+    created_at?: string | null;
+};
+
+const getMessageTimestamp = (message: MessageLike) => {
     const timestamp = message.created_at ? Date.parse(message.created_at) : NaN;
     return Number.isFinite(timestamp) ? timestamp : 0;
 };
 
-const findLatestMessage = (messages: MessageOut[]) => {
-    let latest: MessageOut | null = null;
+const findLatestMessage = (messages: MessageLike[]) => {
+    let latest: MessageLike | null = null;
     let latestTimestamp = 0;
 
     messages.forEach((message) => {
@@ -78,6 +93,7 @@ const findLatestMessage = (messages: MessageOut[]) => {
 export function useChatNotifications(options: UseChatNotificationsOptions = {}): UnreadState {
     const { enabled = true, pollIntervalMs = 12000, rooms: providedRooms } = options;
     const [unreadRoomIds, setUnreadRoomIds] = useState<number[]>([]);
+    const [lastMessageByRoomId, setLastMessageByRoomId] = useState<Record<number, number>>({});
 
     const token = typeof window === "undefined" ? null : localStorage.getItem("access_token");
     const currentUserId = typeof window === "undefined" ? 0 : Number(localStorage.getItem("user_id") ?? "0");
@@ -94,35 +110,42 @@ export function useChatNotifications(options: UseChatNotificationsOptions = {}):
         const memberChecks = await Promise.all(
             visibleRooms.map(async (room) => {
                 if (isDmRoomForUser(room, currentUserId)) {
-                    return { room, isMember: true };
+                    const otherUserId = getDmOtherUserId(room, currentUserId);
+                    return { room, isMember: true, dmUserId: otherUserId };
                 }
                 try {
                     const members = await getRoomMembers(token, room.id);
-                    return { room, isMember: members.includes(currentUserId) };
+                    return { room, isMember: members.includes(currentUserId), dmUserId: null };
                 } catch {
-                    return { room, isMember: false };
+                    return { room, isMember: false, dmUserId: null };
                 }
             })
         );
 
-        const memberRooms = memberChecks.filter((entry) => entry.isMember).map((entry) => entry.room);
+        const memberRooms = memberChecks.filter((entry) => entry.isMember);
+        const nextLastMessageByRoomId: Record<number, number> = {};
         const unreadCandidates = await Promise.all(
-            memberRooms.map(async (room) => {
+            memberRooms.map(async (entry) => {
                 try {
-                    const messages = await getMessages(token, room.id);
+                    const isDmRoom = isDmRoomForUser(entry.room, currentUserId);
+                    const messages: Array<MessageOut | PrivateMessageOut> = isDmRoom && entry.dmUserId
+                        ? await getPrivateMessages(token, entry.dmUserId)
+                        : await getMessages(token, entry.room.id);
                     if (!messages.length) return null;
 
                     const latest = findLatestMessage(messages);
                     if (!latest) return null;
 
-                    if (latest.sender_user_id === currentUserId) return null;
-
                     const latestTimestamp = getMessageTimestamp(latest);
+                    nextLastMessageByRoomId[entry.room.id] = latestTimestamp;
                     if (!latestTimestamp) return null;
 
-                    const lastSeen = readLastSeen(room.id);
-                    if (latestTimestamp > lastSeen) return room.id;
+                    if (latest.sender_user_id === currentUserId) return null;
+
+                    const lastSeen = readLastSeen(entry.room.id);
+                    if (latestTimestamp > lastSeen) return entry.room.id;
                 } catch {
+                    nextLastMessageByRoomId[entry.room.id] = 0;
                     return null;
                 }
                 return null;
@@ -131,6 +154,7 @@ export function useChatNotifications(options: UseChatNotificationsOptions = {}):
 
         const unreadRoomIds = unreadCandidates.filter((id): id is number => typeof id === "number");
         setUnreadRoomIds(unreadRoomIds);
+        setLastMessageByRoomId((prev) => ({ ...prev, ...nextLastMessageByRoomId }));
     }, [currentUserId, enabled, providedRooms, token]);
 
     useEffect(() => {
@@ -160,7 +184,7 @@ export function useChatNotifications(options: UseChatNotificationsOptions = {}):
     const hasUnread = unreadCount > 0;
 
     return useMemo(
-        () => ({ hasUnread, unreadCount, unreadRoomIds }),
-        [hasUnread, unreadCount, unreadRoomIds]
+        () => ({ hasUnread, unreadCount, unreadRoomIds, lastMessageByRoomId }),
+        [hasUnread, unreadCount, unreadRoomIds, lastMessageByRoomId]
     );
 }

@@ -20,7 +20,6 @@ volumes:
   chat-db:
   friends-db:
   game-db:
-  analytics-db:
   profile-db:
   vault-data:
   vault-private:
@@ -137,30 +136,6 @@ services:
       retries: 5
       start_period: 15s
 
-  analytics-db:
-    build:
-      context: ./postgres-databases
-      dockerfile: Dockerfile
-    expose:
-      - 5432
-    image: analytics-db
-    env_file:
-      - .env
-    environment:
-      - POSTGRES_DB=analytics_db
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-    volumes:
-      - analytics-db:/var/lib/postgresql/data
-    networks:
-      - transcendence-database
-    restart: unless-stopped
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d analytics_db" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
 
   profile-db:
     build:
@@ -220,8 +195,6 @@ services:
       friends-db:
         condition: service_healthy
       game-db:
-        condition: service_healthy
-      analytics-db:
         condition: service_healthy
       profile-db:
         condition: service_healthy
@@ -334,40 +307,6 @@ services:
       retries: 3
       start_period: 30s
 
-  analytics-service:
-    build:
-      context: ./backend/analytics-service
-      dockerfile: Dockerfile
-    image: analytics-service
-    env_file:
-      - .env
-    environment:
-      - ANALYTICS_SERVICE_URL=http://analytics-service:8003
-      - VAULT_ADDR=${VAULT_ADDR}
-      - VAULT_TOKEN_FILE=/vault/data/api-analytics.token
-      - DB_HOST=analytics-db
-      - DB_PORT=${DB_PORT}
-      - DB_NAME=analytics_db
-      - VAULT_DB_CREDS_PATH=database/creds/analytics-role
-    expose:
-      - "8003"
-    volumes:
-      - vault-data:/vault/data:ro
-    networks:
-      - transcendence-backend
-      - transcendence-database
-    depends_on:
-      analytics-db:
-        condition: service_healthy
-      vault:
-        condition: service_healthy
-    restart: unless-stopped
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8003/health" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
 
   friends-service:
     build:

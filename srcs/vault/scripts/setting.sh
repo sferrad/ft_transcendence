@@ -185,7 +185,6 @@ config_db "user-db" "user-db" "user_db" "user-role"
 config_db "chat-db" "chat-db" "chat_db" "chat-role"
 config_db "friends-db" "friends-db" "friends_db" "friends-role"
 config_db "game-db" "game-db" "game_db" "game-role"
-config_db "analytics-db" "analytics-db" "analytics_db" "analytics-role"
 config_db "profile-db" "profile-db" "profile_db" "profile-role"
 
 apply_policy() {
@@ -204,7 +203,6 @@ apply_policy "user-service-policy" "/vault/policies/user-service-policy.hcl"
 apply_policy "chat-service-policy" "/vault/policies/chat-service-policy.hcl"
 apply_policy "friends-service-policy" "/vault/policies/friends-service-policy.hcl"
 apply_policy "game-service-policy" "/vault/policies/game-service-policy.hcl"
-apply_policy "analytics-service-policy" "/vault/policies/analytics-service-policy.hcl"
 apply_policy "profile-service-policy" "/vault/policies/profile-service-policy.hcl"
 
 create_token() {
@@ -243,7 +241,6 @@ create_token "user-service-policy" "/vault/data/api-user.token"
 create_token "chat-service-policy" "/vault/data/api-chat.token"
 create_token "friends-service-policy" "/vault/data/api-friends.token"
 create_token "game-service-policy" "/vault/data/api-game.token"
-create_token "analytics-service-policy" "/vault/data/api-analytics.token"
 create_token "profile-service-policy" "/vault/data/api-profile.token"
 
 echo "Vault ready"

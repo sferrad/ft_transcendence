@@ -188,3 +188,7 @@ async def unfriend(friend_user_id: int, user_id: int = Depends(_current_user_id)
 	if not ok:
 		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Friend not found")
 	return ok
+
+@app.get("/friends/{sender_user_id}/blocked/{receiver_user_id}", response_model=bool)
+async def is_blocked(sender_user_id: int, receiver_user_id: int, db: Session = Depends(get_db)):
+	return crud.is_blocked(db, sender_user_id, receiver_user_id)

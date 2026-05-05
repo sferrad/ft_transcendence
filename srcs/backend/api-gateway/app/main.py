@@ -92,7 +92,6 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")
 
 USER_SERVICE_URL = os.getenv("USER_SERVICE_URL", "http://user-service:8001")
 CHAT_SERVICE_URL = os.getenv("CHAT_SERVICE_URL", "http://chat-service:8002")
-ANALYTICS_SERVICE_URL = os.getenv("ANALYTICS_SERVICE_URL", "http://analytics-service:8003")
 FRIENDS_SERVICE_URL = os.getenv("FRIENDS_SERVICE_URL", "http://friends-service:8004")
 GAME_SERVICE_URL = os.getenv("GAME_SERVICE_URL", "http://game-service:8005")
 PROFILE_SERVICE_URL = os.getenv("PROFILE_SERVICE_URL", "http://profile-service:8006")
@@ -254,12 +253,6 @@ async def proxy_friends(path: str, request: Request, user: dict = Depends(requir
     extra = {"X-User-Id": str(user.get("sub", ""))}
     return await _proxy(request, FRIENDS_SERVICE_URL, path, extra_headers=extra)
 
-@app.api_route("/analytics/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
-async def proxy_analytics(path: str, request: Request, user: dict = Depends(require_user)):
-    if path.startswith("internal/") or path.startswith("/internal/"):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
-    extra = {"X-User-Id": str(user.get("sub", ""))}
-    return await _proxy(request, ANALYTICS_SERVICE_URL, path, extra_headers=extra)
 
 # Proxy vers profile-service avec un cache Redis léger sur les GET.
 
