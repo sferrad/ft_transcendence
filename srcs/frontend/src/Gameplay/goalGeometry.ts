@@ -1,10 +1,5 @@
 import { type Goal } from './types'
-
-export const GOAL_VISUAL_WIDTH_MULTIPLIER = 4
-export const CAGE_ASPECT_RATIO = 1
-export const GOAL_VISUAL_OUTER_OFFSET = 130
-export const GOAL_VISUAL_TOP_OFFSET = 30
-export const GOAL_SCORE_ENTRY_RATIO = 0.2
+import { GOAL_BASE_INNER_WIDTH } from './goalConfig'
 
 export type GoalVisualBounds = {
   left: number
@@ -18,17 +13,24 @@ export type GoalVisualBounds = {
 }
 
 export function getGoalVisualBounds(goal: Goal): GoalVisualBounds {
-  const frontWidth = goal.postWidth + goal.innerWidth
-  const width = frontWidth * GOAL_VISUAL_WIDTH_MULTIPLIER
-  const height = width / CAGE_ASPECT_RATIO
-  const left = goal.side === 'left' ? goal.x - GOAL_VISUAL_OUTER_OFFSET : goal.x - width + GOAL_VISUAL_OUTER_OFFSET
+  // Calcul basé uniquement sur les dimensions physiques de la cage
+  const frontWidth = GOAL_BASE_INNER_WIDTH
+  // La largeur visuelle est proportionnelle aux dimensions physiques
+  const width = frontWidth * 4
+  const height = goal.postHeight
+  
+  // Positionnement horizontal selon le côté
+  const left = goal.side === 'left' ? goal.x - 130 : goal.x - width + 130
   const right = left + width
-  const top = goal.crossbarY + goal.postHeight - height / 2 - GOAL_VISUAL_TOP_OFFSET
+  const top = goal.crossbarY - 30
+  
   const barBottom = top + goal.crossbarHeight
   const middleX = left + width / 2
+  
+  // Seuil de but : 20% de pénétration dans l'ouverture
   const entryThreshold = goal.side === 'left'
-    ? right - width * GOAL_SCORE_ENTRY_RATIO
-    : left + width * GOAL_SCORE_ENTRY_RATIO
+    ? right - width * 0.2
+    : left + width * 0.2
 
   return { left, right, top, width, height, barBottom, middleX, entryThreshold }
 }

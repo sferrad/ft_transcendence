@@ -2,6 +2,12 @@ import { type GameState, type Ball, type Player, type Goal } from './types'
 import { type Keys } from './inputHandler'
 import { getPlayerVisualLayout, getPlayerShoeBounds } from './playerSpriteGeometry'
 import { getGoalVisualBounds } from './goalGeometry'
+import { PLAYER_BASE_RADIUS, calculatePlayerFloorY } from './playerConfig'
+import {
+  GOAL_BASE_HEIGHT,
+  GOAL_BASE_INNER_WIDTH,
+  calculateGoalCrossbarY,
+} from './goalConfig'
 
 // Dimensions du canvas de jeu
 export const CANVAS_WIDTH = 1800
@@ -9,20 +15,18 @@ export const CANVAS_HEIGHT = 1000
 // Score nécessaire pour gagner la partie
 const WINNING_SCORE = 5
 
-// Rayon de collision du joueur (en pixels)
-const PLAYER_RADIUS = 30
-// Largeur des poteaux de but (en pixels)
-const GOAL_POST_WIDTH = 15
-// Hauteur totale du but (en pixels)
-const GOAL_HEIGHT = 195
-// Largeur intérieure de l'ouverture du but (en pixels)
-export const GOAL_INNER_WIDTH = 70
+// Rayon de collision du joueur (en pixels) - importé depuis la configuration centralisée
+const PLAYER_RADIUS = PLAYER_BASE_RADIUS
+// Hauteur totale du but (en pixels) - importé depuis la configuration centralisée
+const GOAL_HEIGHT = GOAL_BASE_HEIGHT
+// Largeur intérieure de l'ouverture du but (en pixels) - importé depuis la configuration centralisée
+export const GOAL_INNER_WIDTH = GOAL_BASE_INNER_WIDTH
 // Hauteur de la barre transversale du but (en pixels)
-const CROSSBAR_HEIGHT = 10
+const CROSSBAR_HEIGHT = GOAL_BASE_HEIGHT * 0.04
 // Position Y du sol (70% de la hauteur du canvas)
 const GROUND_Y = CANVAS_HEIGHT * 0.7
-// Position Y où le joueur se tient au sol
-const PLAYER_FLOOR_Y = GROUND_Y - PLAYER_RADIUS
+// Position Y où le joueur se tient au sol (calculée à partir du rayon centralisé)
+const PLAYER_FLOOR_Y = calculatePlayerFloorY(GROUND_Y)
 
 // Accélération de la gravité appliquée à la balle
 const GRAVITY_BALL = 0.8
@@ -57,21 +61,24 @@ const PLAYER2_START_X = CANVAS_WIDTH - 180
 const PLAYER_START_Y = PLAYER_FLOOR_Y
 
 function createGoals(): { goal1: Goal; goal2: Goal } {
+  const crossbarY = calculateGoalCrossbarY(GROUND_Y)
+  const postHeight = GOAL_HEIGHT + CROSSBAR_HEIGHT
+  
   const goal1: Goal = {
     x: 0,
-    postWidth: GOAL_POST_WIDTH,
-    postHeight: GOAL_HEIGHT + CROSSBAR_HEIGHT,
+    postWidth: GOAL_BASE_INNER_WIDTH / 2,
+    postHeight: postHeight,
     innerWidth: GOAL_INNER_WIDTH,
-    crossbarY: GROUND_Y - GOAL_HEIGHT - CROSSBAR_HEIGHT,
+    crossbarY: crossbarY,
     crossbarHeight: CROSSBAR_HEIGHT,
     side: 'left',
   }
   const goal2: Goal = {
-    x: CANVAS_WIDTH - GOAL_POST_WIDTH,
-    postWidth: GOAL_POST_WIDTH,
-    postHeight: GOAL_HEIGHT + CROSSBAR_HEIGHT,
+    x: CANVAS_WIDTH - GOAL_BASE_INNER_WIDTH / 2,
+    postWidth: GOAL_BASE_INNER_WIDTH / 2,
+    postHeight: postHeight,
     innerWidth: GOAL_INNER_WIDTH,
-    crossbarY: GROUND_Y - GOAL_HEIGHT - CROSSBAR_HEIGHT,
+    crossbarY: crossbarY,
     crossbarHeight: CROSSBAR_HEIGHT,
     side: 'right',
   }
@@ -580,7 +587,7 @@ function updateAI(state: GameState): void {
 
   const ballHeadingToAIGoal = ball.vx < -2
 
-  const aiGoalX = CANVAS_WIDTH - GOAL_POST_WIDTH
+  const aiGoalX = CANVAS_WIDTH - GOAL_BASE_INNER_WIDTH / 2
   const defendX = Math.min(aiGoalX - ai.radius - 10, ball.x + 80)
 
   const targetX = ballHeadingToAIGoal ? defendX : ball.x
