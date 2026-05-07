@@ -16,6 +16,8 @@ import { useEffect } from 'react';
 import { pingPresence } from './Profile/api/friends';
 import ChatPage from './chat/ChatPage';
 import SaveData from './setting/Acc/Savedata';
+import PrivacyPolicy from './Legal/PrivacyPolicy';
+import TermsOfService from './Legal/TermsOfService';
 
 const App = () => {
   useEffect(() => {
@@ -40,6 +42,8 @@ const App = () => {
         <Route path="/login" element={<Handlelog />} />
         <Route path="/register" element={<Handleregister />} />
         <Route path="/" element={<Home />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms-of-service" element={<TermsOfService />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/chat" element={<ChatPage />} />
         <Route path="/solo-select" element={<Charselectsolo />} />
@@ -53,6 +57,13 @@ const App = () => {
         <Route path="/settings/save-data" element={<SaveData />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      <footer className="fixed bottom-0 left-0 right-0 z-50 border-t border-black/10 bg-white/90 px-4 py-2 text-center text-xs text-[#1f2937] backdrop-blur-sm">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-3">
+          <a className="font-semibold underline underline-offset-4" href="/privacy-policy">Privacy Policy</a>
+          <span aria-hidden="true">·</span>
+          <a className="font-semibold underline underline-offset-4" href="/terms-of-service">Terms of Service</a>
+        </div>
+      </footer>
     </BrowserRouter>
   );
 };
