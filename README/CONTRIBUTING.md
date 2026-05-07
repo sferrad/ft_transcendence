@@ -180,9 +180,3 @@ des descriptions claires et des étapes pour reproduire les problèmes.
 - Tirez régulièrement les dernières modifications de la branche principale pour éviter les conflits majeurs.
 - Revoyez le code des autres contributeurs et fournissez des commentaires constructifs.
 - Faire des issues pour signaler les bugs ou proposer des améliorations.
-
-## Style de code
-
-Respectez les conventions de style de code C++98.
-
-Merci pour votre travail sur le projet Webserv !

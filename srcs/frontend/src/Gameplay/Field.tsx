@@ -99,7 +99,7 @@ function drawFootballField(ctx: CanvasRenderingContext2D, width: number, height:
   ctx.stroke()
 }
 
-export function Field(): JSX.Element {
+export function Field() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
