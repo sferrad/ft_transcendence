@@ -5,6 +5,7 @@ import { PlayerCircle } from './components/PlayerCircle'
 import { GameOver } from './components/GameOver'
 import { GoalPost } from './components/GoalPost'
 import { GameSceneLayout } from './GameSceneLayout'
+import { useTranslation } from 'react-i18next'
 
 export type GameMode = 'solo' | 'local'
 
@@ -18,6 +19,7 @@ interface GameModeViewProps {
 }
 
 export function GameModeView({ mode, player1Name, player2Name, player1Nation, player2Nation, backRoute }: GameModeViewProps) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const isSolo = mode === 'solo'
   const { gameState, goalFlash, restart } = useGameLoop(player1Name, player2Name, isSolo)
@@ -77,7 +79,7 @@ export function GameModeView({ mode, player1Name, player2Name, player1Nation, pl
             letterSpacing: 4,
             textShadow: '0 0 30px #facc15, 0 0 60px #f97316',
           }}>
-            BUUUUT !
+            {t('GOAAAAL !')}
           </div>
           <div style={{
             fontSize: 28,
@@ -85,12 +87,12 @@ export function GameModeView({ mode, player1Name, player2Name, player1Nation, pl
             marginTop: 12,
             fontWeight: 600,
           }}>
-            {goalFlash} marque !
+            {goalFlash} {t('score !')}
           </div>
         </div>
       )}
 
-      {gameState.status === 'finished' && !goalFlash && (
+      {gameState.status === t('finished') && !goalFlash && (
         <GameOver
           winner={
             gameState.winner === 'player1' ? player1Name

@@ -142,5 +142,17 @@
     "Write a message...": "Escribir un mensaje...",
     "Send": "Enviar",
     "No channel selected": "No se ha seleccionado un canal",
-    "Back home": "Volver a inicio"
+    "Back home": "Volver a inicio",
+
+    "GOAAAAL !": "GOAAAAL !",
+    "score !": "¡anota !",
+    "finished": "finalizado",
+    "Player 1": "Jugador 1",
+    "Player 2": "Jugador 2",
+    "Algeria": "Argelia",
+    "Bot": "Bot",
+    "Player": "Jugador",
+    "First to 5 goals": "Primero a 5 goles",
+    "wins": "gana",
+    "Replay": "Repetir"
 }

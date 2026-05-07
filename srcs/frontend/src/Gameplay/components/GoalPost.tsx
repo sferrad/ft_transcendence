@@ -1,6 +1,7 @@
 import { type Goal } from '../types'
 import { getGoalVisualBounds } from '../goalGeometry'
 
+
 interface GoalPostProps {
   goal: Goal
 }
