@@ -75,7 +75,7 @@ const getMessageTimestamp = (message: MessageLike) => {
     return Number.isFinite(timestamp) ? timestamp : 0;
 };
 
-const findLatestMessage = (messages: MessageLike[]) => {
+const findLatestMessage = (messages: MessageLike[]): MessageLike | null => {
     let latest: MessageLike | null = null;
     let latestTimestamp = 0;
 
