@@ -54,22 +54,20 @@ async function loadAvatarForImgSrc(
     return { src: normalizedUrl, isObjectUrl: false };
 }
 
-// Do NOT call hooks at module top-level. We keep translation keys here
-// and translate them inside the component where `useTranslation()` is valid.
 const COUNTRY_OPTIONS = [
-    { value: "FR", labelKey: "France" },
-    { value: "BE", labelKey: "Belgium" },
-    { value: "CA", labelKey: "Canada" },
-    { value: "IT", labelKey: "Italy" },
-    { value: "MA", labelKey: "Morocco" },
-    { value: "DZ", labelKey: "Algeria" },
-    { value: "TN", labelKey: "Tunisia" },
+    { value: "France", label: "France" },
+    { value: "Belgium", label: "Belgium" },
+    { value: "Canada", label: "Canada" },
+    { value: "Italy", label: "Italy" },
+    { value: "Morocco", label: "Morocco" },
+    { value: "Algeria", label: "Algeria" },
+    { value: "Tunisia", label: "Tunisia" },
 ] as const;
 
 const LANGUAGE_OPTIONS = [
-    { value: "fr", labelKey: "French" },
-    { value: "en", labelKey: "English" },
-    { value: "es", labelKey: "Spanish" },
+    { value: "French", label: "French" },
+    { value: "English", label: "English" },
+    { value: "Spanish", label: "Spanish" },
 ] as const;
 
 function Profile() {
@@ -101,32 +99,7 @@ function Profile() {
 
     const isAlreadyFriend = !isMe && !!profile?.user_id && friends.some((f) => f.userId === profile.user_id);
 
-    const countryLabelByCode = ((): Record<string, string> =>
-        Object.fromEntries(COUNTRY_OPTIONS.map((option) => [option.value, t(option.labelKey)]))
-    )();
-
-    const languageLabelByCode = ((): Record<string, string> =>
-        Object.fromEntries(LANGUAGE_OPTIONS.map((option) => [option.value, t(option.labelKey)]))
-    )();
-
-    function displayCountry(value: string | null): string {
-        if (!value) return "-";
-        return countryLabelByCode[value] ?? value;
-    }
-
-    function displayLanguage(value: string | null): string {
-        if (!value) return "-";
-        return languageLabelByCode[value] ?? value;
-    }
-
     useEffect(() => {
-        if (profile) {
-            setEditableCountry(profile.country ?? "");
-            setEditableLanguage(profile.language ?? "");
-        }
-    }, [profile]);
-
-     useEffect(() => {
         if (isMe || !profile?.user_id) {
             setViewedUserOnline(null);
             return;
@@ -242,6 +215,11 @@ function Profile() {
                 console.error("Error fetching profile picture:", error);
                 const message = error instanceof Error ? error.message : "Erreur lors du chargement du profil";
                 setError(message);
+                
+                setProfile(null);
+                setProfilePicture(null);
+                setViewedUserOnline(null);
+                setIsBlocking(false);
                 setMessageVisible(true);
             }
         };
@@ -314,6 +292,13 @@ function Profile() {
     };
 
     useEffect(() => {
+        if (profile) {
+            setEditableCountry(profile.country ?? "");
+            setEditableLanguage(profile.language ?? "");
+        }
+    }, [profile]);
+
+    useEffect(() => {
         if (messageVisible) {
             const timer = setTimeout(() => setMessageVisible(false), 3000);
             return () => clearTimeout(timer);
@@ -365,7 +350,7 @@ function Profile() {
 
     const handleSaveCountryLanguage = async () => {
         const token = localStorage.getItem("access_token");
-        if (token == null) {
+        if (!token) {
             setError("Token manquant. Veuillez vous reconnecter.");
             setMessageVisible(true);
             navigate("/login");
@@ -601,7 +586,7 @@ function Profile() {
                                             <option value="">-</option>
                                             {COUNTRY_OPTIONS.map((option) => (
                                                 <option key={option.value} value={option.value}>
-                                                    {countryLabelByCode[option.value]}
+                                                    {t(option.label)}
                                                 </option>
                                             ))}
                                         </select>
@@ -617,7 +602,7 @@ function Profile() {
                                             <option value="">-</option>
                                             {LANGUAGE_OPTIONS.map((option) => (
                                                 <option key={option.value} value={option.value}>
-                                                    {languageLabelByCode[option.value]}
+                                                    {t(option.label)}
                                                 </option>
                                             ))}
                                         </select>
@@ -633,7 +618,7 @@ function Profile() {
                                 </div>
                             </div>
                         </>
-                    ) : (
+                    ) : profile ? (
                         <div className="mt-4 rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-4 text-[#1f2937]">
                             <div className="mb-4 flex flex-wrap gap-3">
                                 <button
@@ -741,19 +726,21 @@ function Profile() {
                                     </button>
                                 )}
                             </div>
-                        </div>
-                    )}
 
-                    {!isMe && profile && (
-                        <div className="mt-4 grid grid-cols-1 min-[481px]:grid-cols-2 gap-3 text-sm text-[#1f2937]">
-                            <div className="rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-3">
-                                <div className="font-arcade tracking-wide text-base min-[481px]:text-lg">{t("Country")}</div>
-                                <div className="mt-1">{displayCountry(profile?.country ?? null)}</div>
+                            <div className="mt-4 grid grid-cols-1 min-[481px]:grid-cols-2 gap-3 text-sm text-[#1f2937]">
+                                <div className="rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-3">
+                                    <div className="font-arcade tracking-wide text-base min-[481px]:text-lg">{t("Country")}</div>
+                                    <div className="mt-1">{profile?.country ?? "-"}</div>
+                                </div>
+                                <div className="rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-3">
+                                    <div className="font-arcade tracking-wide text-base min-[481px]:text-lg">{t("Language")}</div>
+                                    <div className="mt-1">{profile?.language ?? "-"}</div>
+                                </div>
                             </div>
-                            <div className="rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-3">
-                                <div className="font-arcade tracking-wide text-base min-[481px]:text-lg">{t("Language")}</div>
-                                <div className="mt-1">{displayLanguage(profile?.language ?? null)}</div>
-                            </div>
+                        </div>
+                    ) : (
+                        <div className="mt-4 rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-4 text-[#1f2937]">
+                            <div className="whitespace-pre-wrap break-words text-sm min-[481px]:text-base">{t('User not found')}</div>
                         </div>
                     )}
 
@@ -770,7 +757,7 @@ function Profile() {
                                             clipRule="evenodd"
                                         />
                                     </svg>
-                                    <span className="text-sm min-[481px]:text-base font-medium">{error}</span>
+                                    <span className="text-sm min-[481px]:text-base font-medium">{t(error)}</span>
                                 </div>
                             </div>
                         )}
