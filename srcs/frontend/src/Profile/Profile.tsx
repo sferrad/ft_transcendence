@@ -60,8 +60,6 @@ const COUNTRY_OPTIONS = [
     { value: "FR", labelKey: "France" },
     { value: "BE", labelKey: "Belgium" },
     { value: "CA", labelKey: "Canada" },
-    { value: "US", labelKey: "United States" },
-    { value: "ES", labelKey: "Spain" },
     { value: "IT", labelKey: "Italy" },
     { value: "MA", labelKey: "Morocco" },
     { value: "DZ", labelKey: "Algeria" },
@@ -103,13 +101,12 @@ function Profile() {
 
     const isAlreadyFriend = !isMe && !!profile?.user_id && friends.some((f) => f.userId === profile.user_id);
 
-    // Translate label keys into actual labels inside the component (hooks allowed here)
     const countryLabelByCode = ((): Record<string, string> =>
-        Object.fromEntries(COUNTRY_OPTIONS.map((o) => [o.value, t(o.labelKey)]))
+        Object.fromEntries(COUNTRY_OPTIONS.map((option) => [option.value, t(option.labelKey)]))
     )();
 
     const languageLabelByCode = ((): Record<string, string> =>
-        Object.fromEntries(LANGUAGE_OPTIONS.map((o) => [o.value, t(o.labelKey)]))
+        Object.fromEntries(LANGUAGE_OPTIONS.map((option) => [option.value, t(option.labelKey)]))
     )();
 
     function displayCountry(value: string | null): string {
@@ -121,6 +118,13 @@ function Profile() {
         if (!value) return "-";
         return languageLabelByCode[value] ?? value;
     }
+
+    useEffect(() => {
+        if (profile) {
+            setEditableCountry(profile.country ?? "");
+            setEditableLanguage(profile.language ?? "");
+        }
+    }, [profile]);
 
      useEffect(() => {
         if (isMe || !profile?.user_id) {
@@ -157,13 +161,6 @@ function Profile() {
         const key = `blocked:${profile.user_id}`;
         setIsBlocking(localStorage.getItem(key) === "1");
     }, [isMe, profile?.user_id]);
-
-    useEffect(() => {
-        if (profile) {
-            setEditableCountry(profile.country ?? "");
-            setEditableLanguage(profile.language ?? "");
-        }
-    }, [profile]);
 
     useEffect(() => {
         setSearchUserId(user ?? "");
@@ -245,11 +242,6 @@ function Profile() {
                 console.error("Error fetching profile picture:", error);
                 const message = error instanceof Error ? error.message : "Erreur lors du chargement du profil";
                 setError(message);
-                // Clear the previously-loaded profile so we don't show the wrong user
-                setProfile(null);
-                setProfilePicture(null);
-                setViewedUserOnline(null);
-                setIsBlocking(false);
                 setMessageVisible(true);
             }
         };
@@ -641,7 +633,7 @@ function Profile() {
                                 </div>
                             </div>
                         </>
-                    ) : profile ? (
+                    ) : (
                         <div className="mt-4 rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-4 text-[#1f2937]">
                             <div className="mb-4 flex flex-wrap gap-3">
                                 <button
@@ -697,7 +689,11 @@ function Profile() {
                                                 setMessageVisible(true);
                                             });
                                     }}
-                                    className={`${arcadeSmallButton} ${isAlreadyFriend ? "text-white text-lg min-[481px]:text-xl bg-red-600 hover:bg-red-700" : "text-white text-lg min-[481px]:text-xl bg-blue-600 hover:bg-blue-700"}`}
+                                    className={`${arcadeSmallButton} ${
+                                        isAlreadyFriend
+                                            ? "text-white text-lg min-[481px]:text-xl bg-red-600 hover:bg-red-700"
+                                            : "text-white text-lg min-[481px]:text-xl bg-blue-600 hover:bg-blue-700"
+                                    }`}
                                 >
                                     👥 {isAlreadyFriend ? t("Remove Friend") : t("Add Friend")}
                                 </button>
@@ -735,30 +731,31 @@ function Profile() {
                                                     setMessageVisible(true);
                                                 });
                                         }}
-                                        className={`${arcadeSmallButton} ${isBlocking ? "text-white text-lg min-[481px]:text-xl bg-[#4AD95A] hover:bg-green-600" : "text-white text-lg min-[481px]:text-xl bg-red-600 hover:bg-red-700"}`}
+                                        className={`${arcadeSmallButton} ${
+                                            isBlocking
+                                                ? "text-white text-lg min-[481px]:text-xl bg-[#4AD95A] hover:bg-green-600"
+                                                : "text-white text-lg min-[481px]:text-xl bg-red-600 hover:bg-red-700"
+                                        }`}
                                     >
                                         {isBlocking ? t("Unblock") : t("Block")}
                                     </button>
                                 )}
                             </div>
                         </div>
-                    ) : (
-                        <div className="mt-4 rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-4 text-[#1f2937]">
-                            <div className="whitespace-pre-wrap break-words text-sm min-[481px]:text-base">{t('User not found')}</div>
-                        </div>)
-                    }
+                    )}
 
-
-                    <div className="mt-4 grid grid-cols-1 min-[481px]:grid-cols-2 gap-3 text-sm text-[#1f2937]">
-                        <div className="rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-3">
-                            <div className="font-arcade tracking-wide text-base min-[481px]:text-lg">{t("Country")}</div>
-                            <div className="mt-1">{displayCountry(profile?.country ?? null)}</div>
+                    {!isMe && profile && (
+                        <div className="mt-4 grid grid-cols-1 min-[481px]:grid-cols-2 gap-3 text-sm text-[#1f2937]">
+                            <div className="rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-3">
+                                <div className="font-arcade tracking-wide text-base min-[481px]:text-lg">{t("Country")}</div>
+                                <div className="mt-1">{displayCountry(profile?.country ?? null)}</div>
+                            </div>
+                            <div className="rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-3">
+                                <div className="font-arcade tracking-wide text-base min-[481px]:text-lg">{t("Language")}</div>
+                                <div className="mt-1">{displayLanguage(profile?.language ?? null)}</div>
+                            </div>
                         </div>
-                        <div className="rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-3">
-                            <div className="font-arcade tracking-wide text-base min-[481px]:text-lg">{t("Language")}</div>
-                            <div className="mt-1">{displayLanguage(profile?.language ?? null)}</div>
-                        </div>
-                    </div>
+                    )}
 
                     <div className="border-t-2 border-[#2b2b2b] my-6" />
 
