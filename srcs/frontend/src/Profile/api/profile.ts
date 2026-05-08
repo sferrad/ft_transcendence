@@ -76,3 +76,22 @@ export async function uploadMyAvatar(token: string, file: File): Promise<Profile
 
     return await response.json();
 }
+
+
+export async function updateMyProfile(token: string, updates: Partial<{ display_name: string; avatar_url: string | null; bio: string | null; country: string | null; language: string | null; }>): Promise<ProfileOut> {
+    const response = await fetch("/api/profile/me", {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(updates),
+    });
+
+    if (response.ok == false) {
+        const detail = await parseErrorDetail(response);
+        throw new Error(detail || `HTTP ${response.status}`);
+    }
+
+    return await response.json();
+}
