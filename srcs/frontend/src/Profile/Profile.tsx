@@ -19,7 +19,7 @@ import {
     getFriendsWithStatus,
     removeFriend,
 } from "./api/friends";
-import { fetchMyProfile, fetchProfileByUserId, fetchUserByUsername, uploadMyAvatar } from "./api/profile";
+import { fetchMyProfile, fetchProfileByUserId, fetchUserByUsername, uploadMyAvatar, updateMyProfile } from "./api/profile";
 import { createRoom, getRooms, joinRoom } from "./api/chat";
 
 function normalizeAvatarUrl(url: string | null): string | null {
@@ -54,6 +54,26 @@ async function loadAvatarForImgSrc(
     return { src: normalizedUrl, isObjectUrl: false };
 }
 
+// Do NOT call hooks at module top-level. We keep translation keys here
+// and translate them inside the component where `useTranslation()` is valid.
+const COUNTRY_OPTIONS = [
+    { value: "FR", labelKey: "France" },
+    { value: "BE", labelKey: "Belgium" },
+    { value: "CA", labelKey: "Canada" },
+    { value: "US", labelKey: "United States" },
+    { value: "ES", labelKey: "Spain" },
+    { value: "IT", labelKey: "Italy" },
+    { value: "MA", labelKey: "Morocco" },
+    { value: "DZ", labelKey: "Algeria" },
+    { value: "TN", labelKey: "Tunisia" },
+] as const;
+
+const LANGUAGE_OPTIONS = [
+    { value: "fr", labelKey: "French" },
+    { value: "en", labelKey: "English" },
+    { value: "es", labelKey: "Spanish" },
+] as const;
+
 function Profile() {
     const navigate = useNavigate();
     const { t } = useTranslation();
@@ -75,11 +95,32 @@ function Profile() {
     const [requesterNames, setRequesterNames] = useState<Record<number, string>>({});
     const [showFriends, setShowFriends] = useState(false);
     const [friends, setFriends] = useState<Array<{ userId: number; displayName: string; online: boolean }>>([]);
+    const [editableCountry, setEditableCountry] = useState<string>("");
+    const [editableLanguage, setEditableLanguage] = useState<string>("");
     const myUsername = localStorage.getItem("username") ?? "";
     const myUserId = Number(localStorage.getItem("user_id") ?? "0");
     const isMe = (!user && !userIdParam) || user === myUsername || (!!userId && myUserId > 0 && userId === myUserId);
 
     const isAlreadyFriend = !isMe && !!profile?.user_id && friends.some((f) => f.userId === profile.user_id);
+
+    // Translate label keys into actual labels inside the component (hooks allowed here)
+    const countryLabelByCode = ((): Record<string, string> =>
+        Object.fromEntries(COUNTRY_OPTIONS.map((o) => [o.value, t(o.labelKey)]))
+    )();
+
+    const languageLabelByCode = ((): Record<string, string> =>
+        Object.fromEntries(LANGUAGE_OPTIONS.map((o) => [o.value, t(o.labelKey)]))
+    )();
+
+    function displayCountry(value: string | null): string {
+        if (!value) return "-";
+        return countryLabelByCode[value] ?? value;
+    }
+
+    function displayLanguage(value: string | null): string {
+        if (!value) return "-";
+        return languageLabelByCode[value] ?? value;
+    }
 
      useEffect(() => {
         if (isMe || !profile?.user_id) {
@@ -116,6 +157,13 @@ function Profile() {
         const key = `blocked:${profile.user_id}`;
         setIsBlocking(localStorage.getItem(key) === "1");
     }, [isMe, profile?.user_id]);
+
+    useEffect(() => {
+        if (profile) {
+            setEditableCountry(profile.country ?? "");
+            setEditableLanguage(profile.language ?? "");
+        }
+    }, [profile]);
 
     useEffect(() => {
         setSearchUserId(user ?? "");
@@ -323,6 +371,31 @@ function Profile() {
         }
     };
 
+    const handleSaveCountryLanguage = async () => {
+        const token = localStorage.getItem("access_token");
+        if (token == null) {
+            setError("Token manquant. Veuillez vous reconnecter.");
+            setMessageVisible(true);
+            navigate("/login");
+            return;
+        }
+
+        try {
+            const updated = await updateMyProfile(token, {
+                country: editableCountry === "" ? null : editableCountry,
+                language: editableLanguage === "" ? null : editableLanguage,
+            });
+            setProfile(updated);
+            setSuccess(true);
+            setMessageVisible(true);
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : "Erreur lors de la sauvegarde";
+            setSuccess(false);
+            setError(msg);
+            setMessageVisible(true);
+        }
+    };
+
     const handleLogout = async () => {
         const token = localStorage.getItem("access_token");
         if (!token) {
@@ -520,7 +593,54 @@ function Profile() {
                     )}
 
                     {isMe ? (
-                        <HandleBio />
+                        <>
+                            <HandleBio />
+
+                            <div className="mt-4 rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-4 text-[#1f2937]">
+                                <div className="mb-3 font-arcade tracking-wide text-base min-[481px]:text-lg">{t("Country and language")}</div>
+                                <div className="flex flex-col gap-3 min-[900px]:flex-row min-[900px]:items-end min-[900px]:justify-between">
+                                    <div className="flex flex-col gap-2">
+                                        <label className="font-medium">{t("Country")}</label>
+                                        <select
+                                            value={editableCountry}
+                                            onChange={(e) => setEditableCountry(e.target.value)}
+                                            className="hb-tap min-w-[12rem] px-3 py-2 rounded-lg border-2 border-[#2b2b2b] bg-white text-[#1f2937]"
+                                        >
+                                            <option value="">-</option>
+                                            {COUNTRY_OPTIONS.map((option) => (
+                                                <option key={option.value} value={option.value}>
+                                                    {countryLabelByCode[option.value]}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div className="flex flex-col gap-2">
+                                        <label className="font-medium">{t("Language")}</label>
+                                        <select
+                                            value={editableLanguage}
+                                            onChange={(e) => setEditableLanguage(e.target.value)}
+                                            className="hb-tap min-w-[12rem] px-3 py-2 rounded-lg border-2 border-[#2b2b2b] bg-white text-[#1f2937]"
+                                        >
+                                            <option value="">-</option>
+                                            {LANGUAGE_OPTIONS.map((option) => (
+                                                <option key={option.value} value={option.value}>
+                                                    {languageLabelByCode[option.value]}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={handleSaveCountryLanguage}
+                                        className={`${arcadePrimaryButton} text-white bg-blue-600 hover:bg-blue-700 w-full min-[900px]:w-auto`}
+                                    >
+                                        {t("Save")}
+                                    </button>
+                                </div>
+                            </div>
+                        </>
                     ) : profile ? (
                         <div className="mt-4 rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-4 text-[#1f2937]">
                             <div className="mb-4 flex flex-wrap gap-3">
@@ -632,11 +752,11 @@ function Profile() {
                     <div className="mt-4 grid grid-cols-1 min-[481px]:grid-cols-2 gap-3 text-sm text-[#1f2937]">
                         <div className="rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-3">
                             <div className="font-arcade tracking-wide text-base min-[481px]:text-lg">{t("Country")}</div>
-                            <div className="mt-1">{profile?.country ?? "-"}</div>
+                            <div className="mt-1">{displayCountry(profile?.country ?? null)}</div>
                         </div>
                         <div className="rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-3">
                             <div className="font-arcade tracking-wide text-base min-[481px]:text-lg">{t("Language")}</div>
-                            <div className="mt-1">{profile?.language ?? "-"}</div>
+                            <div className="mt-1">{displayLanguage(profile?.language ?? null)}</div>
                         </div>
                     </div>
 
