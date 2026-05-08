@@ -149,11 +149,19 @@
     "finished": "finished",
     "Player 1": "Player 1",
     "Player 2": "Player 2",
-    "Algeria": "Algeria",
     "Bot": "Bot",
     "Player": "Player",
     "First to 5 goals": "First to 5 goals",
     "wins": "wins",
-    "Replay": "Replay"
+    "Replay": "Replay",
 
+    "France": "France",
+    "Belgium": "Belgium",
+    "Canada": "Canada",
+    "United States": "United States",
+    "Spain": "Spain",
+    "Italy": "Italy",
+    "Morocco": "Morocco",
+    "Algeria": "Algeria",
+    "Tunisia": "Tunisia"
 }

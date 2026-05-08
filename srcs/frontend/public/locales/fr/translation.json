@@ -150,11 +150,20 @@
     "finished": "terminé",
     "Player 1": "Joueur 1",
     "Player 2": "Joueur 2",
-    "Algeria": "Algérie",
     "Bot": "Bot",
     "Player": "Joueur",
     "First to 5 goals": "Premier à 5 buts",
     "wins": "gagne",
-    "Replay": "Rejouer"
+    "Replay": "Rejouer",
+
+    "France": "France",
+    "Belgium": "Belgique",
+    "Canada": "Canada",
+    "United States": "États-Unis",
+    "Spain": "Espagne",
+    "Italy": "Italie",
+    "Morocco": "Maroc",
+    "Algeria": "Algérie",
+    "Tunisia": "Tunisie"
 }
 
