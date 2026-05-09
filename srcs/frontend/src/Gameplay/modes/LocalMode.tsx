@@ -1,5 +1,5 @@
 import { useLocation, useSearchParams } from 'react-router-dom'
-import { GameModeView } from './GameModeView'
+import { MatchView } from '../match/MatchView'
 
 interface LocalModeState {
   player1Name?: string
@@ -19,7 +19,7 @@ const LocalMode = () => {
   const player2Nation = state?.player2Nation || searchParams.get('p2Nation') || 'Algeria'
 
   return (
-    <GameModeView
+    <MatchView
       mode="local"
       player1Name={player1Name}
       player2Name={player2Name}
