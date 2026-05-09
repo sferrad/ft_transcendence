@@ -1,6 +1,6 @@
 import { useLocation, useSearchParams } from 'react-router-dom'
-import { GameModeView } from './GameModeView'
-import { getCurrentUser } from '../utils/auth'
+import { MatchView } from '../match/MatchView'
+import { getCurrentUser } from '../../utils/auth'
 
 interface SoloModeState {
   playerNation?: string
@@ -19,7 +19,7 @@ const SoloMode = () => {
   const aiNation = state?.aiNation || searchParams.get('ai') || 'Algeria'
 
   return (
-    <GameModeView
+    <MatchView
       mode="solo"
       player1Name={playerName}
       player2Name={aiName}

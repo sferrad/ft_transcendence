@@ -1,9 +1,9 @@
 import { type ReactNode, useEffect, useState } from 'react'
 import { Field } from './Field'
-import { Score } from './components/Score'
-import { CANVAS_WIDTH, CANVAS_HEIGHT } from './gameEngine'
+import { Score } from './Score'
+import { CANVAS_WIDTH, CANVAS_HEIGHT } from '../engine'
 
-interface GameSceneLayoutProps {
+interface SceneProps {
   leftScore: number
   rightScore: number
   leftName: string
@@ -11,27 +11,29 @@ interface GameSceneLayoutProps {
   children: ReactNode
 }
 
-function useScale() {
+const GROUND_Y = CANVAS_HEIGHT * 0.7
+
+// Adapte l'échelle du canvas pour qu'il tienne dans la fenêtre.
+function useScale(): number {
   const [scale, setScale] = useState(1)
-
   useEffect(() => {
-    function compute() {
-      const scaleX = window.innerWidth / CANVAS_WIDTH
-      const scaleY = window.innerHeight / CANVAS_HEIGHT
-      setScale(Math.min(scaleX, scaleY))
+    const compute = () => {
+      const sx = window.innerWidth / CANVAS_WIDTH
+      const sy = window.innerHeight / CANVAS_HEIGHT
+      setScale(Math.min(sx, sy))
     }
-
     compute()
     window.addEventListener('resize', compute)
     return () => window.removeEventListener('resize', compute)
   }, [])
-
   return scale
 }
 
-export function GameSceneLayout({ leftScore, rightScore, leftName, rightName, children }: GameSceneLayoutProps) {
+// Conteneur visuel : fond, terrain, cache sous-sol, ligne médiane, score, et
+// les enfants (joueurs, ballon, cages, overlays). Tout le reste se positionne
+// en absolu dans cet espace de 1800×1000.
+export function Scene({ leftScore, rightScore, leftName, rightName, children }: SceneProps) {
   const scale = useScale()
-  const groundY = CANVAS_HEIGHT * 0.7
 
   return (
     <div style={{
@@ -64,12 +66,13 @@ export function GameSceneLayout({ leftScore, rightScore, leftName, rightName, ch
         }}>
           <Field />
 
+          {/* Cache sous le sol pour ne pas voir le fond. */}
           <div style={{
             position: 'absolute',
-            top: `${groundY}px`,
+            top: GROUND_Y,
             left: 0,
             right: 0,
-            height: `${CANVAS_HEIGHT - groundY}px`,
+            height: CANVAS_HEIGHT - GROUND_Y,
             backgroundColor: '#000',
             zIndex: 0,
           }} />
@@ -79,14 +82,10 @@ export function GameSceneLayout({ leftScore, rightScore, leftName, rightName, ch
             rightScore={rightScore}
             leftName={leftName}
             rightName={rightName}
-            style={{
-              top: 'auto',
-              bottom: 8,
-              left: 0,
-              zIndex: 10,
-            }}
+            style={{ top: 'auto', bottom: 8, left: 0, zIndex: 10 }}
           />
 
+          {/* Ligne médiane. */}
           <div style={{
             position: 'absolute',
             left: '50%',
