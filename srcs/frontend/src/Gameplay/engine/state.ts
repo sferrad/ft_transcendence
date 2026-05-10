@@ -11,6 +11,7 @@ import {
 } from './constants'
 import { resetDashBoosts, resetDashCooldowns } from './input'
 import { resetKickCooldown } from './physics'
+import { resetAIJumpDash } from './ai'
 
 function createGoals(): { goal1: Goal; goal2: Goal } {
   const postHeight = GOAL_BASE_HEIGHT + CROSSBAR_HEIGHT
@@ -58,6 +59,7 @@ export function createInitialState(): GameState {
   resetDashBoosts()
   resetDashCooldowns()
   resetKickCooldown()
+  resetAIJumpDash()
   return {
     ball: { x: CANVAS_WIDTH / 2, y: 30, vx: randomKickoffVx(), vy: 0, radius: 20 },
     player1: createPlayer(PLAYER1_START_X),
@@ -83,6 +85,7 @@ export function resetPlayers(state: GameState): void {
   resetDashBoosts()
   resetDashCooldowns()
   resetKickCooldown()
+  resetAIJumpDash()
   // Réinitialise positions et états (y compris effets) mais conserve les scores.
   Object.assign(state.player1, createPlayer(PLAYER1_START_X), { score: state.player1.score })
   Object.assign(state.player2, createPlayer(PLAYER2_START_X), { score: state.player2.score })

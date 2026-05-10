@@ -40,7 +40,7 @@ function updatePlayers(state: GameState, keys: Keys, isSolo: boolean): void {
 
   let p2WantShoot: boolean
   if (isSolo) {
-    computeAIVelocity(p2, ball)
+    computeAIVelocity(p2, ball, state.happening)
     p2WantShoot = aiWantsToShoot(p2, ball)
   } else {
     const p2Input = KEY_MAPPINGS[1](keys)
