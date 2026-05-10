@@ -92,6 +92,7 @@ export function MatchView({
         <GoalFlash
           scorerName={goalFlash}
           scorerNation={goalFlash === player1Name ? player1Nation : player2Nation}
+          scorerColor={goalFlash === player1Name ? PLAYER1_COLOR : PLAYER2_COLOR}
         />
       )}
 
