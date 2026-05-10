@@ -19,7 +19,7 @@ import {
     getFriendsWithStatus,
     removeFriend,
 } from "./api/friends";
-import { fetchMyProfile, fetchProfileByUserId, fetchUserByUsername, uploadMyAvatar } from "./api/profile";
+import { fetchMyProfile, fetchProfileByUserId, fetchUserByUsername, uploadMyAvatar, updateMyProfile } from "./api/profile";
 import { createRoom, getRooms, joinRoom } from "./api/chat";
 
 function normalizeAvatarUrl(url: string | null): string | null {
@@ -54,6 +54,22 @@ async function loadAvatarForImgSrc(
     return { src: normalizedUrl, isObjectUrl: false };
 }
 
+const COUNTRY_OPTIONS = [
+    { value: "France", label: "France" },
+    { value: "Belgium", label: "Belgium" },
+    { value: "Canada", label: "Canada" },
+    { value: "Italy", label: "Italy" },
+    { value: "Morocco", label: "Morocco" },
+    { value: "Algeria", label: "Algeria" },
+    { value: "Tunisia", label: "Tunisia" },
+] as const;
+
+const LANGUAGE_OPTIONS = [
+    { value: "French", label: "French" },
+    { value: "English", label: "English" },
+    { value: "Spanish", label: "Spanish" },
+] as const;
+
 function Profile() {
     const navigate = useNavigate();
     const { t } = useTranslation();
@@ -75,13 +91,15 @@ function Profile() {
     const [requesterNames, setRequesterNames] = useState<Record<number, string>>({});
     const [showFriends, setShowFriends] = useState(false);
     const [friends, setFriends] = useState<Array<{ userId: number; displayName: string; online: boolean }>>([]);
+    const [editableCountry, setEditableCountry] = useState<string>("");
+    const [editableLanguage, setEditableLanguage] = useState<string>("");
     const myUsername = localStorage.getItem("username") ?? "";
     const myUserId = Number(localStorage.getItem("user_id") ?? "0");
     const isMe = (!user && !userIdParam) || user === myUsername || (!!userId && myUserId > 0 && userId === myUserId);
 
     const isAlreadyFriend = !isMe && !!profile?.user_id && friends.some((f) => f.userId === profile.user_id);
 
-     useEffect(() => {
+    useEffect(() => {
         if (isMe || !profile?.user_id) {
             setViewedUserOnline(null);
             return;
@@ -197,6 +215,11 @@ function Profile() {
                 console.error("Error fetching profile picture:", error);
                 const message = error instanceof Error ? error.message : "Erreur lors du chargement du profil";
                 setError(message);
+                
+                setProfile(null);
+                setProfilePicture(null);
+                setViewedUserOnline(null);
+                setIsBlocking(false);
                 setMessageVisible(true);
             }
         };
@@ -269,6 +292,13 @@ function Profile() {
     };
 
     useEffect(() => {
+        if (profile) {
+            setEditableCountry(profile.country ?? "");
+            setEditableLanguage(profile.language ?? "");
+        }
+    }, [profile]);
+
+    useEffect(() => {
         if (messageVisible) {
             const timer = setTimeout(() => setMessageVisible(false), 3000);
             return () => clearTimeout(timer);
@@ -315,6 +345,31 @@ function Profile() {
             console.error("Error uploading image:", error);
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleSaveCountryLanguage = async () => {
+        const token = localStorage.getItem("access_token");
+        if (!token) {
+            setError("Token manquant. Veuillez vous reconnecter.");
+            setMessageVisible(true);
+            navigate("/login");
+            return;
+        }
+
+        try {
+            const updated = await updateMyProfile(token, {
+                country: editableCountry === "" ? null : editableCountry,
+                language: editableLanguage === "" ? null : editableLanguage,
+            });
+            setProfile(updated);
+            setSuccess(true);
+            setMessageVisible(true);
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : "Erreur lors de la sauvegarde";
+            setSuccess(false);
+            setError(msg);
+            setMessageVisible(true);
         }
     };
 
@@ -515,8 +570,55 @@ function Profile() {
                     )}
 
                     {isMe ? (
-                        <HandleBio />
-                    ) : (
+                        <>
+                            <HandleBio />
+
+                            <div className="mt-4 rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-4 text-[#1f2937]">
+                                <div className="mb-3 font-arcade tracking-wide text-base min-[481px]:text-lg">{t("Country and language")}</div>
+                                <div className="flex flex-col gap-3 min-[900px]:flex-row min-[900px]:items-end min-[900px]:justify-between">
+                                    <div className="flex flex-col gap-2">
+                                        <label className="font-medium">{t("Country")}</label>
+                                        <select
+                                            value={editableCountry}
+                                            onChange={(e) => setEditableCountry(e.target.value)}
+                                            className="hb-tap min-w-[12rem] px-3 py-2 rounded-lg border-2 border-[#2b2b2b] bg-white text-[#1f2937]"
+                                        >
+                                            <option value="">-</option>
+                                            {COUNTRY_OPTIONS.map((option) => (
+                                                <option key={option.value} value={option.value}>
+                                                    {t(option.label)}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div className="flex flex-col gap-2">
+                                        <label className="font-medium">{t("Language")}</label>
+                                        <select
+                                            value={editableLanguage}
+                                            onChange={(e) => setEditableLanguage(e.target.value)}
+                                            className="hb-tap min-w-[12rem] px-3 py-2 rounded-lg border-2 border-[#2b2b2b] bg-white text-[#1f2937]"
+                                        >
+                                            <option value="">-</option>
+                                            {LANGUAGE_OPTIONS.map((option) => (
+                                                <option key={option.value} value={option.value}>
+                                                    {t(option.label)}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={handleSaveCountryLanguage}
+                                        className={`${arcadePrimaryButton} text-white bg-blue-600 hover:bg-blue-700 w-full min-[900px]:w-auto`}
+                                    >
+                                        {t("Save")}
+                                    </button>
+                                </div>
+                            </div>
+                        </>
+                    ) : profile ? (
                         <div className="mt-4 rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-4 text-[#1f2937]">
                             <div className="mb-4 flex flex-wrap gap-3">
                                 <button
@@ -624,19 +726,23 @@ function Profile() {
                                     </button>
                                 )}
                             </div>
+
+                            <div className="mt-4 grid grid-cols-1 min-[481px]:grid-cols-2 gap-3 text-sm text-[#1f2937]">
+                                <div className="rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-3">
+                                    <div className="font-arcade tracking-wide text-base min-[481px]:text-lg">{t("Country")}</div>
+                                    <div className="mt-1">{profile?.country ?? "-"}</div>
+                                </div>
+                                <div className="rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-3">
+                                    <div className="font-arcade tracking-wide text-base min-[481px]:text-lg">{t("Language")}</div>
+                                    <div className="mt-1">{profile?.language ?? "-"}</div>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="mt-4 rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-4 text-[#1f2937]">
+                            <div className="whitespace-pre-wrap break-words text-sm min-[481px]:text-base">{t('User not found')}</div>
                         </div>
                     )}
-
-                    <div className="mt-4 grid grid-cols-1 min-[481px]:grid-cols-2 gap-3 text-sm text-[#1f2937]">
-                        <div className="rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-3">
-                            <div className="font-arcade tracking-wide text-base min-[481px]:text-lg">{t("Country")}</div>
-                            <div className="mt-1">{profile?.country ?? "-"}</div>
-                        </div>
-                        <div className="rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-3">
-                            <div className="font-arcade tracking-wide text-base min-[481px]:text-lg">{t("Language")}</div>
-                            <div className="mt-1">{profile?.language ?? "-"}</div>
-                        </div>
-                    </div>
 
                     <div className="border-t-2 border-[#2b2b2b] my-6" />
 
@@ -651,7 +757,7 @@ function Profile() {
                                             clipRule="evenodd"
                                         />
                                     </svg>
-                                    <span className="text-sm min-[481px]:text-base font-medium">{error}</span>
+                                    <span className="text-sm min-[481px]:text-base font-medium">{t(error)}</span>
                                 </div>
                             </div>
                         )}

@@ -142,5 +142,28 @@
     "Write a message...": "Write a message...",
     "Send": "Send",
     "No channel selected": "No channel selected",
-    "Back home": "Back home"
+    "Back home": "Back home",
+
+    "GOAAAAL !": "GOAAAAL !",
+    "score !": "score !",
+    "finished": "finished",
+    "Player 1": "Player 1",
+    "Player 2": "Player 2",
+    "Bot": "Bot",
+    "Player": "Player",
+    "First to 5 goals": "First to 5 goals",
+    "wins": "wins",
+    "Replay": "Replay",
+
+    "France": "France",
+    "Belgium": "Belgium",
+    "Canada": "Canada",
+    "United States": "United States",
+    "Spain": "Spain",
+    "Italy": "Italy",
+    "Morocco": "Morocco",
+    "Algeria": "Algeria",
+    "Tunisia": "Tunisia",
+    "Country and language": "Country and language",
+    "User not found": "User not found"
 }

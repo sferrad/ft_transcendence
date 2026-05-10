@@ -1,5 +1,6 @@
 import { type Goal, getGoalVisualBounds } from '../engine'
 
+
 interface GoalPostProps {
   goal: Goal
 }
