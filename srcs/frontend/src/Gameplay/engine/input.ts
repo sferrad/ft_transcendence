@@ -9,6 +9,7 @@ import {
   DASH_IMPULSE, DASH_DECAY, DASH_STOP_EPSILON,
   SPEED_BOOST_MULTIPLIER,
 } from './constants'
+import { DASH_COOLDOWN_FRAMES } from './constants'
 
 export interface PlayerInput {
   left: boolean
@@ -33,16 +34,33 @@ export const KEY_MAPPINGS: [(k: Keys) => PlayerInput, (k: Keys) => PlayerInput] 
 
 // Boost dash conservé entre frames pour [p1, p2].
 export const dashBoosts = [0, 0]
+// Cooldown timers (en frames) pour chaque joueur : si >0, dash refusé.
+export const dashCooldowns = [0, 0]
 
 export function resetDashBoosts(): void {
   dashBoosts[0] = 0
   dashBoosts[1] = 0
 }
 
-function updateDashBoost(currentBoost: number, dashLeft: boolean, dashRight: boolean): number {
-  // Double-tap : remplace immédiatement le boost.
-  if (dashLeft && !dashRight) return -DASH_IMPULSE
-  if (dashRight && !dashLeft) return DASH_IMPULSE
+export function resetDashCooldowns(): void {
+  dashCooldowns[0] = 0
+  dashCooldowns[1] = 0
+}
+
+function updateDashBoost(currentBoost: number, dashLeft: boolean, dashRight: boolean, idx: 0 | 1): number {
+  // Double-tap : remplace immédiatement le boost si le cooldown est écoulé.
+  if (dashLeft && !dashRight) {
+    if (dashCooldowns[idx] <= 0) {
+      dashCooldowns[idx] = DASH_COOLDOWN_FRAMES
+      return -DASH_IMPULSE
+    }
+  }
+  if (dashRight && !dashLeft) {
+    if (dashCooldowns[idx] <= 0) {
+      dashCooldowns[idx] = DASH_COOLDOWN_FRAMES
+      return DASH_IMPULSE
+    }
+  }
   // Sinon, dissipation progressive.
   const decayed = currentBoost * DASH_DECAY
   return Math.abs(decayed) < DASH_STOP_EPSILON ? 0 : decayed
@@ -58,7 +76,9 @@ export function computePlayerVelocity(player: Player, input: PlayerInput, dashIn
     return
   }
 
-  dashBoosts[dashIndex] = updateDashBoost(dashBoosts[dashIndex], input.dashLeft, input.dashRight)
+  // Décrémente le cooldown si nécessaire, puis calcule le boost de dash.
+  if (dashCooldowns[dashIndex] > 0) dashCooldowns[dashIndex]--
+  dashBoosts[dashIndex] = updateDashBoost(dashBoosts[dashIndex], input.dashLeft, input.dashRight, dashIndex)
   const direction = (input.right ? 1 : 0) - (input.left ? 1 : 0)
   const speedMul = player.speedBoostFrames > 0 ? SPEED_BOOST_MULTIPLIER : 1
   player.vx = direction * player.speed * speedMul + dashBoosts[dashIndex]

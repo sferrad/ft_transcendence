@@ -34,6 +34,8 @@ export const JUMP_FORCE = -12                  // négatif = vers le haut
 export const DASH_IMPULSE = 40                 // vitesse instantanée du dash
 export const DASH_DECAY = 0.8                  // dissipation par frame
 export const DASH_STOP_EPSILON = 0.3           // sous ce seuil, dash arrêté net
+// Cooldown entre deux dashes (en frames). 60 frames ≈ 1s à 60fps.
+export const DASH_COOLDOWN_FRAMES = 30
 export const PLAYER_RESTITUTION = 0.45         // élasticité ballon ↔ joueur
 export const MIN_OUT_SPEED = 1.6               // vitesse min de sortie après rebond passif
 
