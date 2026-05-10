@@ -1,5 +1,4 @@
-import { type Goal } from '../types'
-import { getGoalVisualBounds } from '../goalGeometry'
+import { type Goal, getGoalVisualBounds } from '../engine'
 
 
 interface GoalPostProps {
