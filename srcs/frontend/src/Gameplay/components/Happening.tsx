@@ -28,7 +28,7 @@ export function Happening({ happening }: HappeningProps) {
         top: happening.y - happening.radius,
         width: size,
         height: size,
-        borderRadius: '50%',
+        clipPath: 'polygon(25% 0%, 75% 0%, 100% 25%, 100% 75%, 75% 100%, 25% 100%, 0% 75%, 0% 25%)',
         backgroundColor: 'rgba(255,255,255,0.92)',
         boxShadow: `0 0 22px ${aura}, 0 0 6px rgba(0,0,0,0.3)`,
         display: 'flex',
