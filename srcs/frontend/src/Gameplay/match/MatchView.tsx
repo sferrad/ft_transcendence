@@ -18,16 +18,17 @@ interface MatchViewProps {
   player1Nation: string
   player2Nation: string
   backRoute: string
+  paused?: boolean
 }
 
 const PLAYER1_COLOR = '#3b82f6'
 const PLAYER2_COLOR = '#ef4444'
 
 export function MatchView({
-  mode, player1Name, player2Name, player1Nation, player2Nation, backRoute,
+  mode, player1Name, player2Name, player1Nation, player2Nation, backRoute, paused = false,
 }: MatchViewProps) {
   const navigate = useNavigate()
-  const { gameState, goalFlash, restart } = useGameLoop(player1Name, player2Name, mode === 'solo')
+  const { gameState, goalFlash, restart } = useGameLoop(player1Name, player2Name, mode === 'solo', paused)
 
   const winnerName =
     gameState.winner === 'player1' ? player1Name :

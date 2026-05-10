@@ -5,14 +5,17 @@ import { createInputHandler } from './inputHandler'
 
 
 // Hook principal de la game loop. En solo, player2 est l'IA.
-export function useGameLoop(player1Name: string, player2Name: string, isSolo: boolean = false) {
+export function useGameLoop(player1Name: string, player2Name: string, isSolo: boolean = false, paused: boolean = false) {
   const [gameState, setGameState] = useState<GameState>(createInitialState)
   const [goalFlash, setGoalFlash] = useState<string | null>(null)
 
   const stateRef = useRef<GameState>(gameState)
   const animFrameRef = useRef<number>(0)
   const goalFlashRef = useRef<boolean>(false)
+  const pausedRef = useRef<boolean>(paused)
   const inputHandler = useRef(createInputHandler())
+
+  useEffect(() => { pausedRef.current = paused }, [paused])
 
   const showGoalFlash = useCallback((scorer: string) => {
     goalFlashRef.current = true
@@ -31,6 +34,11 @@ export function useGameLoop(player1Name: string, player2Name: string, isSolo: bo
     let prevScore2 = stateRef.current.player2.score
 
     const loop = () => {
+      if (pausedRef.current) {
+        input.consumePulses() // discard input pendant le versus screen
+        animFrameRef.current = requestAnimationFrame(loop)
+        return
+      }
       // Pendant le flash de but, on ne fait pas avancer la simulation.
       if (goalFlashRef.current) {
         animFrameRef.current = requestAnimationFrame(loop)
