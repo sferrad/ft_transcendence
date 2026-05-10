@@ -6,18 +6,22 @@
 // ralentissement du ballon).
 //
 // L'icône utilise la même physique que le ballon (gravité, rebond, friction)
-// mais ne collisionne avec rien d'autre que les bords.
+// mais ne collisionne avec rien d'autre que les bords.x
 
 import {
-  type GameState, type Happening, type HappeningKind, type Player,
+  type GameState, type Goal, type Happening, type HappeningKind, type Player,
 } from './types'
 import {
   CANVAS_WIDTH, GROUND_Y, GRAVITY_BALL, BOUNCE_DAMPING, BALL_FRICTION, MIN_BOUNCE_VY,
   HAPPENING_SPAWN_INTERVAL, HAPPENING_RADIUS,
   FREEZE_DURATION, SPEED_BOOST_DURATION, MEGA_KICK_DURATION, SLOW_BALL_DURATION,
+  SHRINK_GOAL_DURATION, GROW_GOAL_DURATION,
+  SHRINK_GOAL_MULTIPLIER, GROW_GOAL_MULTIPLIER,
 } from './constants'
 
-const KINDS: HappeningKind[] = ['freeze', 'speedBoost', 'megaKick', 'slowBall']
+const KINDS: HappeningKind[] = [
+  'freeze', 'speedBoost', 'megaKick', 'slowBall', 'shrinkGoal', 'growGoal',
+]
 
 // Crée un nouveau bonus en haut de la scène, à X aléatoire et avec une légère
 // dérive horizontale.
@@ -62,9 +66,20 @@ function isCollectedBy(h: Happening, p: Player): boolean {
   return dx * dx + dy * dy <= minDist * minDist
 }
 
+// Active un effet de cage : applique le multiplicateur et arme le timer.
+// Annule un effet précédent (mutuellement exclusifs sur une même cage).
+function setGoalEffect(goal: Goal, multiplier: number, frames: number): void {
+  goal.widthMultiplier = multiplier
+  goal.effectFrames = frames
+}
+
 // Applique l'effet selon le type. `collector` reçoit les bonus, `opponent`
-// les malus.
-function applyEffect(state: GameState, kind: HappeningKind, collector: Player, opponent: Player): void {
+// les malus. `collectorGoal` est la cage défendue par le collecteur.
+function applyEffect(
+  state: GameState, kind: HappeningKind,
+  collector: Player, opponent: Player,
+  collectorGoal: Goal, opponentGoal: Goal,
+): void {
   switch (kind) {
     case 'freeze':
       opponent.freezeFrames = FREEZE_DURATION
@@ -78,7 +93,21 @@ function applyEffect(state: GameState, kind: HappeningKind, collector: Player, o
     case 'slowBall':
       state.slowBallFrames = SLOW_BALL_DURATION
       break
+    case 'shrinkGoal':
+      // Bouclier défensif : la cage que le collecteur défend rétrécit.
+      setGoalEffect(collectorGoal, SHRINK_GOAL_MULTIPLIER, SHRINK_GOAL_DURATION)
+      break
+    case 'growGoal':
+      // Opportunité offensive : la cage défendue par l'adversaire grandit.
+      setGoalEffect(opponentGoal, GROW_GOAL_MULTIPLIER, GROW_GOAL_DURATION)
+      break
   }
+}
+
+function tickGoalEffect(goal: Goal): void {
+  if (goal.effectFrames <= 0) return
+  goal.effectFrames--
+  if (goal.effectFrames === 0) goal.widthMultiplier = 1
 }
 
 // Décrémente tous les compteurs d'effets actifs. Appelé une fois par frame.
@@ -91,6 +120,8 @@ function tickEffectTimers(state: GameState): void {
   if (p2.speedBoostFrames > 0) p2.speedBoostFrames--
   if (p2.kickBoostFrames > 0) p2.kickBoostFrames--
   if (state.slowBallFrames > 0) state.slowBallFrames--
+  tickGoalEffect(state.goal1)
+  tickGoalEffect(state.goal2)
 }
 
 // Point d'entrée appelé chaque frame depuis updateGame.
@@ -109,12 +140,13 @@ export function updateHappenings(state: GameState): void {
   // Un bonus est en l'air : on l'avance et on teste la collecte.
   advanceHappening(state.happening)
 
+  // Joueur 1 défend goal1 (gauche), joueur 2 défend goal2 (droite).
   if (isCollectedBy(state.happening, state.player1)) {
-    applyEffect(state, state.happening.kind, state.player1, state.player2)
+    applyEffect(state, state.happening.kind, state.player1, state.player2, state.goal1, state.goal2)
     state.happening = null
     state.framesUntilNextHappening = HAPPENING_SPAWN_INTERVAL
   } else if (isCollectedBy(state.happening, state.player2)) {
-    applyEffect(state, state.happening.kind, state.player2, state.player1)
+    applyEffect(state, state.happening.kind, state.player2, state.player1, state.goal2, state.goal1)
     state.happening = null
     state.framesUntilNextHappening = HAPPENING_SPAWN_INTERVAL
   }

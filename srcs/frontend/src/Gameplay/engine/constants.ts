@@ -39,7 +39,7 @@ export const MIN_OUT_SPEED = 1.6               // vitesse min de sortie après r
 
 // ─────────── FRAPPE ───────────
 export const KICK_ANIM_FRAMES = 8              // durée de l'animation de tir
-export const MAX_KICK_POWER = 65               // puissance maxi (frappe à mi-course)
+export const MAX_KICK_POWER = 35               // puissance maxi (frappe à mi-course)
 export const VERTICAL_KICK_ATTENUATION = 0.5   // < 1 = frappes plus tendues
 export const KICK_RANGE = 25                   // utilisé par l'IA pour décider de tirer
 
@@ -66,6 +66,11 @@ export const SLOW_BALL_DURATION = 300       // 5s
 export const SPEED_BOOST_MULTIPLIER = 2
 export const MEGA_KICK_MULTIPLIER = 3
 export const SLOW_BALL_GRAVITY_FACTOR = 0.33
+
+export const SHRINK_GOAL_DURATION = 300      // 5s
+export const GROW_GOAL_DURATION = 300        // 5s
+export const SHRINK_GOAL_MULTIPLIER = 0.5    // cage rétrécie de moitié
+export const GROW_GOAL_MULTIPLIER = 1.5      // cage agrandie
 
 // ─────────── PARTIE ───────────
 export const WINNING_SCORE = 5

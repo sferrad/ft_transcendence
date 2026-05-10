@@ -4,7 +4,7 @@
 // perpendiculaire au rayon de l'orbite.
 
 import { type Goal } from './types'
-import { GOAL_BASE_INNER_WIDTH } from './constants'
+import { GOAL_BASE_INNER_WIDTH, GROUND_Y } from './constants'
 
 // ─────────── SPRITE JOUEUR ───────────
 const SPRITE_NATIVE_WIDTH = 1408
@@ -58,6 +58,7 @@ export interface GoalVisualBounds {
   width: number
   height: number
   barBottom: number
+  barHeight: number       // épaisseur de la barre transversale (scalée)
   // X au-delà duquel le ballon est considéré comme « entré » dans la cage.
   entryThreshold: number
 }
@@ -139,18 +140,26 @@ export function getPlayerVisualLayout(
 
 // ─────────── GOAL ───────────
 export function getGoalVisualBounds(goal: Goal): GoalVisualBounds {
-  // Le visuel SVG est plus large que l'ouverture interne (perspective).
-  const width = GOAL_BASE_INNER_WIDTH * 4
-  const height = goal.postHeight
-  const left = goal.side === 'left' ? goal.x - 130 : goal.x - width + 130
-  const right = left + width
-  const top = goal.crossbarY - 30
-  const barBottom = top + goal.crossbarHeight
+  const m = goal.widthMultiplier
+  const baseWidth = GOAL_BASE_INNER_WIDTH * 4
+  const width = baseWidth * m
+  const height = goal.postHeight * m
+  const barHeight = goal.crossbarHeight * m
 
-  // But validé après 20% de pénétration dans l'ouverture.
+  const visibleBaseRatio = (GROUND_Y - (goal.crossbarY - 30)) / goal.postHeight
+  const top = GROUND_Y - height * visibleBaseRatio
+  const barBottom = top + barHeight
+
+  const centerX = goal.side === 'left'
+    ? goal.x + (baseWidth / 2 - 130)   // ≈ goal.x + 10 par défaut
+    : goal.x - (baseWidth / 2 - 130)   // ≈ goal.x - 10 par défaut
+  const left = centerX - width / 2
+  const right = centerX + width / 2
+
+  // But validé après 20% de pénétration depuis le front-post.
   const entryThreshold = goal.side === 'left'
     ? right - width * 0.2
     : left + width * 0.2
 
-  return { left, right, top, width, height, barBottom, entryThreshold }
+  return { left, right, top, width, height, barBottom, barHeight, entryThreshold }
 }
