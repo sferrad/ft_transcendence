@@ -75,7 +75,7 @@ export function GoalFlash({ scorerName, scorerNation, scorerColor }: GoalFlashPr
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
         animation: anim('gf-bg'),
-        zIndex: 10, overflow: 'hidden',
+        zIndex: 35, overflow: 'hidden',
       }}>
 
         {/* Anneaux dans la couleur du scoreur */}
@@ -86,7 +86,7 @@ export function GoalFlash({ scorerName, scorerNation, scorerColor }: GoalFlashPr
         ].map((r, i) => (
           <div key={i} style={{
             position: 'absolute',
-            width: 160, height: 160, borderRadius: '50%',
+            width: 160, height: 160, borderRadius: '12%',
             border: `3px solid ${r.color}`,
             animation: anim('gf-ring', `${r.delay}s`),
           }} />
@@ -96,7 +96,7 @@ export function GoalFlash({ scorerName, scorerNation, scorerColor }: GoalFlashPr
         {particles.map((p, i) => (
           <div key={i} style={{
             position: 'absolute',
-            width: p.size, height: p.size, borderRadius: '50%',
+            width: p.size, height: p.size, borderRadius: 2,
             background: p.color,
             top: '50%', left: '50%',
             marginTop: -p.size / 2, marginLeft: -p.size / 2,
@@ -106,9 +106,8 @@ export function GoalFlash({ scorerName, scorerNation, scorerColor }: GoalFlashPr
         ))}
 
         {/* BUUUUT! */}
-        <div style={{
+        <div className="font-arcade" style={{
           fontSize: 'clamp(64px, 12vw, 100px)',
-          fontWeight: 900,
           color: scorerColor,
           letterSpacing: 6,
           lineHeight: 1,
@@ -119,11 +118,10 @@ export function GoalFlash({ scorerName, scorerNation, scorerColor }: GoalFlashPr
         </div>
 
         {/* Nom du scoreur avec drapeau à la place du ballon */}
-        <div style={{
+        <div className="font-arcade" style={{
           marginTop: 18,
           display: 'flex', alignItems: 'center', gap: 12,
           fontSize: 'clamp(20px, 4vw, 30px)',
-          fontWeight: 700,
           color: scorerColor,
           letterSpacing: 3,
           textShadow: `0 0 20px ${scorerColor}88, 0 2px 20px rgba(0,0,0,0.9)`,

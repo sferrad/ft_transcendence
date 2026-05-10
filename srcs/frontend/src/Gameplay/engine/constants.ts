@@ -57,7 +57,7 @@ export const OBSTACLE_POSITIONS: ReadonlyArray<{ x: number; y: number }> = [
 // ─────────── HAPPENINGS (bonus aléatoires) ───────────
 // Une icône tombe du ciel toutes les N frames après collecte/disparition.
 // 60 fps → 480 frames = 8s.
-export const HAPPENING_SPAWN_INTERVAL = 480
+export const HAPPENING_SPAWN_INTERVAL = 200
 export const HAPPENING_RADIUS = 26
 // Durées des effets en frames.
 export const FREEZE_DURATION = 180          // 3s
