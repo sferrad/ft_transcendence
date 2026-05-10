@@ -82,7 +82,12 @@ export function MatchView({
 
       {gameState.happening && <Happening happening={gameState.happening} />}
 
-      {goalFlash && <GoalFlash scorerName={goalFlash} />}
+      {goalFlash && (
+        <GoalFlash
+          scorerName={goalFlash}
+          scorerNation={goalFlash === player1Name ? player1Nation : player2Nation}
+        />
+      )}
 
       {gameState.status === 'finished' && !goalFlash && (
         <GameOver

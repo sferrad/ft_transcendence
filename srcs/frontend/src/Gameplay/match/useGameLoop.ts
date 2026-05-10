@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { type GameState, createInitialState, updateGame } from '../engine'
+import { GOAL_FLASH_DURATION_MS } from '../engine/constants'
 import { createInputHandler } from './inputHandler'
 
-const GOAL_FLASH_DURATION_MS = 2000
 
 // Hook principal de la game loop. En solo, player2 est l'IA.
 export function useGameLoop(player1Name: string, player2Name: string, isSolo: boolean = false) {
