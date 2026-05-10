@@ -18,7 +18,7 @@ const FOOTER_HEIGHT = 36
 // Hauteur du bandeau du score, en coordonnées canvas (sera scalé avec le reste).
 // Calibrée pour que le haut du bandeau coïncide avec le bas visuel du Field
 // (≈ y=870 après rotateX(25deg) + scaleY(0.85) dans Field.tsx).
-const SCORE_BAND_HEIGHT = 130
+const SCORE_BAND_HEIGHT = 150
 
 function useScale(): number {
   const [scale, setScale] = useState(1)
