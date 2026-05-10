@@ -1,4 +1,5 @@
 import { type CSSProperties } from 'react'
+import { WINNING_SCORE } from '../engine/constants'
 
 interface ScoreProps {
   leftScore: number
@@ -8,23 +9,121 @@ interface ScoreProps {
   style?: CSSProperties
 }
 
-// Affiche les deux noms et scores en flex space-around. Position-agnostique :
-// le parent (Scene) le place dans la zone noire sous le terrain.
-export function Score({ leftScore, rightScore, leftName, rightName, style }: ScoreProps) {
+const P1 = '#3b82f6'
+const P2 = '#ef4444'
+
+function Pips({ filled, color, align }: { filled: number; color: string; align: 'left' | 'right' }) {
   return (
-    <div
-      style={{
-        width: '100%',
-        display: 'flex',
-        justifyContent: 'space-around',
-        color: 'white',
-        fontSize: 32,
-        fontWeight: 'bold',
-        ...style,
-      }}
-    >
-      <span>{leftName}: {leftScore}</span>
-      <span>{rightName}: {rightScore}</span>
+    <div style={{ display: 'flex', gap: 7, alignItems: 'center', justifyContent: align === 'right' ? 'flex-end' : 'flex-start' }}>
+      {Array.from({ length: WINNING_SCORE }, (_, i) => (
+        <div key={i} style={{
+          width: 20, height: 20, borderRadius: '50%',
+          background: i < filled ? color : 'rgba(255,255,255,0.12)',
+          boxShadow: i < filled ? `0 0 7px ${color}, 0 0 14px ${color}66` : 'none',
+        }} />
+      ))}
+    </div>
+  )
+}
+
+export function Score({ leftScore, rightScore, leftName, rightName, style }: ScoreProps) {
+  const p1Leads = leftScore > rightScore
+  const p2Leads = rightScore > leftScore
+
+  return (
+    <div style={{
+      width: '100%', height: '100%',
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '0 48px',
+      position: 'relative',
+      ...style,
+    }}>
+
+      {/* Filets colorés en haut du bandeau */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: '50%', height: 3,
+        background: `linear-gradient(90deg, ${P1}, transparent)`,
+      }} />
+      <div style={{
+        position: 'absolute', top: 0, left: '50%', right: 0, height: 3,
+        background: `linear-gradient(270deg, ${P2}, transparent)`,
+      }} />
+
+      {/* ── Joueur 1 ── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start', minWidth: 0, flex: 1 }}>
+        <div
+          className="font-arcade"
+          style={{
+            color: P1, fontSize: 50, letterSpacing: 2, textTransform: 'uppercase',
+            textShadow: `0 0 14px ${P1}99`,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            maxWidth: 420,
+          }}
+        >
+          {leftName}
+        </div>
+        <Pips filled={leftScore} color={P1} align="left" />
+      </div>
+
+      {/* ── Score central ── */}
+      <div style={{
+        position: 'absolute', left: '50%', transform: 'translateX(-50%)',
+        display: 'flex', alignItems: 'center', gap: 18,
+      }}>
+        {/* Score P1 */}
+        <div
+          className="font-arcade"
+          style={{
+            fontSize: 62, lineHeight: 1, minWidth: 64, textAlign: 'right',
+            color: p1Leads ? P1 : 'rgba(255,255,255,0.75)',
+            textShadow: p1Leads
+              ? `0 0 18px ${P1}, 0 0 40px ${P1}88`
+              : '0 2px 8px rgba(0,0,0,0.6)',
+            transition: 'color 0.3s, text-shadow 0.3s',
+          }}
+        >
+          {leftScore}
+        </div>
+
+        {/* Séparateur */}
+        <div style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+        }}>
+          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#4b5563' }} />
+          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#4b5563' }} />
+        </div>
+
+        {/* Score P2 */}
+        <div
+          className="font-arcade"
+          style={{
+            fontSize: 62, lineHeight: 1, minWidth: 64, textAlign: 'left',
+            color: p2Leads ? P2 : 'rgba(255,255,255,0.75)',
+            textShadow: p2Leads
+              ? `0 0 18px ${P2}, 0 0 40px ${P2}88`
+              : '0 2px 8px rgba(0,0,0,0.6)',
+            transition: 'color 0.3s, text-shadow 0.3s',
+          }}
+        >
+          {rightScore}
+        </div>
+      </div>
+
+      {/* ── Joueur 2 ── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-end', minWidth: 0, flex: 1 }}>
+        <div
+          className="font-arcade"
+          style={{
+            color: P2, fontSize: 50, letterSpacing: 2, textTransform: 'uppercase',
+            textShadow: `0 0 14px ${P2}99`,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            maxWidth: 420,
+          }}
+        >
+          {rightName}
+        </div>
+        <Pips filled={rightScore} color={P2} align="right" />
+      </div>
     </div>
   )
 }

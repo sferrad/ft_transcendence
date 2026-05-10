@@ -156,7 +156,7 @@ export function GameOver({ winner, winnerNation, winnerColor, onReplay, onBack }
           animation: 'go-badge 0.85s cubic-bezier(0.34,1.56,0.64,1) 0.25s both',
           marginBottom: 28, position: 'relative', zIndex: 2,
         }}>
-          VICTOIRE
+          TERMINÉ !
         </div>
 
         {/* Cercle avec le visage du gagnant */}
