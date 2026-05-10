@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { FaPlay } from "react-icons/fa";
 
 export const Carouselplayer2 = ({ onChange }: { onChange?: (char: string) => void }) => {
-    const chars = ["Algeria", "Morocco", "Tunisia"];
+    const chars = ["Algeria", "Morocco", "Tunisia", "France", "Italy", "Nigeria", "America", "China"];
     const [activeIndex, setActiveIndex] = useState<number>(0);
 
     // Responsive "height-first": en paysage (petite hauteur), le vh domine et empêche les cercles d'être trop gros.
@@ -48,6 +48,21 @@ export const Carouselplayer2 = ({ onChange }: { onChange?: (char: string) => voi
                     {chars[activeIndex] === "Tunisia" && (
                         <img style={{ width: flagWidth }} className="h-auto drop-shadow-md" src="/assets/perso/drapeautns.png" alt="Tunisia Flag" />
                     )}
+                    {chars[activeIndex] === "France" && (
+                        <img style={{ width: flagWidth }} className="h-auto drop-shadow-md" src="/assets/perso/drapeaufr.png" alt="France Flag" />
+                    )}
+                    {chars[activeIndex] === "Italy" && (
+                        <img style={{ width: flagWidth }} className="h-auto drop-shadow-md" src="/assets/perso/drapeauit.png" alt="Italy Flag" />
+                    )}
+                    {chars[activeIndex] === "Nigeria" && (
+                        <img style={{ width: flagWidth }} className="h-auto drop-shadow-md" src="/assets/perso/drapeaunig.png" alt="Nigeria Flag" />
+                    )}
+                    {chars[activeIndex] === "America" && (
+                        <img style={{ width: flagWidth }} className="h-auto drop-shadow-md" src="/assets/perso/drapeauusa.png" alt="America Flag" />
+                    )}
+                    {chars[activeIndex] === "China" && (
+                        <img style={{ width: flagWidth }} className="h-auto drop-shadow-md" src="/assets/perso/drapeauch.png" alt="China Flag" />
+                    )}
                 </div>
 
                 <div
@@ -59,9 +74,14 @@ export const Carouselplayer2 = ({ onChange }: { onChange?: (char: string) => voi
                         boxShadow: 'inset 0 10px 25px rgba(0, 0, 0, 0.4), inset 0 -10px 25px rgba(255, 255, 255, 0.2), 0 10px 30px rgba(0, 0, 0, 0.3)'
                     }}
                 >
-                    {chars[activeIndex] === "Algeria" && <img className="w-[70%] h-auto" src="/assets/perso/algerie.png" alt="Algeria"/>}
-                    {chars[activeIndex] === "Morocco" && <img className="w-[70%] h-auto" src="/assets/perso/maroc.png" alt="Morocco"/>}
-                    {chars[activeIndex] === "Tunisia" && <img className="w-[70%] h-auto" src="/assets/perso/tunisie.png" alt="Tunisia"/>}
+                    {chars[activeIndex] === "Algeria" && <img className="w-[70%] h-auto" src="/assets/perso/algeria-face.png" alt="Algeria"/>}
+                    {chars[activeIndex] === "Morocco" && <img className="w-[70%] h-auto" src="/assets/perso/morocco-face.png" alt="Morocco"/>}
+                    {chars[activeIndex] === "Tunisia" && <img className="w-[70%] h-auto" src="/assets/perso/tunisia-face.png" alt="Tunisia"/>}
+                    {chars[activeIndex] === "France" && <img className="w-[70%] h-auto" src="/assets/perso/france-face.png" alt="France"/>}
+                    {chars[activeIndex] === "Italy" && <img className="w-[70%] h-auto" src="/assets/perso/italian-face.png" alt="Italy"/>}
+                    {chars[activeIndex] === "Nigeria" && <img className="w-[70%] h-auto" src="/assets/perso/nigerian-face.png" alt="Nigeria"/>}
+                    {chars[activeIndex] === "America" && <img className="w-[70%] h-auto" src="/assets/perso/american-face.png" alt="America"/>}
+                    {chars[activeIndex] === "China" && <img className="w-[70%] h-auto" src="/assets/perso/chinese-face.png" alt="China"/>}
                 </div>
             </div>
 
