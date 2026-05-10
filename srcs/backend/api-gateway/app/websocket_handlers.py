@@ -17,6 +17,7 @@ from .websocket_manager import ClientSession, get_manager
 logger = logging.getLogger(__name__)
 
 CHAT_SERVICE_URL = os.getenv("CHAT_SERVICE_URL", "http://chat-service:8002")
+GAME_SERVICE_URL = os.getenv("GAME_SERVICE_URL", "http://game-service:8005")
 MAX_GAME_PAYLOAD_BYTES = 4096
 MAX_CHAT_MESSAGE_CHARS = 2000
 ALLOWED_GAME_ACTIONS = {
@@ -61,6 +62,64 @@ def payload_size(data: Any) -> int:
         return len(json.dumps(data, separators=(",", ":"), default=str).encode("utf-8"))
     except (TypeError, ValueError):
         return MAX_GAME_PAYLOAD_BYTES + 1
+
+
+def _parse_match_id(room_name: str) -> int | None:
+    try:
+        match_id = int(public_room_id(room_name))
+    except (TypeError, ValueError):
+        return None
+    return match_id if match_id > 0 else None
+
+
+async def _persist_match_result(
+    *,
+    session: ClientSession,
+    room_name: str,
+    state: dict[str, Any],
+) -> None:
+    manager = get_manager()
+    already_saved = await manager.get_room_data(room_name, "match_saved")
+    if already_saved:
+        return
+
+    match_id = _parse_match_id(room_name)
+    if match_id is None:
+        return
+
+    status = str(state.get("status") or "")
+    if status != "finished":
+        return
+
+    winner = str(state.get("winner") or "")
+    roles = await manager.get_room_data(room_name, "game_roles")
+    roles = roles if isinstance(roles, dict) else {}
+
+    winner_id = None
+    if winner == "player1":
+        winner_id = roles.get("p1")
+    elif winner == "player2":
+        winner_id = roles.get("p2")
+
+    payload = {
+        "status": "finished",
+        "score_player1": int(state.get("player1", {}).get("score", 0)),
+        "score_player2": int(state.get("player2", {}).get("score", 0)),
+        "winner_id": winner_id,
+        "finished_at": utc_now(),
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.put(
+                f"{GAME_SERVICE_URL}/matches/{match_id}",
+                headers={"X-User-Id": str(session.user_id)},
+                json=payload,
+            )
+        if response.status_code < 400:
+            await manager.set_room_data(room_name, "match_saved", True)
+    except httpx.RequestError:
+        logger.warning("Failed to persist match result for match_id=%s", match_id)
 
 
 async def authenticate_socket(auth: dict[str, Any] | None) -> tuple[int, str, dict[str, Any]]:
@@ -309,6 +368,7 @@ def register_websocket_handlers(sio: AsyncServer) -> None:
 
         room_name = game_rooms[0]
         await manager.set_room_data(room_name, "last_game_state", data)
+        await _persist_match_result(session=session, room_name=room_name, state=data)
         await manager.broadcast_to_room(
             sio,
             room_name,
