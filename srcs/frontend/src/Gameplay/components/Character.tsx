@@ -24,11 +24,8 @@ interface CharacterProps {
 }
 
 function nationToFaceSrc(nation: string): string {
-  const key = nation.trim().toLowerCase()
   const base = import.meta.env.BASE_URL
-  if (key === 'morocco' || key === 'maroc') return `${base}assets/perso/morocco-face.png`
-  if (key === 'tunisia' || key === 'tunisie') return `${base}assets/perso/tunisia-face.png`
-  return `${base}assets/perso/algeria-face.png`
+  return `${base}assets/perso/faces/${nation.trim().toLowerCase()}-face.png`
 }
 
 export function Character({
