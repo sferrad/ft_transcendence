@@ -28,6 +28,11 @@ function nationToFaceSrc(nation: string): string {
   const base = import.meta.env.BASE_URL
   if (key === 'morocco' || key === 'maroc') return `${base}assets/perso/morocco-face.png`
   if (key === 'tunisia' || key === 'tunisie') return `${base}assets/perso/tunisia-face.png`
+  if (key === 'france') return `${base}assets/perso/france-face.png`
+  if (key === 'italy') return `${base}assets/perso/italian-face.png`
+  if (key === 'nigeria') return `${base}assets/perso/nigerian-face.png`
+  if (key === 'america') return `${base}assets/perso/american-face.png`
+  if (key === 'china') return `${base}assets/perso/chinese-face.png`
   return `${base}assets/perso/algeria-face.png`
 }
 
