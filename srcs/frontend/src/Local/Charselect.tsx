@@ -28,7 +28,7 @@ const Charselectsolo = () => {
               - Desktop (>=769px): 3 colonnes (P1 / VS / P2)
             */}
             <button
-                    onClick={() => window.history.back()}
+                    onClick={() => navigate('/')}
                     className={`absolute top-3 left-3 min-[481px]:top-6 min-[481px]:left-6 ${arcadeBackButton} text-white bg-blue-600 hover:bg-blue-700`}
                 >
                     {t("Back")}
