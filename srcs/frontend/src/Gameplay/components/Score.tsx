@@ -17,9 +17,10 @@ function Pips({ filled, color, align }: { filled: number; color: string; align: 
     <div style={{ display: 'flex', gap: 7, alignItems: 'center', justifyContent: align === 'right' ? 'flex-end' : 'flex-start' }}>
       {Array.from({ length: WINNING_SCORE }, (_, i) => (
         <div key={i} style={{
-          width: 20, height: 20, borderRadius: '50%',
+          width: 20, height: 20,
+          clipPath: 'polygon(25% 0%, 75% 0%, 100% 25%, 100% 75%, 75% 100%, 25% 100%, 0% 75%, 0% 25%)',
           background: i < filled ? color : 'rgba(255,255,255,0.12)',
-          boxShadow: i < filled ? `0 0 7px ${color}, 0 0 14px ${color}66` : 'none',
+          filter: i < filled ? `drop-shadow(0 0 4px ${color}) drop-shadow(0 0 8px ${color}66)` : 'none',
         }} />
       ))}
     </div>

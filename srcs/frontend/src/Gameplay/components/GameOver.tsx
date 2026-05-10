@@ -120,7 +120,7 @@ export function GameOver({ winner, winnerNation, winnerColor, onReplay, onBack }
         {[0, 0.35, 0.7].map((delay, i) => (
           <div key={i} style={{
             position: 'absolute', top: '42%', left: '50%',
-            width: 280, height: 280, borderRadius: '50%',
+            width: 280, height: 280, borderRadius: '12%',
             border: `2px solid ${winnerColor}88`,
             animation: `go-ring 2s ease-out ${delay}s infinite`,
             pointerEvents: 'none',
@@ -131,7 +131,7 @@ export function GameOver({ winner, winnerNation, winnerColor, onReplay, onBack }
         {STARS.map((s, i) => (
           <div key={i} style={{
             position: 'absolute', top: '42%', left: '50%',
-            width: s.size, height: s.size, borderRadius: '50%',
+            width: s.size, height: s.size, borderRadius: 2,
             background: s.color,
             boxShadow: `0 0 ${s.size * 2}px ${s.color}`,
             '--tx': s.tx, '--ty': s.ty,
@@ -149,8 +149,8 @@ export function GameOver({ winner, winnerNation, winnerColor, onReplay, onBack }
         }}>🏆</div>
 
         {/* VICTOIRE badge */}
-        <div style={{
-          fontSize: 'clamp(32px, 5.5vw, 72px)', fontWeight: 900,
+        <div className="font-arcade" style={{
+          fontSize: 'clamp(32px, 5.5vw, 72px)',
           color: '#facc15', letterSpacing: 6,
           textShadow: '0 0 30px #facc15, 0 0 70px #f97316, 5px 5px 0 #000, -5px -5px 0 #000',
           animation: 'go-badge 0.85s cubic-bezier(0.34,1.56,0.64,1) 0.25s both',
@@ -168,14 +168,22 @@ export function GameOver({ winner, winnerNation, winnerColor, onReplay, onBack }
             top: -50, left: '50%', transform: 'translateX(-50%)',
           }} />
           <div style={{
-            width: 180, height: 180, borderRadius: '50%',
-            background: `radial-gradient(circle at 30% 30%, ${winnerColor}cc, ${winnerColor}88, #0f172a)`,
-            boxShadow: `0 0 0 5px rgba(255,255,255,0.18), 0 0 60px ${winnerColor}aa, inset 0 8px 24px rgba(0,0,0,0.5)`,
+            width: 190, height: 190,
+            clipPath: 'polygon(25% 0%, 75% 0%, 100% 25%, 100% 75%, 75% 100%, 25% 100%, 0% 75%, 0% 25%)',
+            background: 'rgba(255,255,255,0.18)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             position: 'relative', zIndex: 1,
+            filter: `drop-shadow(0 0 30px ${winnerColor}aa)`,
             animation: 'go-face 0.9s cubic-bezier(0.34,1.56,0.64,1) 0.1s both',
           }}>
-            <img src={faceSrc(winnerNation)} alt={winnerNation} style={{ width: '76%', height: 'auto' }} />
+            <div style={{
+              width: 178, height: 178,
+              clipPath: 'polygon(25% 0%, 75% 0%, 100% 25%, 100% 75%, 75% 100%, 25% 100%, 0% 75%, 0% 25%)',
+              background: `radial-gradient(circle at 30% 30%, ${winnerColor}cc, ${winnerColor}88, #0f172a)`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <img src={faceSrc(winnerNation)} alt={winnerNation} style={{ width: '76%', height: 'auto' }} />
+            </div>
           </div>
         </div>
 
@@ -192,8 +200,8 @@ export function GameOver({ winner, winnerNation, winnerColor, onReplay, onBack }
         />
 
         {/* Nom du gagnant */}
-        <div style={{
-          fontSize: 'clamp(18px, 2.8vw, 38px)', fontWeight: 900, color: '#fff',
+        <div className="font-arcade" style={{
+          fontSize: 'clamp(18px, 2.8vw, 38px)', color: '#fff',
           letterSpacing: 4, textTransform: 'uppercase',
           textShadow: `0 0 22px ${winnerColor}, 0 3px 10px rgba(0,0,0,0.9)`,
           animation: 'go-name 0.5s ease 0.85s both',

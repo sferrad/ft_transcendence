@@ -85,7 +85,7 @@ export function VersusScreen({ player1Name, player2Name, player1Nation, player2N
         <div style={{
           position: 'absolute', top: 0, bottom: 0, left: 0, width: '55%',
           background: 'linear-gradient(135deg, #0f172a 0%, #1e3a8a 60%, #1d4ed8 100%)',
-          clipPath: 'polygon(0 0, 100% 0, 88% 100%, 0 100%)',
+          clipPath: 'polygon(0 0, 97% 0, 85% 100%, 0 100%)',
           animation: `vs-curtain-l ${DUR} ease-in-out both`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           overflow: 'hidden',
@@ -110,18 +110,26 @@ export function VersusScreen({ player1Name, player2Name, player1Nation, player2N
               top: -30, left: '50%', transform: 'translateX(-50%)', zIndex: 0,
             }} />
             <div style={{
-              width: 160, height: 160, borderRadius: '50%',
-              background: 'radial-gradient(circle at 30% 30%, #60a5fa, #1d4ed8, #1e3a8a)',
-              boxShadow: '0 0 0 4px rgba(255,255,255,0.15), 0 0 50px rgba(59,130,246,0.7), inset 0 8px 24px rgba(0,0,0,0.5)',
+              width: 168, height: 168,
+              clipPath: 'polygon(25% 0%, 75% 0%, 100% 25%, 100% 75%, 75% 100%, 25% 100%, 0% 75%, 0% 25%)',
+              background: 'rgba(255,255,255,0.15)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               position: 'relative', zIndex: 1,
+              filter: 'drop-shadow(0 0 25px rgba(59,130,246,0.7))',
             }}>
-              <img src={faceSrc(player1Nation)} alt={player1Nation} style={{ width: '76%', height: 'auto' }} />
+              <div style={{
+                width: 158, height: 158,
+                clipPath: 'polygon(25% 0%, 75% 0%, 100% 25%, 100% 75%, 75% 100%, 25% 100%, 0% 75%, 0% 25%)',
+                background: 'radial-gradient(circle at 30% 30%, #60a5fa, #1d4ed8, #1e3a8a)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <img src={faceSrc(player1Nation)} alt={player1Nation} style={{ width: '76%', height: 'auto' }} />
+              </div>
             </div>
             <img src={flagSrc(player1Nation)} alt={player1Nation}
               style={{ width: 60, height: 'auto', filter: 'drop-shadow(0 3px 10px rgba(0,0,0,0.6))', zIndex: 1 }} />
-            <div style={{
-              fontSize: 'clamp(18px, 2.5vw, 34px)', fontWeight: 900, color: '#fff',
+            <div className="font-arcade" style={{
+              fontSize: 'clamp(18px, 2.5vw, 34px)', color: '#fff',
               letterSpacing: 3, textShadow: '0 0 20px rgba(59,130,246,0.7), 0 3px 10px rgba(0,0,0,0.8)',
               textTransform: 'uppercase', zIndex: 1,
             }}>{player1Name}</div>
@@ -132,7 +140,7 @@ export function VersusScreen({ player1Name, player2Name, player1Nation, player2N
         <div style={{
           position: 'absolute', top: 0, bottom: 0, right: 0, width: '55%',
           background: 'linear-gradient(225deg, #0f172a 0%, #7f1d1d 60%, #dc2626 100%)',
-          clipPath: 'polygon(12% 0, 100% 0, 100% 100%, 0 100%)',
+          clipPath: 'polygon(15% 0, 100% 0, 100% 100%, 3% 100%)',
           animation: `vs-curtain-r ${DUR} ease-in-out both`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           overflow: 'hidden',
@@ -157,19 +165,27 @@ export function VersusScreen({ player1Name, player2Name, player1Nation, player2N
               top: -30, left: '50%', transform: 'translateX(-50%)', zIndex: 0,
             }} />
             <div style={{
-              width: 160, height: 160, borderRadius: '50%',
-              background: 'radial-gradient(circle at 30% 30%, #f87171, #dc2626, #7f1d1d)',
-              boxShadow: '0 0 0 4px rgba(255,255,255,0.15), 0 0 50px rgba(239,68,68,0.7), inset 0 8px 24px rgba(0,0,0,0.5)',
+              width: 168, height: 168,
+              clipPath: 'polygon(25% 0%, 75% 0%, 100% 25%, 100% 75%, 75% 100%, 25% 100%, 0% 75%, 0% 25%)',
+              background: 'rgba(255,255,255,0.15)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               position: 'relative', zIndex: 1,
+              filter: 'drop-shadow(0 0 25px rgba(239,68,68,0.7))',
               transform: 'scaleX(-1)',
             }}>
-              <img src={faceSrc(player2Nation)} alt={player2Nation} style={{ width: '76%', height: 'auto' }} />
+              <div style={{
+                width: 158, height: 158,
+                clipPath: 'polygon(25% 0%, 75% 0%, 100% 25%, 100% 75%, 75% 100%, 25% 100%, 0% 75%, 0% 25%)',
+                background: 'radial-gradient(circle at 30% 30%, #f87171, #dc2626, #7f1d1d)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <img src={faceSrc(player2Nation)} alt={player2Nation} style={{ width: '76%', height: 'auto' }} />
+              </div>
             </div>
             <img src={flagSrc(player2Nation)} alt={player2Nation}
               style={{ width: 60, height: 'auto', filter: 'drop-shadow(0 3px 10px rgba(0,0,0,0.6))', zIndex: 1 }} />
-            <div style={{
-              fontSize: 'clamp(18px, 2.5vw, 34px)', fontWeight: 900, color: '#fff',
+            <div className="font-arcade" style={{
+              fontSize: 'clamp(18px, 2.5vw, 34px)', color: '#fff',
               letterSpacing: 3, textShadow: '0 0 20px rgba(239,68,68,0.7), 0 3px 10px rgba(0,0,0,0.8)',
               textTransform: 'uppercase', zIndex: 1,
             }}>{player2Name}</div>
@@ -182,14 +198,16 @@ export function VersusScreen({ player1Name, player2Name, player1Nation, player2N
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           zIndex: 3,
         }}>
-          <div style={{
-            fontSize: 'clamp(72px, 12vw, 140px)', fontWeight: 900,
-            color: '#facc15', letterSpacing: 6,
-            textShadow: '0 0 40px #facc15, 0 0 80px #f97316, 6px 6px 0 #000, -6px -6px 0 #000',
-            animation: `vs-badge ${DUR} cubic-bezier(0.34,1.56,0.64,1) both`,
-          }}>
-            VS
-          </div>
+          <img
+            src="/assets/perso/VS.png"
+            alt="VS"
+            style={{
+              width: 'clamp(120px, 18vw, 220px)', height: 'auto',
+              filter: 'drop-shadow(0 0 30px #facc15aa) drop-shadow(0 0 60px #f97316aa)',
+              animation: `vs-badge ${DUR} cubic-bezier(0.34,1.56,0.64,1) both`,
+              imageRendering: 'pixelated',
+            }}
+          />
         </div>
 
       </div>
