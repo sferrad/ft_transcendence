@@ -33,7 +33,7 @@ export interface Obstacle {
 
 // Bonus qui apparaît à intervalles, tombe avec rebonds, et applique un effet
 // quand il est touché par un joueur.
-export type HappeningKind = 'freeze' | 'speedBoost' | 'megaKick' | 'slowBall'
+export type HappeningKind = 'freeze' | 'speedBoost' | 'megaKick' | 'slowBall' | 'shrinkGoal' | 'growGoal'
 
 export interface Happening {
   kind: HappeningKind
@@ -52,6 +52,9 @@ export interface Goal {
   crossbarY: number
   crossbarHeight: number
   side: 'left' | 'right'
+  // Bonus shrinkGoal/growGoal : multiplicateur de largeur (1 = normal).
+  widthMultiplier: number
+  effectFrames: number    // frames restantes de l'effet ; 0 = retour à la normale
 }
 
 export interface GameState {

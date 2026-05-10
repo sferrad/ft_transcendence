@@ -21,6 +21,8 @@ function createGoals(): { goal1: Goal; goal2: Goal } {
     innerWidth: GOAL_BASE_INNER_WIDTH,
     crossbarY: GOAL_CROSSBAR_Y,
     crossbarHeight: CROSSBAR_HEIGHT,
+    widthMultiplier: 1,
+    effectFrames: 0,
   }
   return {
     goal1: { ...baseGoal, x: 0, side: 'left' },
@@ -85,6 +87,10 @@ export function resetPlayers(state: GameState): void {
   state.happening = null
   state.framesUntilNextHappening = HAPPENING_SPAWN_INTERVAL
   state.slowBallFrames = 0
+  state.goal1.widthMultiplier = 1
+  state.goal1.effectFrames = 0
+  state.goal2.widthMultiplier = 1
+  state.goal2.effectFrames = 0
 }
 
 export function checkWinner(state: GameState): void {

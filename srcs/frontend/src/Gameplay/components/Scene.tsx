@@ -11,15 +11,21 @@ interface SceneProps {
   children: ReactNode
 }
 
-const GROUND_Y = CANVAS_HEIGHT * 0.7
+// Hauteur réservée au footer privacy (App.tsx, fixed bottom-0 ~36 px).
+// On retire cette hauteur du calcul de scale pour que le bas du canvas
+// (la zone noire avec le score) reste visible au-dessus du footer.
+const FOOTER_HEIGHT = 36
+// Hauteur du bandeau du score, en coordonnées canvas (sera scalé avec le reste).
+// Calibrée pour que le haut du bandeau coïncide avec le bas visuel du Field
+// (≈ y=870 après rotateX(25deg) + scaleY(0.85) dans Field.tsx).
+const SCORE_BAND_HEIGHT = 130
 
-// Adapte l'échelle du canvas pour qu'il tienne dans la fenêtre.
 function useScale(): number {
   const [scale, setScale] = useState(1)
   useEffect(() => {
     const compute = () => {
       const sx = window.innerWidth / CANVAS_WIDTH
-      const sy = window.innerHeight / CANVAS_HEIGHT
+      const sy = (window.innerHeight - FOOTER_HEIGHT) / CANVAS_HEIGHT
       setScale(Math.min(sx, sy))
     }
     compute()
@@ -29,16 +35,13 @@ function useScale(): number {
   return scale
 }
 
-// Conteneur visuel : fond, terrain, cache sous-sol, ligne médiane, score, et
-// les enfants (joueurs, ballon, cages, overlays). Tout le reste se positionne
-// en absolu dans cet espace de 1800×1000.
 export function Scene({ leftScore, rightScore, leftName, rightName, children }: SceneProps) {
   const scale = useScale()
 
   return (
     <div style={{
       width: '100vw',
-      height: '100vh',
+      height: `calc(100vh - ${FOOTER_HEIGHT}px)`,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -66,37 +69,31 @@ export function Scene({ leftScore, rightScore, leftName, rightName, children }: 
         }}>
           <Field />
 
-          {/* Cache sous le sol pour ne pas voir le fond. */}
+          {children}
+
+          {/* Bandeau du score : fin, collé au bas du canvas, au-dessus de
+              tous les éléments du jeu (ball=20, goalpost=30, etc.) pour rester
+              lisible même si un joueur descend bas. */}
           <div style={{
             position: 'absolute',
-            top: GROUND_Y,
             left: 0,
             right: 0,
-            height: CANVAS_HEIGHT - GROUND_Y,
-            backgroundColor: '#000',
-            zIndex: 0,
-          }} />
-
-          <Score
-            leftScore={leftScore}
-            rightScore={rightScore}
-            leftName={leftName}
-            rightName={rightName}
-            style={{ top: 'auto', bottom: 8, left: 0, zIndex: 10 }}
-          />
-
-          {/* Ligne médiane. */}
-          <div style={{
-            position: 'absolute',
-            left: '50%',
-            top: 0,
             bottom: 0,
-            width: 2,
-            backgroundColor: '#333',
-            transform: 'translateX(-50%)',
-          }} />
-
-          {children}
+            height: SCORE_BAND_HEIGHT,
+            backgroundColor: '#000',
+            borderTop: '1px solid #333',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 40,
+          }}>
+            <Score
+              leftScore={leftScore}
+              rightScore={rightScore}
+              leftName={leftName}
+              rightName={rightName}
+            />
+          </div>
         </div>
       </div>
     </div>

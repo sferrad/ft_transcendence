@@ -10,6 +10,8 @@ const KIND_STYLE: Record<HappeningKind, { emoji: string; aura: string }> = {
   speedBoost: { emoji: '⚡', aura: 'rgba(250, 204, 21, 0.85)' },   // jaune
   megaKick:   { emoji: '💥', aura: 'rgba(248, 113, 113, 0.85)' },  // rouge
   slowBall:   { emoji: '🐢', aura: 'rgba(134, 239, 172, 0.85)' },  // vert
+  shrinkGoal: { emoji: '🛡️', aura: 'rgba(165, 180, 252, 0.85)' }, // bleu (défensif)
+  growGoal:   { emoji: '🎯', aura: 'rgba(251, 146, 60, 0.85)' },   // orange (offensif)
 }
 
 // Bonus visible : bulle blanche ronde avec emoji centré et aura colorée

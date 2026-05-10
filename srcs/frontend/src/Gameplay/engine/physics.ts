@@ -223,7 +223,7 @@ function checkObstacleCollisions(ball: Ball, obstacles: Obstacle[]): void {
 function checkCrossbarCollision(ball: Ball, goal: Goal): void {
   const visual = getGoalVisualBounds(goal)
   const closestX = Math.max(visual.left, Math.min(ball.x, visual.left + visual.width))
-  const closestY = Math.max(visual.top, Math.min(ball.y, visual.top + goal.crossbarHeight))
+  const closestY = Math.max(visual.top, Math.min(ball.y, visual.top + visual.barHeight))
   const dx = ball.x - closestX
   const dy = ball.y - closestY
   const dist = Math.sqrt(dx * dx + dy * dy)
