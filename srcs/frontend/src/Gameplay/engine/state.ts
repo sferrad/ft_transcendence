@@ -9,7 +9,7 @@ import {
   HAPPENING_SPAWN_INTERVAL,
   WINNING_SCORE,
 } from './constants'
-import { resetDashBoosts } from './input'
+import { resetDashBoosts, resetDashCooldowns } from './input'
 import { resetKickCooldown } from './physics'
 
 function createGoals(): { goal1: Goal; goal2: Goal } {
@@ -56,6 +56,7 @@ function createObstacles(): Obstacle[] {
 
 export function createInitialState(): GameState {
   resetDashBoosts()
+  resetDashCooldowns()
   resetKickCooldown()
   return {
     ball: { x: CANVAS_WIDTH / 2, y: 30, vx: randomKickoffVx(), vy: 0, radius: 20 },
@@ -80,6 +81,7 @@ export function resetBall(state: GameState): void {
 
 export function resetPlayers(state: GameState): void {
   resetDashBoosts()
+  resetDashCooldowns()
   resetKickCooldown()
   // Réinitialise positions et états (y compris effets) mais conserve les scores.
   Object.assign(state.player1, createPlayer(PLAYER1_START_X), { score: state.player1.score })
