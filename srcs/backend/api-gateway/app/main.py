@@ -90,11 +90,13 @@ def on_startup() -> None:
 
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
-USER_SERVICE_URL = os.getenv("USER_SERVICE_URL", "http://user-service:8001")
-CHAT_SERVICE_URL = os.getenv("CHAT_SERVICE_URL", "http://chat-service:8002")
-FRIENDS_SERVICE_URL = os.getenv("FRIENDS_SERVICE_URL", "http://friends-service:8004")
-GAME_SERVICE_URL = os.getenv("GAME_SERVICE_URL", "http://game-service:8005")
-PROFILE_SERVICE_URL = os.getenv("PROFILE_SERVICE_URL", "http://profile-service:8006")
+INTERNAL_CA_CERT = os.getenv("INTERNAL_CA_CERT", "/certs/ca.crt")
+
+USER_SERVICE_URL = os.getenv("USER_SERVICE_URL", "https://user-service:8001")
+CHAT_SERVICE_URL = os.getenv("CHAT_SERVICE_URL", "https://chat-service:8002")
+FRIENDS_SERVICE_URL = os.getenv("FRIENDS_SERVICE_URL", "https://friends-service:8004")
+GAME_SERVICE_URL = os.getenv("GAME_SERVICE_URL", "https://game-service:8005")
+PROFILE_SERVICE_URL = os.getenv("PROFILE_SERVICE_URL", "https://profile-service:8006")
 
 
 @app.get("/health")
@@ -190,7 +192,7 @@ async def _proxy(request: Request, target_base: str, path: str, extra_headers: d
     if extra_headers:
         client_headers.update(extra_headers)
     try:
-        async with httpx.AsyncClient() as client: # envoi de la requete client -> gateway -> service (avec header filtre)
+        async with httpx.AsyncClient(verify=INTERNAL_CA_CERT) as client: # envoi de la requete client -> gateway -> service (avec header filtre)
             response = await client.request(
                 method=request.method,
                 url=target_url,

@@ -44,7 +44,7 @@ chmod 711 /vault/data || true
 mkdir -p "$PRIVATE_DIR"
 chmod 700 "$PRIVATE_DIR" || true
 
-export VAULT_ADDR="${VAULT_ADDR:-http://127.0.0.1:8200}"
+export VAULT_ADDR="${VAULT_ADDR:-https://vault:8200}"
 
 echo "Initialisation Vault..."
 
