@@ -8,6 +8,7 @@ import { GoalFlash } from '../components/GoalFlash'
 import { Obstacle } from '../components/Obstacle'
 import { Happening } from '../components/Happening'
 import { Scene } from '../components/Scene'
+import { type ThemeConfig, THEMES } from '../themes'
 
 export type GameMode = 'solo' | 'local'
 
@@ -20,16 +21,18 @@ interface MatchViewProps {
   backRoute: string
   paused?: boolean
   duration?: number | null
+  winningScore?: number | null
+  theme?: ThemeConfig
 }
 
 const PLAYER1_COLOR = '#3b82f6'
 const PLAYER2_COLOR = '#ef4444'
 
 export function MatchView({
-  mode, player1Name, player2Name, player1Nation, player2Nation, backRoute, paused = false, duration = null,
+  mode, player1Name, player2Name, player1Nation, player2Nation, backRoute, paused = false, duration = null, winningScore = 3, theme = THEMES[0],
 }: MatchViewProps) {
   const navigate = useNavigate()
-  const { gameState, goalFlash, restart, timeLeft } = useGameLoop(player1Name, player2Name, mode === 'solo', paused, duration)
+  const { gameState, goalFlash, restart, timeLeft } = useGameLoop(player1Name, player2Name, mode === 'solo', paused, duration, winningScore)
 
   const winnerName =
     gameState.winner === 'player1' ? player1Name :
@@ -47,9 +50,11 @@ export function MatchView({
       leftName={player1Name}
       rightName={player2Name}
       timeLeft={timeLeft}
+      winningScore={winningScore}
+      theme={theme}
     >
-      <GoalPost goal={gameState.goal1} />
-      <GoalPost goal={gameState.goal2} />
+      <GoalPost goal={gameState.goal1} filter={theme.goalFilter} />
+      <GoalPost goal={gameState.goal2} filter={theme.goalFilter} />
 
       {gameState.obstacles.map((o, i) => (
         <Obstacle key={i} x={o.x} y={o.y} radius={o.radius} />
@@ -59,6 +64,8 @@ export function MatchView({
         x={gameState.ball.x}
         y={gameState.ball.y}
         radius={gameState.ball.radius}
+        filter={theme.ballFilter}
+        glow={theme.ballGlow}
       />
 
       <Character

@@ -188,5 +188,10 @@
     "terms.p4": "La eliminación de cuenta eliminará tus datos según los flujos de limpieza del proyecto. Algunos registros operativos pueden permanecer por razones de seguridad, auditoría o integridad según sea necesario.",
     "terms.p5": "El proyecto se proporciona con fines educativos y de demostración. No se ofrece garantía de disponibilidad ininterrumpida ni de permanencia absoluta de los datos.",
     "terms.p6_pre": "Para más información sobre tus datos, visita la ",
-    "terms.p6_link": "Política de privacidad"
+    "terms.p6_link": "Política de privacidad",
+    "score.label": "Puntos",
+    "timer.label": "Tiempo",
+    "theme.label": "Tema",
+    "theme.classic": "Clásico",
+    "theme.neon": "Neón"
 }

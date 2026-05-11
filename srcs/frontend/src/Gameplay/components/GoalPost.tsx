@@ -1,11 +1,11 @@
 import { type Goal, getGoalVisualBounds } from '../engine'
 
-
 interface GoalPostProps {
   goal: Goal
+  filter?: string
 }
 
-export function GoalPost({ goal }: GoalPostProps) {
+export function GoalPost({ goal, filter }: GoalPostProps) {
   const isLeft = goal.side === 'left'
   const base = import.meta.env.BASE_URL
   const visual = getGoalVisualBounds(goal)
@@ -36,6 +36,7 @@ export function GoalPost({ goal }: GoalPostProps) {
           transformOrigin: 'center',
           userSelect: 'none',
           pointerEvents: 'none',
+          filter: filter ?? 'none',
         }}
       />
     </div>

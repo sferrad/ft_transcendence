@@ -3,7 +3,8 @@ import { useLocation, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { MatchView } from '../match/MatchView'
 import { VersusScreen } from '../components/VersusScreen'
-import { VERSUS_SCREEN_DURATION_MS } from '../engine/constants'
+import { VERSUS_SCREEN_DURATION_MS, SCORE_DEFAULT } from '../engine/constants'
+import { THEMES } from '../themes'
 
 interface LocalModeState {
   player1Name?: string
@@ -11,6 +12,8 @@ interface LocalModeState {
   player1Nation?: string
   player2Nation?: string
   duration?: number | null
+  winningScore?: number | null
+  themeId?: string
 }
 
 const LocalMode = () => {
@@ -24,6 +27,8 @@ const LocalMode = () => {
   const player1Nation = state?.player1Nation || searchParams.get('p1Nation') || 'Algeria'
   const player2Nation = state?.player2Nation || searchParams.get('p2Nation') || 'Algeria'
   const duration = state?.duration !== undefined ? state.duration : null
+  const winningScore = state?.winningScore !== undefined ? state.winningScore : SCORE_DEFAULT
+  const theme = THEMES.find(th => th.id === state?.themeId) ?? THEMES[0]
 
   const [showVersus, setShowVersus] = useState(true)
 
@@ -43,6 +48,8 @@ const LocalMode = () => {
         backRoute="/local-select"
         paused={showVersus}
         duration={duration}
+        winningScore={winningScore}
+        theme={theme}
       />
       {showVersus && (
         <VersusScreen

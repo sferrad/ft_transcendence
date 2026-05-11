@@ -55,7 +55,7 @@ function createObstacles(): Obstacle[] {
   return OBSTACLE_POSITIONS.map(({ x, y }) => ({ x, y, radius: OBSTACLE_RADIUS }))
 }
 
-export function createInitialState(): GameState {
+export function createInitialState(winningScore: number | null = WINNING_SCORE): GameState {
   resetDashBoosts()
   resetDashCooldowns()
   resetKickCooldown()
@@ -71,6 +71,7 @@ export function createInitialState(): GameState {
     slowBallFrames: 0,
     status: 'playing',
     winner: null,
+    winningScore,
   }
 }
 
@@ -99,10 +100,11 @@ export function resetPlayers(state: GameState): void {
 }
 
 export function checkWinner(state: GameState): void {
-  if (state.player1.score >= WINNING_SCORE) {
+  if (state.winningScore === null) return
+  if (state.player1.score >= state.winningScore) {
     state.status = 'finished'
     state.winner = 'player1'
-  } else if (state.player2.score >= WINNING_SCORE) {
+  } else if (state.player2.score >= state.winningScore) {
     state.status = 'finished'
     state.winner = 'player2'
   }

@@ -188,5 +188,10 @@
     "terms.p4": "Account deletion will remove your account data according to the project cleanup flows. Some operational records may remain for security, audit, or integrity reasons where needed.",
     "terms.p5": "The project is provided for educational and demonstration purposes. No warranty is given for uninterrupted availability or absolute data permanence.",
     "terms.p6_pre": "For more information about your data, visit the ",
-    "terms.p6_link": "Privacy Policy"
+    "terms.p6_link": "Privacy Policy",
+    "score.label": "Score",
+    "timer.label": "Timer",
+    "theme.label": "Theme",
+    "theme.classic": "Classic",
+    "theme.neon": "Neon"
 }

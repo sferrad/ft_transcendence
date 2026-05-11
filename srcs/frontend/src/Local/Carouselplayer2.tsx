@@ -5,9 +5,9 @@ import { CHARACTERS, faceSrc, flagSrc } from '../characters';
 export const Carouselplayer2 = ({ onChange }: { onChange?: (char: string) => void }) => {
     const [activeIndex, setActiveIndex] = useState<number>(0);
 
-    const circleSize = "clamp(9rem, 30vh, 16rem)";
-    const flagWidth = "clamp(6rem, 18vh, 12rem)";
-    const iconSize = "clamp(2rem, 6vh, 3rem)";
+    const circleSize = "clamp(6.5rem, 20vh, 11rem)";
+    const flagWidth = "clamp(4rem, 13vh, 8rem)";
+    const iconSize = "clamp(1.4rem, 4vh, 2.2rem)";
 
     const next = () => {
         const newIndex = (activeIndex + 1) % CHARACTERS.length;

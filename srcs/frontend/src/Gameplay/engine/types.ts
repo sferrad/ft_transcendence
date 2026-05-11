@@ -72,4 +72,5 @@ export interface GameState {
   slowBallFrames: number
   status: 'playing' | 'finished'
   winner: string | null
+  winningScore: number | null
 }
