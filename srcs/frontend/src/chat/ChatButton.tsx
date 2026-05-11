@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { MessageOut, ProfileOut, RoomOut } from "../Profile/types";
-import { createRoom, deleteRoom, getMessages, getPrivateMessages, getRoomMembers, getRooms } from "../Profile/api/chat";
+import { createRoom, deleteRoom, getMessages, getPrivateMessages, getRoomMembers, getRooms, joinRoom } from "../Profile/api/chat";
 import { fetchProfileByUserId } from "../Profile/api/profile";
 import { useTranslation } from "react-i18next";
 import { useChatWebSocket } from "../hooks/useWebSocket";
@@ -235,6 +235,13 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
         setMemberIds(ids);
         membersLoadedRoomIdRef.current = selectedRoomId;
     }, [isSelectedRoomDm, selectedRoomId, currentUserId, selectedDmUserId]);
+
+    useEffect(() => {
+        if (!token || selectedRoomId == null || !isSelectedRoomDm) return;
+        joinRoom(token, selectedRoomId).catch(() => {
+            // ignore join errors to keep DM usable
+        });
+    }, [token, selectedRoomId, isSelectedRoomDm]);
 
     useEffect(() => {
         if (!wsConnected || selectedRoomId == null || isSelectedRoomDm) return;

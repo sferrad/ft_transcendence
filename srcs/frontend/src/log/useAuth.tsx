@@ -179,9 +179,35 @@ export const useRegister = () => {
       setMessage(t("Passwords do not match"));
       return;
     }
-    
+    if (username.length > 15) {
+        setMessage(t("Username must be at most 15 characters"));
+        return;
+    }
+    if (username.length < 3) {
+        setMessage(t("Username must be at least 3 characters"));
+        return;
+    }
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+        setMessage(t("Username can only contain letters, numbers, and underscores"));
+        return;
+    }
+    if (username.trim() === "") {
+        setMessage(t("Username must contain at least one visible character"));
+        return;
+    }
+    if (email.trim() === "") {
+        setMessage(t("Email must contain at least one visible character"));
+        return;
+    }
+    if (password.trim() === "") {
+        setMessage(t("Password must contain at least one visible character"));
+        return;
+    }
+    if (password.length < 6) {
+        setMessage(t("Password must be at least 6 characters long"));
+        return;
+    }
     setLoading(true);
-    
     try{
       // Appel same-origin: on passe par l'api-gateway via /api.
       // Chemin complet:

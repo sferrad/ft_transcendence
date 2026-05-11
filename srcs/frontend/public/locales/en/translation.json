@@ -193,5 +193,13 @@
     "timer.label": "Timer",
     "theme.label": "Theme",
     "theme.classic": "Classic",
-    "theme.neon": "Neon"
+    "theme.neon": "Neon",
+
+    "Username must be at most 15 characters": "Username must be at most 15 characters",
+    "Username must be at least 3 characters": "Username must be at least 3 characters",
+    "Username can only contain letters, numbers, and underscores": "Username can only contain letters, numbers, and underscores",
+    "Password must be at least 6 characters long": "Password must be at least 6 characters long",
+    "Username must contain at least one visible character": "Username must contain at least one visible character",
+    "Email must contain at least one visible character": "Email must contain at least one visible character",
+    "Password must contain at least one visible character": "Password must contain at least one visible character"
 }
