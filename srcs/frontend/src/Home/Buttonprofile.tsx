@@ -1,16 +1,34 @@
-import { useState, useEffect} from 'react';
-import { CgProfile } from "react-icons/cg";
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from "react-i18next";
 import { useLogout } from '../log/useAuth';
 import { useChatNotifications } from "../hooks/useChatNotifications";
+import { fetchMyProfile } from '../Profile/api/profile';
+import { loadAvatarSrc } from '../Profile/api/avatar';
 
 function Profil() {
     const navigate = useNavigate();
     const [isOpen, setIsOpen] = useState(false);
+    const [avatarSrc, setAvatarSrc] = useState<string | null | undefined>(undefined);
+    const avatarBlobRef = useRef<string | null>(null);
     const { t } = useTranslation();
     const { disconnect } = useLogout();
     const { hasUnread } = useChatNotifications({ enabled: Boolean(localStorage.getItem("access_token")) });
+
+    useEffect(() => {
+        const token = localStorage.getItem('access_token')
+        if (!token) return
+        fetchMyProfile(token)
+            .then(p => loadAvatarSrc(token, p.avatar_url ?? null))
+            .then(src => {
+                if (src?.startsWith('blob:')) avatarBlobRef.current = src
+                setAvatarSrc(src ?? null)
+            })
+            .catch(() => setAvatarSrc(null))
+        return () => {
+            if (avatarBlobRef.current) URL.revokeObjectURL(avatarBlobRef.current)
+        }
+    }, []);
     
     useEffect(()  => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -28,10 +46,17 @@ function Profil() {
         <div className="absolute top-4 right-4 min-[481px]:top-5 min-[481px]:right-5 text-4xl min-[481px]:text-6xl text-zinc-700">
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="hb-tap relative cursor-pointer profile-button inline-flex items-center justify-center"
+                className="hb-tap relative cursor-pointer profile-button inline-flex items-center justify-center bg-white/90 rounded-full p-1.5 shadow-md"
                 aria-label={t("Profile menu")}
             >
-                <CgProfile />
+                {avatarSrc === undefined
+                    ? <span className="w-12 h-12 min-[481px]:w-16 min-[481px]:h-16 rounded-full bg-white/40" />
+                    : <img
+                        src={avatarSrc ?? '/assets/default-profile.jpg'}
+                        alt="avatar"
+                        className="w-12 h-12 min-[481px]:w-16 min-[481px]:h-16 rounded-full object-cover border-2 border-white shadow-md"
+                    />
+                }
                 {hasUnread && (
                     <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-red-500 shadow-[0_0_0_2px_rgba(255,255,255,0.9)]" aria-hidden="true" />
                 )}

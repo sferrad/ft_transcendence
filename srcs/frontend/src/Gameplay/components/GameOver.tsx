@@ -15,6 +15,7 @@ interface GameOverProps {
   score2: number
   onReplay: () => void
   onBack: () => void
+  onShowResults?: () => void
 }
 
 const KEYFRAMES = `
@@ -59,6 +60,7 @@ function HexFace({ nation, color, size = 160 }: { nation: string; color: string;
       <div style={{
         width: size, height: size,
         clipPath: 'polygon(25% 0%, 75% 0%, 100% 25%, 100% 75%, 75% 100%, 25% 100%, 0% 75%, 0% 25%)',
+        WebkitClipPath: 'polygon(25% 0%, 75% 0%, 100% 25%, 100% 75%, 75% 100%, 25% 100%, 0% 75%, 0% 25%)',
         background: 'rgba(255,255,255,0.18)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         position: 'relative', zIndex: 1,
@@ -68,6 +70,7 @@ function HexFace({ nation, color, size = 160 }: { nation: string; color: string;
         <div style={{
           width: inner, height: inner,
           clipPath: 'polygon(25% 0%, 75% 0%, 100% 25%, 100% 75%, 75% 100%, 25% 100%, 0% 75%, 0% 25%)',
+          WebkitClipPath: 'polygon(25% 0%, 75% 0%, 100% 25%, 100% 75%, 75% 100%, 25% 100%, 0% 75%, 0% 25%)',
           background: `radial-gradient(circle at 30% 30%, ${color}cc, ${color}88, #0f172a)`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
@@ -81,10 +84,9 @@ function HexFace({ nation, color, size = 160 }: { nation: string; color: string;
 export function GameOver({
   isDraw, winner, winnerColor, winnerNation,
   player1Nation, player1Color, player2Nation, player2Color,
-  mirrorWinner = false, score1, score2, onReplay, onBack,
+  mirrorWinner = false, score1, score2, onReplay, onBack, onShowResults,
 }: GameOverProps) {
   const { t } = useTranslation()
-
   const accentColor = isDraw ? '#ffffff' : winnerColor
 
   return (
@@ -98,23 +100,18 @@ export function GameOver({
         animation: 'go-bg 0.4s ease both',
       }}>
 
-        {/* Nom du gagnant ou ÉGALITÉ */}
-        <div
-          className="font-arcade"
-          style={{
-            fontSize: 'clamp(32px, 5.5vw, 72px)',
-            color: accentColor,
-            letterSpacing: 6,
-            textTransform: 'uppercase',
-            textShadow: `0 0 28px ${accentColor}99, 5px 5px 0 #000, -3px -3px 0 #000`,
-            animation: 'go-slide 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.1s both',
-            position: 'relative', zIndex: 2,
-          }}
-        >
+        <div className="font-arcade" style={{
+          fontSize: 'clamp(32px, 5.5vw, 72px)',
+          color: accentColor,
+          letterSpacing: 6,
+          textTransform: 'uppercase',
+          textShadow: `0 0 28px ${accentColor}99, 5px 5px 0 #000, -3px -3px 0 #000`,
+          animation: 'go-slide 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.1s both',
+          position: 'relative', zIndex: 2,
+        }}>
           {isDraw ? t('Draw') : t('winner_text', { name: winner })}
         </div>
 
-        {/* Tête(s) de personnage */}
         {isDraw ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 32, position: 'relative', zIndex: 2 }}>
             <HexFace nation={player1Nation} color={player1Color} size={140} />
@@ -129,23 +126,18 @@ export function GameOver({
           </div>
         )}
 
-        {/* Score final */}
-        <div
-          className="font-arcade"
-          style={{
-            fontSize: 'clamp(24px, 4vw, 52px)',
-            color: 'rgba(255,255,255,0.85)',
-            letterSpacing: 8,
-            textShadow: '0 2px 12px rgba(0,0,0,0.8)',
-            animation: 'go-slide 0.5s ease 0.35s both',
-            position: 'relative', zIndex: 2,
-          }}
-        >
+        <div className="font-arcade" style={{
+          fontSize: 'clamp(24px, 4vw, 52px)',
+          color: 'rgba(255,255,255,0.85)',
+          letterSpacing: 8,
+          textShadow: '0 2px 12px rgba(0,0,0,0.8)',
+          animation: 'go-slide 0.5s ease 0.35s both',
+          position: 'relative', zIndex: 2,
+        }}>
           {score1} - {score2}
         </div>
 
-        {/* Boutons */}
-        <div style={{ display: 'flex', gap: 24, animation: 'go-btn 0.5s ease 0.6s both', position: 'relative', zIndex: 2 }}>
+        <div style={{ display: 'flex', gap: 16, animation: 'go-btn 0.5s ease 0.6s both', position: 'relative', zIndex: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
           <button
             className="font-arcade"
             onClick={onReplay}
@@ -156,6 +148,18 @@ export function GameOver({
           >
             {t('Replay')}
           </button>
+          {onShowResults && (
+            <button
+              className="font-arcade"
+              onClick={onShowResults}
+              onMouseDown={e => { e.currentTarget.style.transform = 'translateY(2px)' }}
+              onMouseUp={e => { e.currentTarget.style.transform = 'translateY(0)' }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)' }}
+              style={{ padding: '14px 38px', fontSize: 'clamp(12px, 1.6vw, 20px)', cursor: 'pointer', border: 'none', borderRadius: 0, background: '#7c3aed', color: '#fff', letterSpacing: 2, textTransform: 'uppercase', boxShadow: ARCADE_BTN, transition: 'transform 0.1s' }}
+            >
+              Résultats ›
+            </button>
+          )}
           <button
             className="font-arcade"
             onClick={onBack}

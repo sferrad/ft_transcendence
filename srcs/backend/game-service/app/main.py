@@ -229,6 +229,14 @@ def get_match_events(match_id: int, user_id: int = Depends(_current_user_id), db
 	_require_match_participant(db=db, match_id=match_id, user_id=user_id)
 	return crud.get_match_events(db, match_id)
 
+@app.get("/me/stats/", response_model=schemas.UserStats)
+def get_my_stats(user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
+	return crud.compute_user_stats(db, user_id)
+
+@app.get("/leaderboard/", response_model=list[schemas.LeaderboardEntry])
+def get_leaderboard(user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
+	return crud.get_leaderboard(db)
+
 @app.post("/internal/user/cleanup")
 def internal_user_cleanup(payload: dict, db: Session = Depends(get_db)) -> dict:
 	user_id = int(payload.get("user_id") or 0)

@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useCallback, useState } from 'react'
 import { useGameLoop } from './useGameLoop'
 import { Ball } from '../components/Ball'
 import { Character } from '../components/Character'
@@ -9,6 +10,7 @@ import { Obstacle } from '../components/Obstacle'
 import { Happening } from '../components/Happening'
 import { Scene } from '../components/Scene'
 import { type ThemeConfig, THEMES } from '../themes'
+import { saveMatchResult, fetchMyStats, type UserStats } from '../api/matches'
 
 export type GameMode = 'solo' | 'local'
 
@@ -33,6 +35,27 @@ export function MatchView({
 }: MatchViewProps) {
   const navigate = useNavigate()
   const { gameState, goalFlash, restart, timeLeft } = useGameLoop(player1Name, player2Name, mode === 'solo', paused, duration, winningScore)
+  const matchSavedRef = useRef(false)
+  const [afterStats, setAfterStats] = useState<UserStats | null>(null)
+
+  useEffect(() => {
+    if (gameState.status === 'finished' && !matchSavedRef.current) {
+      matchSavedRef.current = true
+      saveMatchResult({
+        score_player1: gameState.player1.score,
+        score_player2: gameState.player2.score,
+        winner: gameState.winner as 'player1' | 'player2' | null,
+      })
+        .then(() => fetchMyStats())
+        .then(s => { if (s) setAfterStats(s) })
+        .catch(() => { /* silently ignore if not logged in */ })
+    }
+  }, [gameState.status, gameState.winner, gameState.player1.score, gameState.player2.score])
+
+  const handleRestart = useCallback(() => {
+    matchSavedRef.current = false
+    restart()
+  }, [restart])
 
   const winnerName =
     gameState.winner === 'player1' ? player1Name :
@@ -42,6 +65,13 @@ export function MatchView({
     gameState.winner === 'player2' ? player2Nation : ''
   const winnerColor =
     gameState.winner === 'player1' ? PLAYER1_COLOR : PLAYER2_COLOR
+
+  const lpDelta = gameState.winner === 'player1' ? 20 : gameState.winner === null ? 5 : -13
+  const xpDelta = gameState.winner === 'player1' ? 30 : gameState.winner === null ? 10 : 5
+
+  const handleShowResults = afterStats ? () => {
+    navigate('/results', { state: { stats: afterStats, lpDelta, xpDelta, backRoute, gameRoute: window.location.pathname } })
+  } : undefined
 
   return (
     <Scene
@@ -119,8 +149,9 @@ export function MatchView({
           player2Color={PLAYER2_COLOR}
           score1={gameState.player1.score}
           score2={gameState.player2.score}
-          onReplay={restart}
+          onReplay={handleRestart}
           onBack={() => navigate(backRoute)}
+          onShowResults={handleShowResults}
         />
       )}
     </Scene>

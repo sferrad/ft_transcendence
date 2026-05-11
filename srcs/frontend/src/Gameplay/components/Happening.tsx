@@ -29,6 +29,7 @@ export function Happening({ happening, themeId }: HappeningProps) {
         width: size,
         height: size,
         clipPath: 'polygon(25% 0%, 75% 0%, 100% 25%, 100% 75%, 75% 100%, 25% 100%, 0% 75%, 0% 25%)',
+        WebkitClipPath: 'polygon(25% 0%, 75% 0%, 100% 25%, 100% 75%, 75% 100%, 25% 100%, 0% 75%, 0% 25%)',
         backgroundColor: isNeon ? 'rgba(0, 10, 20, 0.88)' : 'rgba(255,255,255,0.92)',
         border: isNeon ? `2px solid ${neonColor}` : 'none',
         boxShadow: isNeon

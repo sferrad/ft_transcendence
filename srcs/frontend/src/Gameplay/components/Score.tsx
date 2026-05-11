@@ -26,6 +26,7 @@ function Pips({ filled, total, color, align }: { filled: number; total: number; 
         <div key={i} style={{
           width: 20, height: 20,
           clipPath: 'polygon(25% 0%, 75% 0%, 100% 25%, 100% 75%, 75% 100%, 25% 100%, 0% 75%, 0% 25%)',
+          WebkitClipPath: 'polygon(25% 0%, 75% 0%, 100% 25%, 100% 75%, 75% 100%, 25% 100%, 0% 75%, 0% 25%)',
           background: i < filled ? color : 'rgba(255,255,255,0.12)',
           filter: i < filled ? `drop-shadow(0 0 4px ${color}) drop-shadow(0 0 8px ${color}66)` : 'none',
         }} />

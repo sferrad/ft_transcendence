@@ -86,6 +86,7 @@ export function VersusScreen({ player1Name, player2Name, player1Nation, player2N
           position: 'absolute', top: 0, bottom: 0, left: 0, width: '55%',
           background: 'linear-gradient(135deg, #0f172a 0%, #1e3a8a 60%, #1d4ed8 100%)',
           clipPath: 'polygon(0 0, 97% 0, 85% 100%, 0 100%)',
+          WebkitClipPath: 'polygon(0 0, 97% 0, 85% 100%, 0 100%)',
           animation: `vs-curtain-l ${DUR} ease-in-out both`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           overflow: 'hidden',
@@ -112,6 +113,7 @@ export function VersusScreen({ player1Name, player2Name, player1Nation, player2N
             <div style={{
               width: 168, height: 168,
               clipPath: 'polygon(25% 0%, 75% 0%, 100% 25%, 100% 75%, 75% 100%, 25% 100%, 0% 75%, 0% 25%)',
+              WebkitClipPath: 'polygon(25% 0%, 75% 0%, 100% 25%, 100% 75%, 75% 100%, 25% 100%, 0% 75%, 0% 25%)',
               background: 'rgba(255,255,255,0.15)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               position: 'relative', zIndex: 1,
@@ -120,6 +122,7 @@ export function VersusScreen({ player1Name, player2Name, player1Nation, player2N
               <div style={{
                 width: 158, height: 158,
                 clipPath: 'polygon(25% 0%, 75% 0%, 100% 25%, 100% 75%, 75% 100%, 25% 100%, 0% 75%, 0% 25%)',
+                WebkitClipPath: 'polygon(25% 0%, 75% 0%, 100% 25%, 100% 75%, 75% 100%, 25% 100%, 0% 75%, 0% 25%)',
                 background: 'radial-gradient(circle at 30% 30%, #60a5fa, #1d4ed8, #1e3a8a)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
@@ -141,6 +144,7 @@ export function VersusScreen({ player1Name, player2Name, player1Nation, player2N
           position: 'absolute', top: 0, bottom: 0, right: 0, width: '55%',
           background: 'linear-gradient(225deg, #0f172a 0%, #7f1d1d 60%, #dc2626 100%)',
           clipPath: 'polygon(15% 0, 100% 0, 100% 100%, 3% 100%)',
+          WebkitClipPath: 'polygon(15% 0, 100% 0, 100% 100%, 3% 100%)',
           animation: `vs-curtain-r ${DUR} ease-in-out both`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           overflow: 'hidden',
@@ -167,6 +171,7 @@ export function VersusScreen({ player1Name, player2Name, player1Nation, player2N
             <div style={{
               width: 168, height: 168,
               clipPath: 'polygon(25% 0%, 75% 0%, 100% 25%, 100% 75%, 75% 100%, 25% 100%, 0% 75%, 0% 25%)',
+              WebkitClipPath: 'polygon(25% 0%, 75% 0%, 100% 25%, 100% 75%, 75% 100%, 25% 100%, 0% 75%, 0% 25%)',
               background: 'rgba(255,255,255,0.15)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               position: 'relative', zIndex: 1,
@@ -176,6 +181,7 @@ export function VersusScreen({ player1Name, player2Name, player1Nation, player2N
               <div style={{
                 width: 158, height: 158,
                 clipPath: 'polygon(25% 0%, 75% 0%, 100% 25%, 100% 75%, 75% 100%, 25% 100%, 0% 75%, 0% 25%)',
+                WebkitClipPath: 'polygon(25% 0%, 75% 0%, 100% 25%, 100% 75%, 75% 100%, 25% 100%, 0% 75%, 0% 25%)',
                 background: 'radial-gradient(circle at 30% 30%, #f87171, #dc2626, #7f1d1d)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>

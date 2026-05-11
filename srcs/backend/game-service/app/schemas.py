@@ -133,3 +133,37 @@ class MatchEventInDB(MatchEventBase):
 	# Par défaut liste vide (pas None) pour simplifier côté front.
 class MatchWithEvents(MatchInDB):
 	events: List[MatchEventInDB] = Field(default_factory=list)
+
+
+class Achievement(BaseModel):
+	id: str
+	emoji: str
+	unlocked: bool
+
+
+class UserStats(BaseModel):
+	wins: int
+	losses: int
+	draws: int
+	total: int
+	xp: int
+	level: int
+	xp_in_level: int
+	xp_to_next: int
+	win_rate: int
+	lp: int
+	tier: str
+	achievements: List[Achievement]
+
+
+class LeaderboardEntry(BaseModel):
+	user_id: int
+	rank: int
+	wins: int
+	losses: int
+	draws: int
+	xp: int
+	level: int
+	win_rate: int
+	lp: int
+	tier: str

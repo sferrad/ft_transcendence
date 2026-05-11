@@ -20,6 +20,7 @@ import ChatPage from './chat/ChatPage';
 import SaveData from './setting/Acc/Savedata';
 import PrivacyPolicy from './Legal/PrivacyPolicy';
 import TermsOfService from './Legal/TermsOfService';
+import ResultsPage from './Gameplay/components/ResultsPage';
 
 const App = () => {
   const { t } = useTranslation();
@@ -58,6 +59,7 @@ const App = () => {
         <Route path="/settings/change-email" element={<ChangeMail />} />
         <Route path="/settings/delete-account" element={<DeleteAcc />} />
         <Route path="/settings/save-data" element={<SaveData />} />
+        <Route path="/results" element={<ResultsPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <footer className="fixed bottom-0 left-0 right-0 z-50 border-t border-black/10 bg-white/90 px-4 py-2 text-center text-xs text-[#1f2937] backdrop-blur-sm">
