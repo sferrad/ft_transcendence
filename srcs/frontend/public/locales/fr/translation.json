@@ -147,6 +147,7 @@
 
     "GOAAAAL !": "BUUUUUT !",
     "score !": "marque !",
+    "scorer_text": "{{name}} marque !",
     "finished": "terminé",
     "Player 1": "Joueur 1",
     "Player 2": "Joueur 2",
@@ -154,6 +155,8 @@
     "Player": "Joueur",
     "First to 5 goals": "Premier à 5 buts",
     "wins": "gagne",
+    "winner_text": "{{name}} gagne !",
+    "Draw": "Égalité",
     "Replay": "Rejouer",
 
     "France": "France",
@@ -166,6 +169,26 @@
     "Algeria": "Algérie",
     "Tunisia": "Tunisie",
     "Country and language": "Pays et langue",
-    "User not found": "Utilisateur non trouvé"
+    "User not found": "Utilisateur non trouvé",
+
+    "privacy.label": "Politique de confidentialité",
+    "privacy.title": "Comment nous traitons vos données",
+    "privacy.p1": "ft_transcendence collecte uniquement les données nécessaires au fonctionnement de la plateforme : identifiants de compte, informations de profil, téléchargements d'avatars, relations d'amitié, historique de chat, activité de jeu, et demandes d'exportation / suppression.",
+    "privacy.p2": "Nous utilisons ces informations pour authentifier les utilisateurs, afficher les profils, gérer les fonctionnalités sociales, proposer le chat en temps réel et le gameplay, et fournir des flux d'exportation de données et de suppression de compte.",
+    "privacy.p3": "Les avatars téléchargés sont validés côté serveur avant stockage. Les identifiants sensibles ne sont pas stockés dans le frontend et sont gérés via Vault et les variables d'environnement côté serveur.",
+    "privacy.p4": "Nous ne vendons pas de données personnelles. Les données opérationnelles sont conservées uniquement le temps nécessaire au fonctionnement du service ou jusqu'à ce que l'utilisateur demande leur suppression, sous réserve des contraintes légales et techniques.",
+    "privacy.p5": "Les utilisateurs peuvent demander une exportation de leurs données personnelles depuis les paramètres de l'application. Ils peuvent également supprimer leur compte, ce qui déclenche un nettoyage dans les services backend.",
+    "privacy.p6_pre": "Si vous souhaitez revoir l'application, retournez à la ",
+    "privacy.p6_link": "page d'accueil",
+
+    "terms.label": "Conditions d'utilisation",
+    "terms.title": "Règles d'utilisation de ft_transcendence",
+    "terms.p1": "En utilisant ft_transcendence, vous acceptez d'utiliser la plateforme de manière légale et respectueuse. Le harcèlement, les abus, le spam et les tentatives de contournement des contrôles de sécurité sont interdits.",
+    "terms.p2": "Vous êtes responsable du contenu que vous téléchargez et envoyez, y compris les données de profil, les avatars et les messages de chat. Ne soumettez pas de contenu illégal, contrefait ou nuisible.",
+    "terms.p3": "Le service peut limiter ou bloquer des requêtes pour protéger la disponibilité, la sécurité et l'utilisation équitable. Les fonctionnalités en temps réel dépendent de la connectivité réseau et peuvent être temporairement indisponibles.",
+    "terms.p4": "La suppression du compte supprimera vos données conformément aux flux de nettoyage du projet. Certains enregistrements opérationnels peuvent subsister pour des raisons de sécurité, d'audit ou d'intégrité selon les besoins.",
+    "terms.p5": "Le projet est fourni à des fins éducatives et de démonstration. Aucune garantie n'est donnée quant à la disponibilité ininterrompue ou à la permanence absolue des données.",
+    "terms.p6_pre": "Pour plus d'informations sur vos données, consultez la ",
+    "terms.p6_link": "Politique de confidentialité"
 }
 

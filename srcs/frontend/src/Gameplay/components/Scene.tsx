@@ -8,6 +8,7 @@ interface SceneProps {
   rightScore: number
   leftName: string
   rightName: string
+  timeLeft?: number | null
   children: ReactNode
 }
 
@@ -35,7 +36,7 @@ function useScale(): number {
   return scale
 }
 
-export function Scene({ leftScore, rightScore, leftName, rightName, children }: SceneProps) {
+export function Scene({ leftScore, rightScore, leftName, rightName, timeLeft, children }: SceneProps) {
   const scale = useScale()
 
   return (
@@ -92,6 +93,7 @@ export function Scene({ leftScore, rightScore, leftName, rightName, children }: 
               rightScore={rightScore}
               leftName={leftName}
               rightName={rightName}
+              timeLeft={timeLeft}
             />
           </div>
         </div>

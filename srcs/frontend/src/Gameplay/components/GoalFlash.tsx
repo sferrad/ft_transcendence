@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { flagSrc } from '../../characters'
 import { GOAL_FLASH_DURATION_MS } from '../engine/constants'
 
@@ -53,6 +54,7 @@ const anim = (name: string, delay = '0s', easing = 'ease') =>
   `${name} ${DURATION} ${easing} ${delay} 1 both`
 
 export function GoalFlash({ scorerName, scorerNation, scorerColor }: GoalFlashProps) {
+  const { t } = useTranslation()
   const particles = useMemo(() =>
     Array.from({ length: 16 }, (_, i) => {
       const angle = (i / 16) * 360
@@ -114,7 +116,7 @@ export function GoalFlash({ scorerName, scorerNation, scorerColor }: GoalFlashPr
           textShadow: `0 0 30px ${scorerColor}, 0 0 60px ${scorerColor}88, 0 0 100px ${scorerColor}66`,
           animation: anim('gf-text', '0s', 'cubic-bezier(0.34,1.56,0.64,1)'),
         }}>
-          BUUUUT !
+          {t('GOAAAAL !')}
         </div>
 
         {/* Nom du scoreur avec drapeau à la place du ballon */}
@@ -135,7 +137,7 @@ export function GoalFlash({ scorerName, scorerNation, scorerColor }: GoalFlashPr
               filter: `drop-shadow(0 2px 8px ${scorerColor}88)`,
             }}
           />
-          {scorerName} marque !
+          {t('scorer_text', { name: scorerName })}
         </div>
 
       </div>

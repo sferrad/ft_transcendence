@@ -146,6 +146,7 @@
 
     "GOAAAAL !": "GOAAAAL !",
     "score !": "score !",
+    "scorer_text": "{{name}} scores!",
     "finished": "finished",
     "Player 1": "Player 1",
     "Player 2": "Player 2",
@@ -153,6 +154,8 @@
     "Player": "Player",
     "First to 5 goals": "First to 5 goals",
     "wins": "wins",
+    "winner_text": "{{name}} wins!",
+    "Draw": "Draw",
     "Replay": "Replay",
 
     "France": "France",
@@ -165,5 +168,25 @@
     "Algeria": "Algeria",
     "Tunisia": "Tunisia",
     "Country and language": "Country and language",
-    "User not found": "User not found"
+    "User not found": "User not found",
+
+    "privacy.label": "Privacy Policy",
+    "privacy.title": "How we handle your data",
+    "privacy.p1": "ft_transcendence collects only the data needed to operate the platform: account identifiers, profile information, avatar uploads, friends relationships, chat history, game activity, and export / deletion requests.",
+    "privacy.p2": "We use this information to authenticate users, display profiles, manage social features, deliver realtime chat and gameplay, and provide data export and account deletion flows.",
+    "privacy.p3": "Uploaded avatars are validated server-side before storage. Sensitive credentials are not stored in the frontend and are managed through Vault and server-side environment variables.",
+    "privacy.p4": "We do not sell personal data. Operational data is retained only as long as needed for the service to function or until the user requests deletion, subject to legal and technical constraints.",
+    "privacy.p5": "Users can request an export of their personal data from the application settings. They can also delete their account, which triggers cleanup across the backend services.",
+    "privacy.p6_pre": "If you need to review the application again, return to the ",
+    "privacy.p6_link": "home page",
+
+    "terms.label": "Terms of Service",
+    "terms.title": "Rules for using ft_transcendence",
+    "terms.p1": "By using ft_transcendence, you agree to use the platform for lawful and respectful social interaction. Harassment, abuse, spam, and attempts to bypass security controls are not allowed.",
+    "terms.p2": "You are responsible for the content you upload and send, including profile data, avatars, and chat messages. Do not submit illegal, infringing, or harmful content.",
+    "terms.p3": "The service may limit or block requests to protect availability, security, and fair use. Real-time features depend on network connectivity and may be temporarily unavailable.",
+    "terms.p4": "Account deletion will remove your account data according to the project cleanup flows. Some operational records may remain for security, audit, or integrity reasons where needed.",
+    "terms.p5": "The project is provided for educational and demonstration purposes. No warranty is given for uninterrupted availability or absolute data permanence.",
+    "terms.p6_pre": "For more information about your data, visit the ",
+    "terms.p6_link": "Privacy Policy"
 }

@@ -11,6 +11,7 @@ const Charselectsolo = () => {
     const navigate = useNavigate();
     const [player, setPlayer] = useState("Algeria");
     const [ai, setAi] = useState("Algeria");
+    const [duration, setDuration] = useState<60 | 120 | null>(60);
     const currentUser = getCurrentUser();
     const isPlayer1Locked = Boolean(currentUser?.accessToken && currentUser.username);
     const [player1Name, setPlayer1Name] = useState(() => currentUser?.username || "");
@@ -81,6 +82,22 @@ const Charselectsolo = () => {
                     </div>
                 </div>
 
+                <div className="flex items-center gap-4">
+                    {([60, 120, null] as (60 | 120 | null)[]).map((d) => {
+                        const label = d === 60 ? '1:00' : d === 120 ? '2:00' : '∞';
+                        const selected = duration === d;
+                        return (
+                            <button
+                                key={String(d)}
+                                onClick={() => setDuration(d)}
+                                className={`font-arcade border-0 shadow-[0px_4px_rgb(255,255,255),0px_-4px_rgb(255,255,255),4px_0px_rgb(255,255,255),-4px_0px_rgb(255,255,255),0px_4px_rgba(0,0,0,0.22),4px_4px_rgba(0,0,0,0.22),-4px_4px_rgba(0,0,0,0.22),inset_0px_4px_rgba(255,255,255,0.21)] cursor-pointer transition-transform duration-100 active:translate-y-0.5 px-6 py-3 min-[481px]:px-7 min-[481px]:py-3 text-xl min-[481px]:text-2xl min-[769px]:text-3xl ${selected ? 'bg-[#4AD95A] text-black' : 'bg-black/50 text-white'}`}
+                            >
+                                {label}
+                            </button>
+                        );
+                    })}
+                </div>
+
                 <button
                     onClick={() => {
                         const player1DisplayName = isPlayer1Locked
@@ -93,6 +110,7 @@ const Charselectsolo = () => {
                                 player2Name: opponentName,
                                 player1Nation: player,
                                 player2Nation: ai,
+                                duration,
                             },
                         });
                     }}
