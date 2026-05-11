@@ -1,7 +1,8 @@
 import os
 import httpx
 
-USER_SERVICE_URL = os.getenv("USER_SERVICE_URL", "http://user-service:8001")
+USER_SERVICE_URL = os.getenv("USER_SERVICE_URL", "https://user-service:8001")
+INTERNAL_CA_CERT = os.getenv("INTERNAL_CA_CERT", "/certs/ca.crt")
 
 class InvalidCredentialsError(RuntimeError):
     """Credentials are wrong (401 from user-service)."""
@@ -17,7 +18,7 @@ class UserServiceError(RuntimeError):
 async def verify_credentials(identifier: str, password: str) ->dict:
     url = f"{USER_SERVICE_URL}/internal/auth/verify"
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with httpx.AsyncClient(timeout=5.0, verify=INTERNAL_CA_CERT) as client:
             response = await client.post(url, json={"identifier": identifier, "password": password})
     except httpx.RequestError as e:
         raise UserServiceUnavailableError("user-service unavailable") from e
