@@ -5,13 +5,14 @@ import { Carouselplayer2 } from "./Carouselplayer2.tsx";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser } from "../utils/auth";
+import { TIMER_OPTIONS, TIMER_DEFAULT } from '../Gameplay/engine/constants';
 
 const Charselectsolo = () => {
     const { t } = useTranslation();
     const navigate = useNavigate();
     const [player, setPlayer] = useState("Algeria");
     const [ai, setAi] = useState("Algeria");
-    const [duration, setDuration] = useState<60 | 120 | null>(60);
+    const [duration, setDuration] = useState<30 | 60 | null>(TIMER_DEFAULT);
     const currentUser = getCurrentUser();
     const isPlayer1Locked = Boolean(currentUser?.accessToken && currentUser.username);
     const [player1Name, setPlayer1Name] = useState(() => currentUser?.username || "");
@@ -83,8 +84,8 @@ const Charselectsolo = () => {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    {([60, 120, null] as (60 | 120 | null)[]).map((d) => {
-                        const label = d === 60 ? '1:00' : d === 120 ? '2:00' : '∞';
+                    {TIMER_OPTIONS.map((d) => {
+                        const label = d === null ? '∞' : `${Math.floor(d / 60)}:${String(d % 60).padStart(2, '0')}`;
                         const selected = duration === d;
                         return (
                             <button
