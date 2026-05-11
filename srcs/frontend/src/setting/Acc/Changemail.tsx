@@ -141,7 +141,7 @@ const ChangeMail = () => {
 
     return (
         <div className="relative min-h-[100dvh] w-full overflow-auto">
-            <div className="fixed inset-0 bg-[url('/assets/bgHome.png')] bg-cover bg-center bg-no-repeat blur-sm" aria-hidden="true"></div>
+            <div className="fixed inset-0 bg-[url('/assets/bgHome.jpg')] bg-cover bg-center bg-no-repeat blur-sm" aria-hidden="true"></div>
             <div className="relative z-10 min-h-[100dvh] flex justify-center items-center px-4 py-8">
                 <div className="bg-[#f5f0e8]/90 border-4 border-[#2b2b2b] px-6 py-8 min-[481px]:px-10 min-[481px]:py-12 text-center shadow-[6px_6px_0_#2b2b2b] w-[min(92vw,42rem)] flex flex-col items-center">
                     <h1 className="hb-title font-arcade tracking-widest text-[#1f2937] mb-6">{t("Change Email")}</h1>
