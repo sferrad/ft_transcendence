@@ -10,6 +10,7 @@ interface GameOverProps {
   player1Color: string
   player2Nation: string
   player2Color: string
+  mirrorWinner?: boolean
   score1: number
   score2: number
   onReplay: () => void
@@ -80,7 +81,7 @@ function HexFace({ nation, color, size = 160 }: { nation: string; color: string;
 export function GameOver({
   isDraw, winner, winnerColor, winnerNation,
   player1Nation, player1Color, player2Nation, player2Color,
-  score1, score2, onReplay, onBack,
+  mirrorWinner = false, score1, score2, onReplay, onBack,
 }: GameOverProps) {
   const { t } = useTranslation()
 
@@ -118,10 +119,12 @@ export function GameOver({
           <div style={{ display: 'flex', alignItems: 'center', gap: 32, position: 'relative', zIndex: 2 }}>
             <HexFace nation={player1Nation} color={player1Color} size={140} />
             <div className="font-arcade" style={{ fontSize: 'clamp(20px, 3vw, 40px)', color: '#64748b', letterSpacing: 4 }}>VS</div>
-            <HexFace nation={player2Nation} color={player2Color} size={140} />
+            <div style={{ transform: 'scaleX(-1)' }}>
+              <HexFace nation={player2Nation} color={player2Color} size={140} />
+            </div>
           </div>
         ) : (
-          <div style={{ position: 'relative', zIndex: 2 }}>
+          <div style={{ position: 'relative', zIndex: 2, transform: mirrorWinner ? 'scaleX(-1)' : 'none' }}>
             <HexFace nation={winnerNation} color={winnerColor} size={180} />
           </div>
         )}
