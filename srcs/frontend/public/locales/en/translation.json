@@ -188,5 +188,14 @@
     "terms.p4": "Account deletion will remove your account data according to the project cleanup flows. Some operational records may remain for security, audit, or integrity reasons where needed.",
     "terms.p5": "The project is provided for educational and demonstration purposes. No warranty is given for uninterrupted availability or absolute data permanence.",
     "terms.p6_pre": "For more information about your data, visit the ",
-    "terms.p6_link": "Privacy Policy"
+    "terms.p6_link": "Privacy Policy",
+
+    "Username must be at most 15 characters": "Username must be at most 15 characters",
+    "Username must be at least 3 characters": "Username must be at least 3 characters",
+    "Username can only contain letters, numbers, and underscores": "Username can only contain letters, numbers, and underscores",
+    "Password must be at least 6 characters long": "Password must be at least 6 characters long",
+    "Username must contain at least one visible character": "Username must contain at least one visible character",
+    "Email must contain at least one visible character": "Email must contain at least one visible character",
+    "Password must contain at least one visible character": "Password must contain at least one visible character"
+
 }
