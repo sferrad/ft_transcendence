@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { MatchView } from '../match/MatchView'
 import { VersusScreen } from '../components/VersusScreen'
 import { getCurrentUser } from '../../utils/auth'
-import { VERSUS_SCREEN_DURATION_MS } from '../engine/constants'
+import { VERSUS_SCREEN_DURATION_MS, SCORE_DEFAULT } from '../engine/constants'
+import { THEMES } from '../themes'
 
 interface SoloModeState {
   playerName?: string
@@ -12,6 +13,8 @@ interface SoloModeState {
   playerNation?: string
   aiNation?: string
   duration?: number | null
+  winningScore?: number | null
+  themeId?: string
 }
 
 const SoloMode = () => {
@@ -26,6 +29,8 @@ const SoloMode = () => {
   const playerNation = state?.playerNation || searchParams.get('player') || 'Algeria'
   const aiNation = state?.aiNation || searchParams.get('ai') || 'Algeria'
   const duration = state?.duration !== undefined ? state.duration : null
+  const winningScore = state?.winningScore !== undefined ? state.winningScore : SCORE_DEFAULT
+  const theme = THEMES.find(th => th.id === state?.themeId) ?? THEMES[0]
 
   const [showVersus, setShowVersus] = useState(true)
 
@@ -45,6 +50,8 @@ const SoloMode = () => {
         backRoute="/solo-select"
         paused={showVersus}
         duration={duration}
+        winningScore={winningScore}
+        theme={theme}
       />
       {showVersus && (
         <VersusScreen

@@ -1,5 +1,4 @@
 import { type CSSProperties } from 'react'
-import { WINNING_SCORE } from '../engine/constants'
 
 interface ScoreProps {
   leftScore: number
@@ -7,6 +6,7 @@ interface ScoreProps {
   leftName: string
   rightName: string
   timeLeft?: number | null
+  winningScore?: number | null
   style?: CSSProperties
 }
 
@@ -19,10 +19,10 @@ function formatTime(secs: number): string {
 const P1 = '#3b82f6'
 const P2 = '#ef4444'
 
-function Pips({ filled, color, align }: { filled: number; color: string; align: 'left' | 'right' }) {
+function Pips({ filled, total, color, align }: { filled: number; total: number; color: string; align: 'left' | 'right' }) {
   return (
     <div style={{ display: 'flex', gap: 7, alignItems: 'center', justifyContent: align === 'right' ? 'flex-end' : 'flex-start' }}>
-      {Array.from({ length: WINNING_SCORE }, (_, i) => (
+      {Array.from({ length: total }, (_, i) => (
         <div key={i} style={{
           width: 20, height: 20,
           clipPath: 'polygon(25% 0%, 75% 0%, 100% 25%, 100% 75%, 75% 100%, 25% 100%, 0% 75%, 0% 25%)',
@@ -34,7 +34,7 @@ function Pips({ filled, color, align }: { filled: number; color: string; align: 
   )
 }
 
-export function Score({ leftScore, rightScore, leftName, rightName, timeLeft, style }: ScoreProps) {
+export function Score({ leftScore, rightScore, leftName, rightName, timeLeft, winningScore, style }: ScoreProps) {
   const p1Leads = leftScore > rightScore
   const p2Leads = rightScore > leftScore
   const urgent  = timeLeft !== null && timeLeft !== undefined && timeLeft <= 10
@@ -71,7 +71,7 @@ export function Score({ leftScore, rightScore, leftName, rightName, timeLeft, st
         >
           {leftName}
         </div>
-        <Pips filled={leftScore} color={P1} align="left" />
+        {winningScore != null && <Pips filled={leftScore} total={winningScore} color={P1} align="left" />}
       </div>
 
       {/* ── Score central ── */}
@@ -154,7 +154,7 @@ export function Score({ leftScore, rightScore, leftName, rightName, timeLeft, st
         >
           {rightName}
         </div>
-        <Pips filled={rightScore} color={P2} align="right" />
+        {winningScore != null && <Pips filled={rightScore} total={winningScore} color={P2} align="right" />}
       </div>
     </div>
   )

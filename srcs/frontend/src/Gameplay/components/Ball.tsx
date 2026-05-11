@@ -2,11 +2,13 @@ interface BallProps {
   x: number
   y: number
   radius: number
+  filter?: string
+  glow?: string
 }
 
-export function Ball({ x, y, radius }: BallProps) {
+export function Ball({ x, y, radius, filter, glow }: BallProps) {
   const base = import.meta.env.BASE_URL
-  const size = radius * 2 // L'image est plus grande que le cercle de collision pour un meilleur rendu visuel
+  const size = radius * 2
 
   return (
     <div style={{
@@ -18,6 +20,8 @@ export function Ball({ x, y, radius }: BallProps) {
       pointerEvents: 'none',
       userSelect: 'none',
       zIndex: 20,
+      borderRadius: '50%',
+      boxShadow: glow ?? 'none',
     }}>
       <img
         src={`${base}assets/ball.png`}
@@ -29,6 +33,7 @@ export function Ball({ x, y, radius }: BallProps) {
           display: 'block',
           pointerEvents: 'none',
           userSelect: 'none',
+          filter: filter ?? 'none',
         }}
       />
     </div>

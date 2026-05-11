@@ -189,6 +189,11 @@
     "terms.p4": "La suppression du compte supprimera vos données conformément aux flux de nettoyage du projet. Certains enregistrements opérationnels peuvent subsister pour des raisons de sécurité, d'audit ou d'intégrité selon les besoins.",
     "terms.p5": "Le projet est fourni à des fins éducatives et de démonstration. Aucune garantie n'est donnée quant à la disponibilité ininterrompue ou à la permanence absolue des données.",
     "terms.p6_pre": "Pour plus d'informations sur vos données, consultez la ",
-    "terms.p6_link": "Politique de confidentialité"
+    "terms.p6_link": "Politique de confidentialité",
+    "score.label": "Score",
+    "timer.label": "Chrono",
+    "theme.label": "Theme",
+    "theme.classic": "Classique",
+    "theme.neon": "Néon"
 }
 

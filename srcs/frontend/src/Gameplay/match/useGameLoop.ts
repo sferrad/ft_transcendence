@@ -9,8 +9,9 @@ export function useGameLoop(
   isSolo: boolean = false,
   paused: boolean = false,
   duration: number | null = null,
+  winningScore: number | null = 3,
 ) {
-  const [gameState, setGameState] = useState<GameState>(createInitialState)
+  const [gameState, setGameState] = useState<GameState>(() => createInitialState(winningScore))
   const [goalFlash, setGoalFlash] = useState<string | null>(null)
   const [timeLeft, setTimeLeft] = useState<number | null>(duration)
 
@@ -127,11 +128,11 @@ export function useGameLoop(
     lastFrameTimeRef.current = 0
     setTimeLeft(duration)
 
-    const fresh = createInitialState()
+    const fresh = createInitialState(winningScore)
     stateRef.current = fresh
     setGameState(fresh)
     startLoop()
-  }, [duration, startLoop])
+  }, [duration, winningScore, startLoop])
 
   return { gameState, goalFlash, restart, timeLeft }
 }

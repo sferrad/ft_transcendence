@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useState } from 'react'
 import { Field } from './Field'
 import { Score } from './Score'
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from '../engine'
+import { type ThemeConfig, THEMES } from '../themes'
 
 interface SceneProps {
   leftScore: number
@@ -9,16 +10,12 @@ interface SceneProps {
   leftName: string
   rightName: string
   timeLeft?: number | null
+  winningScore?: number | null
+  theme?: ThemeConfig
   children: ReactNode
 }
 
-// Hauteur réservée au footer privacy (App.tsx, fixed bottom-0 ~36 px).
-// On retire cette hauteur du calcul de scale pour que le bas du canvas
-// (la zone noire avec le score) reste visible au-dessus du footer.
 const FOOTER_HEIGHT = 36
-// Hauteur du bandeau du score, en coordonnées canvas (sera scalé avec le reste).
-// Calibrée pour que le haut du bandeau coïncide avec le bas visuel du Field
-// (≈ y=870 après rotateX(25deg) + scaleY(0.85) dans Field.tsx).
 const SCORE_BAND_HEIGHT = 150
 
 function useScale(): number {
@@ -36,7 +33,7 @@ function useScale(): number {
   return scale
 }
 
-export function Scene({ leftScore, rightScore, leftName, rightName, timeLeft, children }: SceneProps) {
+export function Scene({ leftScore, rightScore, leftName, rightName, timeLeft, winningScore, theme = THEMES[0], children }: SceneProps) {
   const scale = useScale()
 
   return (
@@ -61,28 +58,23 @@ export function Scene({ leftScore, rightScore, leftName, rightName, timeLeft, ch
           width: CANVAS_WIDTH,
           height: CANVAS_HEIGHT,
           backgroundColor: '#000',
-          backgroundImage: 'linear-gradient(rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.18)), url(/assets/background.jpg)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center -450px',
           overflow: 'hidden',
           border: '2px solid #4b5563',
           borderRadius: 4,
+          ...theme.sceneBackground,
         }}>
-          <Field />
+          <Field fieldTheme={theme.field} />
 
           {children}
 
-          {/* Bandeau du score : fin, collé au bas du canvas, au-dessus de
-              tous les éléments du jeu (ball=20, goalpost=30, etc.) pour rester
-              lisible même si un joueur descend bas. */}
           <div style={{
             position: 'absolute',
             left: 0,
             right: 0,
             bottom: 0,
             height: SCORE_BAND_HEIGHT,
-            backgroundColor: '#000',
-            borderTop: '1px solid #333',
+            backgroundColor: theme.scoreBand.backgroundColor,
+            borderTop: `1px solid ${theme.scoreBand.borderColor}`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -94,6 +86,7 @@ export function Scene({ leftScore, rightScore, leftName, rightName, timeLeft, ch
               leftName={leftName}
               rightName={rightName}
               timeLeft={timeLeft}
+              winningScore={winningScore}
             />
           </div>
         </div>
