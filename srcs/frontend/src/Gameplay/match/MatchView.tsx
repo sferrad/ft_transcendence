@@ -19,23 +19,21 @@ interface MatchViewProps {
   player2Nation: string
   backRoute: string
   paused?: boolean
+  duration?: number | null
 }
 
 const PLAYER1_COLOR = '#3b82f6'
 const PLAYER2_COLOR = '#ef4444'
 
 export function MatchView({
-  mode, player1Name, player2Name, player1Nation, player2Nation, backRoute, paused = false,
+  mode, player1Name, player2Name, player1Nation, player2Nation, backRoute, paused = false, duration = null,
 }: MatchViewProps) {
   const navigate = useNavigate()
-  const { gameState, goalFlash, restart } = useGameLoop(player1Name, player2Name, mode === 'solo', paused)
+  const { gameState, goalFlash, restart, timeLeft } = useGameLoop(player1Name, player2Name, mode === 'solo', paused, duration)
 
   const winnerName =
     gameState.winner === 'player1' ? player1Name :
     gameState.winner === 'player2' ? player2Name : ''
-  const winnerNation =
-    gameState.winner === 'player1' ? player1Nation :
-    gameState.winner === 'player2' ? player2Nation : ''
   const winnerColor =
     gameState.winner === 'player1' ? PLAYER1_COLOR : PLAYER2_COLOR
 
@@ -45,6 +43,7 @@ export function MatchView({
       rightScore={gameState.player2.score}
       leftName={player1Name}
       rightName={player2Name}
+      timeLeft={timeLeft}
     >
       <GoalPost goal={gameState.goal1} />
       <GoalPost goal={gameState.goal2} />
@@ -98,9 +97,11 @@ export function MatchView({
 
       {gameState.status === 'finished' && !goalFlash && (
         <GameOver
+          isDraw={gameState.winner === null}
           winner={winnerName}
-          winnerNation={winnerNation}
           winnerColor={winnerColor}
+          score1={gameState.player1.score}
+          score2={gameState.player2.score}
           onReplay={restart}
           onBack={() => navigate(backRoute)}
         />

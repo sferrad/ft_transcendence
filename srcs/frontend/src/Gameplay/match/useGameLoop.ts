@@ -3,17 +3,27 @@ import { type GameState, createInitialState, updateGame } from '../engine'
 import { GOAL_FLASH_DURATION_MS } from '../engine/constants'
 import { createInputHandler } from './inputHandler'
 
-
-// Hook principal de la game loop. En solo, player2 est l'IA.
-export function useGameLoop(player1Name: string, player2Name: string, isSolo: boolean = false, paused: boolean = false) {
+export function useGameLoop(
+  player1Name: string,
+  player2Name: string,
+  isSolo: boolean = false,
+  paused: boolean = false,
+  duration: number | null = null,
+) {
   const [gameState, setGameState] = useState<GameState>(createInitialState)
   const [goalFlash, setGoalFlash] = useState<string | null>(null)
+  const [timeLeft, setTimeLeft] = useState<number | null>(duration)
 
-  const stateRef = useRef<GameState>(gameState)
-  const animFrameRef = useRef<number>(0)
-  const goalFlashRef = useRef<boolean>(false)
-  const pausedRef = useRef<boolean>(paused)
-  const inputHandler = useRef(createInputHandler())
+  const stateRef        = useRef<GameState>(gameState)
+  const animFrameRef    = useRef<number>(0)
+  const goalFlashRef    = useRef<boolean>(false)
+  const pausedRef       = useRef<boolean>(paused)
+  const gameStartedRef  = useRef<boolean>(false)
+  const inputHandler    = useRef(createInputHandler())
+
+  const timeLeftMsRef    = useRef<number | null>(duration !== null ? duration * 1000 : null)
+  const displaySecsRef   = useRef<number | null>(duration)
+  const lastFrameTimeRef = useRef<number>(0)
 
   useEffect(() => { pausedRef.current = paused }, [paused])
 
@@ -34,15 +44,29 @@ export function useGameLoop(player1Name: string, player2Name: string, isSolo: bo
     let prevScore2 = stateRef.current.player2.score
 
     const loop = () => {
-      if (pausedRef.current) {
-        input.consumePulses() // discard input pendant le versus screen
+      if (pausedRef.current || goalFlashRef.current) {
+        if (pausedRef.current) input.consumePulses()
+        lastFrameTimeRef.current = performance.now()
         animFrameRef.current = requestAnimationFrame(loop)
         return
       }
-      // Pendant le flash de but, on ne fait pas avancer la simulation.
-      if (goalFlashRef.current) {
-        animFrameRef.current = requestAnimationFrame(loop)
-        return
+
+      if (!gameStartedRef.current) {
+        gameStartedRef.current = true
+        lastFrameTimeRef.current = performance.now()
+      }
+
+      const now = performance.now()
+      const dt  = now - lastFrameTimeRef.current
+      lastFrameTimeRef.current = now
+
+      if (timeLeftMsRef.current !== null) {
+        timeLeftMsRef.current = Math.max(0, timeLeftMsRef.current - dt)
+        const newSecs = Math.ceil(timeLeftMsRef.current / 1000)
+        if (newSecs !== displaySecsRef.current) {
+          displaySecsRef.current = newSecs
+          setTimeLeft(newSecs)
+        }
       }
 
       input.consumePulses()
@@ -55,6 +79,22 @@ export function useGameLoop(player1Name: string, player2Name: string, isSolo: bo
         prevScore2 = newState.player2.score
         showGoalFlash(player2Name)
       }
+
+      const timeOut = timeLeftMsRef.current === 0 && newState.status === 'playing'
+      const scoredWin = newState.status === 'finished' && stateRef.current.status !== 'finished'
+
+      if (timeOut) {
+        const st = newState
+        st.status = 'finished'
+        if      (st.player1.score > st.player2.score) st.winner = 'player1'
+        else if (st.player2.score > st.player1.score) st.winner = 'player2'
+        else st.winner = null
+        stateRef.current = st
+        setGameState({ ...st })
+        return
+      }
+
+      if (scoredWin) { /* fin sur score max */ }
 
       stateRef.current = newState
       setGameState({ ...newState })
@@ -78,13 +118,20 @@ export function useGameLoop(player1Name: string, player2Name: string, isSolo: bo
   const restart = useCallback(() => {
     cancelAnimationFrame(animFrameRef.current)
     inputHandler.current.detach()
-    goalFlashRef.current = false
+    goalFlashRef.current   = false
+    gameStartedRef.current = false
     setGoalFlash(null)
+
+    timeLeftMsRef.current  = duration !== null ? duration * 1000 : null
+    displaySecsRef.current = duration
+    lastFrameTimeRef.current = 0
+    setTimeLeft(duration)
+
     const fresh = createInitialState()
     stateRef.current = fresh
     setGameState(fresh)
     startLoop()
-  }, [startLoop])
+  }, [duration, startLoop])
 
-  return { gameState, goalFlash, restart }
+  return { gameState, goalFlash, restart, timeLeft }
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useLocation, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { MatchView } from '../match/MatchView'
 import { VersusScreen } from '../components/VersusScreen'
 import { VERSUS_SCREEN_DURATION_MS } from '../engine/constants'
@@ -9,17 +10,20 @@ interface LocalModeState {
   player2Name?: string
   player1Nation?: string
   player2Nation?: string
+  duration?: number | null
 }
 
 const LocalMode = () => {
+  const { t } = useTranslation()
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const state = (location.state as LocalModeState | null) ?? null
 
-  const player1Name = state?.player1Name || searchParams.get('player1') || 'Joueur 1'
-  const player2Name = state?.player2Name || searchParams.get('player2') || 'Joueur 2'
+  const player1Name = state?.player1Name || searchParams.get('player1') || t('Player 1')
+  const player2Name = state?.player2Name || searchParams.get('player2') || t('Player 2')
   const player1Nation = state?.player1Nation || searchParams.get('p1Nation') || 'Algeria'
   const player2Nation = state?.player2Nation || searchParams.get('p2Nation') || 'Algeria'
+  const duration = state?.duration !== undefined ? state.duration : null
 
   const [showVersus, setShowVersus] = useState(true)
 
@@ -38,6 +42,7 @@ const LocalMode = () => {
         player2Nation={player2Nation}
         backRoute="/local-select"
         paused={showVersus}
+        duration={duration}
       />
       {showVersus && (
         <VersusScreen

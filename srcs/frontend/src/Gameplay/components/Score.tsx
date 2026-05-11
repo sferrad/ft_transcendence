@@ -6,7 +6,14 @@ interface ScoreProps {
   rightScore: number
   leftName: string
   rightName: string
+  timeLeft?: number | null
   style?: CSSProperties
+}
+
+function formatTime(secs: number): string {
+  const m = Math.floor(secs / 60)
+  const s = secs % 60
+  return `${m}:${String(s).padStart(2, '0')}`
 }
 
 const P1 = '#3b82f6'
@@ -27,9 +34,10 @@ function Pips({ filled, color, align }: { filled: number; color: string; align: 
   )
 }
 
-export function Score({ leftScore, rightScore, leftName, rightName, style }: ScoreProps) {
+export function Score({ leftScore, rightScore, leftName, rightName, timeLeft, style }: ScoreProps) {
   const p1Leads = leftScore > rightScore
   const p2Leads = rightScore > leftScore
+  const urgent  = timeLeft !== null && timeLeft !== undefined && timeLeft <= 10
 
   return (
     <div style={{
@@ -109,6 +117,29 @@ export function Score({ leftScore, rightScore, leftName, rightName, style }: Sco
           {rightScore}
         </div>
       </div>
+
+      {/* ── Timer ── */}
+      {timeLeft != null && (
+        <div
+          className="font-arcade"
+          style={{
+            position: 'absolute',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            bottom: 10,
+            fontSize: 28,
+            letterSpacing: 2,
+            color: urgent ? '#ef4444' : 'rgba(255,255,255,0.7)',
+            textShadow: urgent
+              ? '0 0 12px #ef4444, 0 0 24px #ef444488'
+              : '0 2px 6px rgba(0,0,0,0.5)',
+            transition: 'color 0.2s, text-shadow 0.2s',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {formatTime(timeLeft)}
+        </div>
+      )}
 
       {/* ── Joueur 2 ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-end', minWidth: 0, flex: 1 }}>

@@ -75,6 +75,6 @@ export const SHRINK_GOAL_MULTIPLIER = 0.5    // cage rétrécie de moitié
 export const GROW_GOAL_MULTIPLIER = 1.5      // cage agrandie
 
 // ─────────── PARTIE ───────────
-export const WINNING_SCORE = 5
+export const WINNING_SCORE = 2
 export const GOAL_FLASH_DURATION_MS = 2200
 export const VERSUS_SCREEN_DURATION_MS = 3500

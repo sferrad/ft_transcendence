@@ -144,8 +144,9 @@
     "No channel selected": "No se ha seleccionado un canal",
     "Back home": "Volver a inicio",
 
-    "GOAAAAL !": "GOAAAAL !",
-    "score !": "¡anota !",
+    "GOAAAAL !": "¡GOAAAAL!",
+    "score !": "¡anota!",
+    "scorer_text": "¡{{name}} anota!",
     "finished": "finalizado",
     "Player 1": "Jugador 1",
     "Player 2": "Jugador 2",
@@ -153,6 +154,8 @@
     "Player": "Jugador",
     "First to 5 goals": "Primero a 5 goles",
     "wins": "gana",
+    "winner_text": "¡{{name}} gana!",
+    "Draw": "Empate",
     "Replay": "Repetir",
 
     "France": "Francia",
@@ -165,5 +168,25 @@
     "Algeria": "Argelia",
     "Tunisia": "Túnez",
     "Country and language": "País e idioma",
-    "User not found": "Usuario no encontrado"
+    "User not found": "Usuario no encontrado",
+
+    "privacy.label": "Política de privacidad",
+    "privacy.title": "Cómo manejamos tus datos",
+    "privacy.p1": "ft_transcendence recopila únicamente los datos necesarios para operar la plataforma: identificadores de cuenta, información de perfil, cargas de avatares, relaciones de amistad, historial de chat, actividad de juego y solicitudes de exportación / eliminación.",
+    "privacy.p2": "Utilizamos esta información para autenticar usuarios, mostrar perfiles, gestionar funciones sociales, ofrecer chat en tiempo real y gameplay, y proporcionar flujos de exportación de datos y eliminación de cuenta.",
+    "privacy.p3": "Los avatares cargados se validan en el servidor antes de almacenarse. Las credenciales sensibles no se almacenan en el frontend y se gestionan mediante Vault y variables de entorno del servidor.",
+    "privacy.p4": "No vendemos datos personales. Los datos operativos se conservan solo el tiempo necesario para el funcionamiento del servicio o hasta que el usuario solicite su eliminación, sujeto a restricciones legales y técnicas.",
+    "privacy.p5": "Los usuarios pueden solicitar una exportación de sus datos personales desde la configuración de la aplicación. También pueden eliminar su cuenta, lo que activa la limpieza en los servicios backend.",
+    "privacy.p6_pre": "Si necesitas revisar la aplicación de nuevo, vuelve a la ",
+    "privacy.p6_link": "página de inicio",
+
+    "terms.label": "Términos de servicio",
+    "terms.title": "Reglas para usar ft_transcendence",
+    "terms.p1": "Al usar ft_transcendence, aceptas utilizar la plataforma para interacciones sociales legales y respetuosas. El acoso, el abuso, el spam y los intentos de eludir los controles de seguridad no están permitidos.",
+    "terms.p2": "Eres responsable del contenido que subes y envías, incluyendo datos de perfil, avatares y mensajes de chat. No envíes contenido ilegal, infractor o dañino.",
+    "terms.p3": "El servicio puede limitar o bloquear solicitudes para proteger la disponibilidad, la seguridad y el uso justo. Las funciones en tiempo real dependen de la conectividad de red y pueden no estar disponibles temporalmente.",
+    "terms.p4": "La eliminación de cuenta eliminará tus datos según los flujos de limpieza del proyecto. Algunos registros operativos pueden permanecer por razones de seguridad, auditoría o integridad según sea necesario.",
+    "terms.p5": "El proyecto se proporciona con fines educativos y de demostración. No se ofrece garantía de disponibilidad ininterrumpida ni de permanencia absoluta de los datos.",
+    "terms.p6_pre": "Para más información sobre tus datos, visita la ",
+    "terms.p6_link": "Política de privacidad"
 }
