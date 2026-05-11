@@ -30,4 +30,4 @@ ENV PATH=/home/appuser/.local/bin:$PATH
 
 EXPOSE 8001
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001", "--ssl-keyfile", "/certs/internal.key", "--ssl-certfile", "/certs/internal.crt"]

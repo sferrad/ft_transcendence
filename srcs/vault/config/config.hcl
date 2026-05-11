@@ -23,8 +23,10 @@ listener "tcp" {
     // Port par défaut Vault: 8200.
     address = "0.0.0.0:8200"
 
-    // 1 = pas de TLS (HTTP). Encore une fois: OK si non exposé publiquement.
-    tls_disable = 1
+    // Enable TLS for Vault service
+    tls_disable = 0
+    tls_cert_file = "/certs/internal.crt"
+    tls_key_file = "/certs/internal.key"
 }
 
 // Active l'UI web de Vault (utile pour debug).
@@ -45,7 +47,7 @@ ui = true
 // IMPORTANT: `0.0.0.0` est une adresse de bind-all, pas une adresse joignable.
 // Si tu la mets ici, l'UI/CLI peut générer des URLs/redirects invalides.
 // En docker-compose, préfère le DNS interne du service.
-api_addr = "http://vault:8200"
+api_addr = "https://vault:8200"
 
 // `mlock` empêche le swap des secrets en RAM vers disque.
 // En conteneur, c'est souvent non autorisé -> on désactive pour éviter un crash.

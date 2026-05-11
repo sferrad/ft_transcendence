@@ -24,9 +24,6 @@ RUN apk update && apk add --no-cache bash jq && \
     chmod 700 /vault/private && \
     chmod 755 /vault/logs
 
-
-ENV VAULT_ADDR=http://127.0.0.1:8200
-
 EXPOSE 8200
 
 ENTRYPOINT [ "/vault/scripts/init.sh" ]

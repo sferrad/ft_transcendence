@@ -16,8 +16,9 @@ from .websocket_manager import ClientSession, get_manager
 
 logger = logging.getLogger(__name__)
 
-CHAT_SERVICE_URL = os.getenv("CHAT_SERVICE_URL", "http://chat-service:8002")
-GAME_SERVICE_URL = os.getenv("GAME_SERVICE_URL", "http://game-service:8005")
+CHAT_SERVICE_URL = os.getenv("CHAT_SERVICE_URL", "https://chat-service:8002")
+GAME_SERVICE_URL = os.getenv("GAME_SERVICE_URL", "https://game-service:8003")
+INTERNAL_CA_CERT = os.getenv("INTERNAL_CA_CERT", "/certs/ca.crt")
 MAX_GAME_PAYLOAD_BYTES = 4096
 MAX_CHAT_MESSAGE_CHARS = 2000
 ALLOWED_GAME_ACTIONS = {
@@ -168,7 +169,7 @@ async def chat_service_request(
     json_body: dict[str, Any] | None = None,
 ) -> tuple[int, Any]:
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with httpx.AsyncClient(timeout=5.0, verify=INTERNAL_CA_CERT) as client:
             response = await client.request(
                 method,
                 f"{CHAT_SERVICE_URL}{path}",
