@@ -34,6 +34,9 @@ export function MatchView({
   const winnerName =
     gameState.winner === 'player1' ? player1Name :
     gameState.winner === 'player2' ? player2Name : ''
+  const winnerNation =
+    gameState.winner === 'player1' ? player1Nation :
+    gameState.winner === 'player2' ? player2Nation : ''
   const winnerColor =
     gameState.winner === 'player1' ? PLAYER1_COLOR : PLAYER2_COLOR
 
@@ -98,8 +101,14 @@ export function MatchView({
       {gameState.status === 'finished' && !goalFlash && (
         <GameOver
           isDraw={gameState.winner === null}
+          mirrorWinner={gameState.winner === 'player2'}
           winner={winnerName}
           winnerColor={winnerColor}
+          winnerNation={winnerNation}
+          player1Nation={player1Nation}
+          player1Color={PLAYER1_COLOR}
+          player2Nation={player2Nation}
+          player2Color={PLAYER2_COLOR}
           score1={gameState.player1.score}
           score2={gameState.player2.score}
           onReplay={restart}

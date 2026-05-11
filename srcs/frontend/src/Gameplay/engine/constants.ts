@@ -78,3 +78,8 @@ export const GROW_GOAL_MULTIPLIER = 1.5      // cage agrandie
 export const WINNING_SCORE = 2
 export const GOAL_FLASH_DURATION_MS = 2200
 export const VERSUS_SCREEN_DURATION_MS = 3500
+
+// ─────────── TIMER ───────────
+// Durées proposées dans la sélection de personnages (en secondes). null = illimité.
+export const TIMER_OPTIONS: ReadonlyArray<30 | 60 | null> = [30, 60, null]
+export const TIMER_DEFAULT: 30 | 60 | null = 30
