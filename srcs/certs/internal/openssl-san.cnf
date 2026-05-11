@@ -1,0 +1,28 @@
+[ req ]
+default_bits       = 4096
+distinguished_name = req_distinguished_name
+req_extensions     = req_ext
+prompt             = no
+
+[ req_distinguished_name ]
+C  = FR
+ST = IDF
+L  = Paris
+O  = ft_transcendence
+OU = InternalTLS
+CN = internal-services
+
+[ req_ext ]
+subjectAltName = @alt_names
+
+[ alt_names ]
+DNS.1  = vault
+DNS.2  = api-gateway
+DNS.3  = user-service
+DNS.4  = chat-service
+DNS.5  = friends-service
+DNS.6  = game-service
+DNS.7  = profile-service
+DNS.8  = waf
+DNS.9 = localhost
+IP.1   = 127.0.0.1

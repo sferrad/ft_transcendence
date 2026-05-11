@@ -175,12 +175,14 @@ services:
     expose:
       - "8200"
     environment:
-      - VAULT_ADDR=http://127.0.0.1:8200
+      - VAULT_ADDR=https://vault:8200
+      - VAULT_CACERT=/certs/ca.crt
     volumes:
       - vault-data:/vault/data
       - vault-private:/vault/private
       - vault-logs:/vault/logs
       - vault-file:/vault/file
+      - ./certs/internal:/certs:ro
     cap_add:
       - IPC_LOCK
     networks:
@@ -215,6 +217,8 @@ services:
     environment:
       - VAULT_ADDR=${VAULT_ADDR}
       - VAULT_TOKEN_FILE=/vault/data/api-gateway.token
+      - VAULT_CA_CERT=/certs/ca.crt
+      - INTERNAL_CA_CERT=/certs/ca.crt
       - JWT_SECRET_KEY=${JWT_SECRET_KEY} ## a generer avec openssl rand -hex 32
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -222,6 +226,7 @@ services:
       - "8000"
     volumes:
       - vault-data:/vault/data:ro
+      - ./certs/internal:/certs:ro
     networks:
       - transcendence-backend
       - transcendence-edge
@@ -232,7 +237,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      test: [ "CMD", "curl", "--fail", "--silent", "--show-error", "--cacert", "/certs/ca.crt", "https://localhost:8000/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -245,9 +250,11 @@ services:
     env_file:
       - .env
     environment:
-      - USER_SERVICE_URL=http://user-service:8001
+      - USER_SERVICE_URL=https://user-service:8001
       - VAULT_ADDR=${VAULT_ADDR}
       - VAULT_TOKEN_FILE=/vault/data/api-user.token
+      - VAULT_CA_CERT=/certs/ca.crt
+      - INTERNAL_CA_CERT=/certs/ca.crt
       - DB_HOST=user-db
       - DB_PORT=${DB_PORT}
       - DB_NAME=user_db
@@ -256,6 +263,7 @@ services:
       - "8001"
     volumes:
       - vault-data:/vault/data:ro
+      - ./certs/internal:/certs:ro
     networks:
       - transcendence-backend
       - transcendence-database
@@ -266,7 +274,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8001/health" ]
+      test: [ "CMD", "curl", "--fail", "--silent", "--show-error", "--cacert", "/certs/ca.crt", "https://localhost:8001/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -280,9 +288,11 @@ services:
     env_file:
       - .env
     environment:
-      - CHAT_SERVICE_URL=http://chat-service:8002
+      - CHAT_SERVICE_URL=https://chat-service:8002
       - VAULT_ADDR=${VAULT_ADDR}
       - VAULT_TOKEN_FILE=/vault/data/api-chat.token
+      - VAULT_CA_CERT=/certs/ca.crt
+      - INTERNAL_CA_CERT=/certs/ca.crt
       - DB_HOST=chat-db
       - DB_PORT=${DB_PORT}
       - DB_NAME=chat_db
@@ -291,6 +301,7 @@ services:
       - "8002"
     volumes:
       - vault-data:/vault/data:ro
+      - ./certs/internal:/certs:ro
     networks:
       - transcendence-backend
       - transcendence-database
@@ -301,7 +312,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8002/health" ]
+      test: [ "CMD", "curl", "--fail", "--silent", "--show-error", "--cacert", "/certs/ca.crt", "https://localhost:8002/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -316,9 +327,11 @@ services:
     env_file:
       - .env
     environment:
-      - FRIENDS_SERVICE_URL=http://friends-service:8004
+      - FRIENDS_SERVICE_URL=https://friends-service:8004
       - VAULT_ADDR=${VAULT_ADDR}
       - VAULT_TOKEN_FILE=/vault/data/api-friends.token
+      - VAULT_CA_CERT=/certs/ca.crt
+      - INTERNAL_CA_CERT=/certs/ca.crt
       - DB_HOST=friends-db
       - DB_PORT=${DB_PORT}
       - DB_NAME=friends_db
@@ -330,6 +343,7 @@ services:
       - "8004"
     volumes:
       - vault-data:/vault/data:ro
+      - ./certs/internal:/certs:ro
     networks:
       - transcendence-backend
       - transcendence-database
@@ -340,7 +354,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8004/health" ]
+      test: [ "CMD", "curl", "--fail", "--silent", "--show-error", "--cacert", "/certs/ca.crt", "https://localhost:8004/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -354,9 +368,11 @@ services:
     env_file:
       - .env
     environment:
-      - GAME_SERVICE_URL=http://game-service:8005
+      - GAME_SERVICE_URL=https://game-service:8005
       - VAULT_ADDR=${VAULT_ADDR}
       - VAULT_TOKEN_FILE=/vault/data/api-game.token
+      - VAULT_CA_CERT=/certs/ca.crt
+      - INTERNAL_CA_CERT=/certs/ca.crt
       - DB_HOST=game-db
       - DB_PORT=${DB_PORT}
       - DB_NAME=game_db
@@ -365,6 +381,7 @@ services:
       - "8005"
     volumes:
       - vault-data:/vault/data:ro
+      - ./certs/internal:/certs:ro
     networks:
       - transcendence-backend
       - transcendence-database
@@ -375,7 +392,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8005/health" ]
+      test: [ "CMD", "curl", "--fail", "--silent", "--show-error", "--cacert", "/certs/ca.crt", "https://localhost:8005/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -400,9 +417,11 @@ services:
     env_file:
       - .env
     environment:
-      - PROFILE_SERVICE_URL=http://profile-service:8006
+      - PROFILE_SERVICE_URL=https://profile-service:8006
       - VAULT_ADDR=${VAULT_ADDR}
       - VAULT_TOKEN_FILE=/vault/data/api-profile.token
+      - VAULT_CA_CERT=/certs/ca.crt
+      - INTERNAL_CA_CERT=/certs/ca.crt
       - DB_HOST=profile-db
       - DB_PORT=${DB_PORT}
       - DB_NAME=profile_db
@@ -417,6 +436,7 @@ services:
     volumes:
       - vault-data:/vault/data:ro
       - avatar-profile-service:/app/uploads
+      - ./certs/internal:/certs:ro
     networks:
       - transcendence-backend
       - transcendence-database
@@ -429,7 +449,7 @@ services:
         condition: service_started
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8006/health" ]
+      test: [ "CMD", "curl", "--fail", "--silent", "--show-error", "--cacert", "/certs/ca.crt", "https://localhost:8006/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -475,6 +495,8 @@ services:
     ports:
       - "8080:80"
       - "8443:443"
+    volumes:
+      - ./certs/internal:/certs:ro
     networks:
       - transcendence-frontend
       - transcendence-edge
@@ -485,7 +507,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:80" ]
+      test: [ "CMD", "curl", "-fk", "https://localhost:443/health" ]
       interval: 20s
       timeout: 5s
       retries: 3

@@ -4,7 +4,8 @@ import httpx
 from fastapi import HTTPException, status
 
 
-PROFILE_SERVICE_URL = os.getenv("PROFILE_SERVICE_URL", "http://profile-service:8006")
+PROFILE_SERVICE_URL = os.getenv("PROFILE_SERVICE_URL", "https://profile-service:8006")
+INTERNAL_CA_CERT = os.getenv("INTERNAL_CA_CERT", "/certs/ca.crt")
 
 
 # Crée le profil par défaut d'un utilisateur nouvellement inscrit.
@@ -18,7 +19,7 @@ async def create_profile(*, user_id: int, display_name: str) -> dict:
     payload = {"user_id": user_id, "display_name": display_name}
 
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with httpx.AsyncClient(timeout=5.0, verify=INTERNAL_CA_CERT) as client:
             response = await client.post(url, json=payload)
         response.raise_for_status()
     except httpx.RequestError:

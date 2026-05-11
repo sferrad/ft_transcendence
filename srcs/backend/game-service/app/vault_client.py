@@ -17,6 +17,7 @@ def read_token(token_file_path: str) -> str | None:
 # Creer et retourne un client vault authentifie
 def get_vault_client() -> hvac.Client:
     vault_addr = os.getenv("VAULT_ADDR")
+    vault_ca_cert = os.getenv("VAULT_CA_CERT", "/certs/ca.crt")
 
     token_file = os.getenv("VAULT_TOKEN_FILE")
     if not vault_addr or not token_file:
@@ -24,7 +25,7 @@ def get_vault_client() -> hvac.Client:
     token = read_token(token_file)
     if not token:
         raise RuntimeError("game-service: Error reading token file, token is not set")
-    client = hvac.Client(url=vault_addr, token=token)
+    client = hvac.Client(url=vault_addr, token=token, verify=vault_ca_cert)
 
     if not client.is_authenticated():
         raise RuntimeError("game-service: Vault authentification failed (check token)")
