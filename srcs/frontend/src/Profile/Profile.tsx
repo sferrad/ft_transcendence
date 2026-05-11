@@ -447,7 +447,7 @@ function Profile() {
     return (
         <div className="relative min-h-[100dvh] w-full overflow-auto">
             <div
-                className="fixed inset-0 bg-[url('/assets/bgProfil.png')] bg-cover bg-center bg-no-repeat blur-sm"
+                className="fixed inset-0 bg-[url('/assets/bgProfil.jpg')] bg-cover bg-center bg-no-repeat blur-sm"
                 aria-hidden="true"
             ></div>
 

@@ -19,7 +19,7 @@ const Settingpage = () => {
 
     return (
         <div className="relative min-h-[100dvh] w-full overflow-auto">
-            <div className="fixed inset-0 bg-[url('/assets/bgHome.png')] bg-cover bg-center bg-no-repeat blur-sm" aria-hidden="true"></div>
+            <div className="fixed inset-0 bg-[url('/assets/bgHome.jpg')] bg-cover bg-center bg-no-repeat blur-sm" aria-hidden="true"></div>
 
             <div className="relative z-10 min-h-[100dvh] flex justify-center items-center px-4 py-8">
                 <button

@@ -23,7 +23,7 @@ function ChatPage() {
     }, [navigate]);
 
     return (
-        <div className="h-[100dvh] overflow-hidden bg-[url('/assets/bgHome.png')] bg-cover bg-center bg-no-repeat px-2 py-2 sm:px-4 sm:py-4">
+        <div className="h-[100dvh] overflow-hidden bg-[url('/assets/bgHome.jpg')] bg-cover bg-center bg-no-repeat px-2 py-2 sm:px-4 sm:py-4">
             <div className="mx-auto flex h-full min-h-0 w-full max-w-7xl flex-col gap-3">
                 <div className="flex items-center justify-between rounded-2xl border-4 border-[#1f2937] bg-[#18212f] px-4 py-3 text-white shadow-[8px_8px_0_#1f2937]">
                     <div>

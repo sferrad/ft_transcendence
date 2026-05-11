@@ -21,7 +21,7 @@ const Home = () => {
         window.location.href = path;
     };
     return (
-        <div className="relative min-h-[100dvh] w-full bg-[url('/assets/bgHome.png')] bg-cover bg-center bg-no-repeat overflow-hidden">
+        <div className="relative min-h-[100dvh] w-full bg-[url('/assets/bgHome.jpg')] bg-cover bg-center bg-no-repeat overflow-hidden">
             {/*
               2) Navigation responsive
               - Desktop (>=769px): boutons horizontaux
