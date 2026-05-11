@@ -57,7 +57,7 @@ export function MatchView({
       <GoalPost goal={gameState.goal2} filter={theme.goalFilter} />
 
       {gameState.obstacles.map((o, i) => (
-        <Obstacle key={i} x={o.x} y={o.y} radius={o.radius} />
+        <Obstacle key={i} x={o.x} y={o.y} radius={o.radius} themeId={theme.id} />
       ))}
 
       <Ball
@@ -66,6 +66,7 @@ export function MatchView({
         radius={gameState.ball.radius}
         filter={theme.ballFilter}
         glow={theme.ballGlow}
+        themeId={theme.id}
       />
 
       <Character
@@ -95,7 +96,7 @@ export function MatchView({
         kickBoostFrames={gameState.player2.kickBoostFrames}
       />
 
-      {gameState.happening && <Happening happening={gameState.happening} />}
+      {gameState.happening && <Happening happening={gameState.happening} themeId={theme.id} />}
 
       {goalFlash && (
         <GoalFlash

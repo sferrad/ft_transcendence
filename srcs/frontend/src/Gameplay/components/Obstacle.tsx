@@ -1,28 +1,42 @@
+import type React from 'react'
+
 interface ObstacleProps {
   x: number
   y: number
   radius: number
+  themeId?: string
 }
 
-// Rond blanc statique : visuel d'un obstacle. La physique du rebond est gérée
-// dans engine/physics.ts (checkObstacleCollisions).
-export function Obstacle({ x, y, radius }: ObstacleProps) {
+export function Obstacle({ x, y, radius, themeId }: ObstacleProps) {
   const size = radius * 2
+  const base: React.CSSProperties = {
+    position: 'absolute',
+    left: x - radius,
+    top: y - radius,
+    width: size,
+    height: size,
+    pointerEvents: 'none',
+    userSelect: 'none',
+    zIndex: 5,
+  }
+
+  if (themeId === 'neon') {
+    return (
+      <div style={{
+        ...base,
+        borderRadius: 6,
+        background: 'linear-gradient(135deg, #00ffe0 0%, #0066ff 100%)',
+        boxShadow: '0 0 10px 3px #00ffe0, 0 0 22px 6px #0066ff66, inset 0 0 8px rgba(0,255,224,0.3)',
+        border: '2px solid #00ffe0',
+      }} />
+    )
+  }
+
   return (
-    <div
-      style={{
-        position: 'absolute',
-        left: x - radius,
-        top: y - radius,
-        width: size,
-        height: size,
-        clipPath: 'polygon(25% 0%, 75% 0%, 100% 25%, 100% 75%, 75% 100%, 25% 100%, 0% 75%, 0% 25%)',
-        background: 'radial-gradient(circle at 35% 30%, #ffffff 0%, #e5e7eb 70%, #cbd5e1 100%)',
-        boxShadow: '0 0 18px rgba(255,255,255,0.55), inset 0 -4px 8px rgba(0,0,0,0.15)',
-        pointerEvents: 'none',
-        userSelect: 'none',
-        zIndex: 5,
-      }}
+    <img
+      src="/assets/brick.png"
+      alt=""
+      style={base}
     />
   )
 }
