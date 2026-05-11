@@ -101,6 +101,7 @@ export function MatchView({
       {gameState.status === 'finished' && !goalFlash && (
         <GameOver
           isDraw={gameState.winner === null}
+          mirrorWinner={gameState.winner === 'player2'}
           winner={winnerName}
           winnerColor={winnerColor}
           winnerNation={winnerNation}
