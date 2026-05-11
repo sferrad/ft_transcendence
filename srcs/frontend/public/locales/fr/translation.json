@@ -189,6 +189,14 @@
     "terms.p4": "La suppression du compte supprimera vos données conformément aux flux de nettoyage du projet. Certains enregistrements opérationnels peuvent subsister pour des raisons de sécurité, d'audit ou d'intégrité selon les besoins.",
     "terms.p5": "Le projet est fourni à des fins éducatives et de démonstration. Aucune garantie n'est donnée quant à la disponibilité ininterrompue ou à la permanence absolue des données.",
     "terms.p6_pre": "Pour plus d'informations sur vos données, consultez la ",
-    "terms.p6_link": "Politique de confidentialité"
+    "terms.p6_link": "Politique de confidentialité",
+
+    "Username must be at most 15 characters": "Le nom d'utilisateur doit avoir au maximum 15 caractères",
+    "Username must be at least 3 characters": "Le nom d'utilisateur doit avoir au moins 3 caractères",
+    "Username can only contain letters, numbers, and underscores": "Le nom d'utilisateur ne peut contenir que des lettres, des chiffres et des tirets bas",
+    "Password must be at least 6 characters long": "Le mot de passe doit avoir au moins 6 caractères",
+    "Username must contain at least one visible character": "Le nom d'utilisateur doit contenir au moins un caractère visible",
+    "Email must contain at least one visible character": "L'email doit contenir au moins un caractère visible",
+    "Password must contain at least one visible character": "Le mot de passe doit contenir au moins un caractère visible"
 }
 
