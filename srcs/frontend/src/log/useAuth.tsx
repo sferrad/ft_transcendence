@@ -68,6 +68,18 @@ const getUserInfo = async (token: string) => {
         }
     };
 
+// Fonction helper pour parser les erreurs Pydantic de validation
+const parseValidationError = (data: any): string => {
+    // Si detail est un array (erreurs Pydantic), extraire les messages
+    if (Array.isArray(data?.detail)) {
+        return data.detail
+            .map((err: any) => err.msg || JSON.stringify(err))
+            .join("; ");
+    }
+    // Fallback sur les autres formats d'erreur
+    return data?.detail || data?.error?.message || "An error occurred";
+};
+
 // Fonction helper pour se connecter avec identifier et password
 const performLogin = async (identifier: string, password: string) => {
     try {
@@ -136,8 +148,9 @@ export const useLogin = () => {
           navigate("/profile");
         }, 2000);
       } else {
-        // Erreur: message API si présent, sinon fallback.
-        setMessage(data.error?.message || data.detail || "Username or password is incorrect");
+        // Erreur: parser les erreurs Pydantic si présentes
+        const errorMsg = parseValidationError(data);
+        setMessage(errorMsg || "Username or password is incorrect");
       }
     } catch {
       // Erreur réseau / exception fetch
@@ -241,9 +254,9 @@ export const useRegister = () => {
           }, 2000);
         }
       } else {
-        const data = await response.json().catch(() => ({}));
-        // FastAPI renvoie souvent {"detail": "..."}
-        setMessage(data?.detail || data?.error?.message || "Registration failed");
+        const data = await response.json().catch(()  => ({})); // Essayer de parser le JSON, sinon fallback sur un objet vide
+        const errorMsg = parseValidationError(data);
+        setMessage(errorMsg || "Registration failed");
       }
     } catch {
       // Erreur réseau / exception fetch

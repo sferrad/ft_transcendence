@@ -70,6 +70,17 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
         return partner?.display_name?.trim() || "Direct message";
     };
 
+    const getUserDisplayName = (userId: number) => {
+        if (userId <= 0) return t("Anonymous");
+        const profile = profiles[userId];
+        return profile?.display_name?.trim() || `User ${userId}`;
+    };
+
+    const getUserAvatarUrl = (userId: number) => {
+        if (userId <= 0) return "/assets/default-profile.jpg";
+        return renderAvatar(userId);
+    };
+
     const visibleRooms = useMemo(() => {
         return rooms.filter((room) => {
             if (!room.is_private) return true;
@@ -688,7 +699,9 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
                                         {!isSelectedRoomDm && (
                                             <>
                                                 <span>•</span>
-                                                <span>{t("Owner")} #{selectedRoom.owner_user_id}</span>
+                                                <span>
+                                                    {t("Owner")} {selectedRoom.owner_user_id > 0 ? `#${selectedRoom.owner_user_id}` : t("No owner")}
+                                                </span>
                                             </>
                                         )}
                                         <span>•</span>
@@ -742,17 +755,17 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
                             )}
 
                             {messages.map((message, index) => {
-                                const profile = profiles[message.sender_user_id];
-                                const displayName = profile?.display_name || `User ${message.sender_user_id}`;
-                                const avatarUrl = renderAvatar(message.sender_user_id);
+                                const displayName = getUserDisplayName(message.sender_user_id);
+                                const avatarUrl = getUserAvatarUrl(message.sender_user_id);
                                 const isMine = currentUserId > 0 && message.sender_user_id === currentUserId;
+                                const canOpenProfile = message.sender_user_id > 0;
 
                                 return (
                                     <article
                                         key={`${message.room_id}-${message.sender_user_id}-${message.created_at ?? index}`}
                                         className={`flex items-end gap-2 sm:gap-3 ${isMine ? "justify-end" : "justify-start"}`}
                                     >
-                                        {!isMine && (
+                                        {!isMine && canOpenProfile && (
                                             <button
                                                 type="button"
                                                 onClick={() => openProfile(message.sender_user_id)}
@@ -779,7 +792,7 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
                                             <div className="break-words text-sm leading-6 sm:text-[0.95rem]">{message.content}</div>
                                         </div>
 
-                                        {isMine && (
+                                        {isMine && canOpenProfile && (
                                             <button
                                                 type="button"
                                                 onClick={() => openProfile(message.sender_user_id)}
