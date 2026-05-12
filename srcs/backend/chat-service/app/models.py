@@ -9,7 +9,7 @@ class Room(Base):
     __tablename__ = "rooms"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(100), unique=True, index=True, nullable=False)
+    name = Column(String(15), unique=True, index=True, nullable=False)
 
     is_private = Column(Boolean, nullable=False, server_default="false")
     owner_user_id = Column(Integer, index=True, nullable=False)
@@ -18,6 +18,7 @@ class Room(Base):
 
     members = relationship("RoomMember", back_populates="room", cascade="all, delete-orphan")
     messages = relationship("Message", back_populates="room", cascade="all, delete-orphan")
+    private_messages = relationship("PrivateMessage", back_populates="room", cascade="all, delete-orphan")
 
 
 # users present sur le salon
@@ -54,6 +55,7 @@ class PrivateMessage(Base):
     __tablename__ = "private_messages"
 
     id = Column(Integer, primary_key=True, index=True)
+    room_id = Column(Integer, ForeignKey("rooms.id", ondelete="CASCADE"), nullable=False)
     sender_user_id = Column(Integer, index=True, nullable=False)
     receiver_user_id = Column(Integer, index=True, nullable=False)
 
@@ -62,6 +64,7 @@ class PrivateMessage(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), nullable=True)
 
+    room = relationship("Room", back_populates="private_messages")
 
 Index("idx_messages_room_id_created_at", Message.room_id, Message.created_at.desc(), Message.id.desc())
 Index("idx_private_messages_sender_receiver_created_at", PrivateMessage.receiver_user_id, PrivateMessage.sender_user_id, PrivateMessage.created_at.desc(), PrivateMessage.id.desc())

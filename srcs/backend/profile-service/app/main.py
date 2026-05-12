@@ -10,7 +10,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 import json
 from datetime import datetime, timezone
 
-from . import crud, schemas, user_service_client, friends_service_client, chat_service_client, game_service_client, email_config
+from . import api_gateway_client, crud, schemas, user_service_client, friends_service_client, chat_service_client, game_service_client, email_config
 from .database import get_db, init_db, init_engine
 
 AVATAR_UPLOAD_DIR = os.getenv("AVATAR_UPLOAD_DIR", "/app/uploads/avatars")
@@ -215,7 +215,13 @@ async def update_user_infos(payload: schemas.UserUpdateRequest, user_id: int = D
 		raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 	
 @app.delete("/me/settings/user")
-async def delete_user(user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
+async def delete_user(
+	user_id: int = Depends(_current_user_id),
+	authorization: str | None = Header(default=None),
+	db: Session = Depends(get_db),
+):
+	if not authorization:
+		raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing Authorization header")
 	user_email = None
 	username = None
 	try:
@@ -234,6 +240,17 @@ async def delete_user(user_id: int = Depends(_current_user_id), db: Session = De
 			email_sent = True
 		except Exception as e:
 			print(f"[WARN] Failed to send pre-deletion email: {e}")
+
+	try:
+		await api_gateway_client.logout_current_token(authorization)
+	except httpx.RequestError:
+		raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="api-gateway unavailable")
+	except httpx.HTTPStatusError as e:
+		return Response(
+			content=e.response.content,
+			status_code=e.response.status_code,
+			media_type="application/json"
+		)
 		
 	try:
 		user = await user_service_client.delete_user_in_user_service(user_id)
