@@ -11,6 +11,7 @@
 import {
   type GameState, type Goal, type Happening, type HappeningKind, type Player,
 } from './types'
+import { rng } from './rng'
 import {
   CANVAS_WIDTH, GROUND_Y, GRAVITY_BALL, BOUNCE_DAMPING, BALL_FRICTION, MIN_BOUNCE_VY,
   HAPPENING_SPAWN_INTERVAL, HAPPENING_RADIUS,
@@ -28,10 +29,10 @@ const KINDS: HappeningKind[] = [
 function spawnHappening(): Happening {
   const margin = 200
   return {
-    kind: KINDS[Math.floor(Math.random() * KINDS.length)],
-    x: margin + Math.random() * (CANVAS_WIDTH - margin * 2),
+    kind: KINDS[Math.floor(rng() * KINDS.length)],
+    x: margin + rng() * (CANVAS_WIDTH - margin * 2),
     y: 50,
-    vx: (Math.random() - 0.5) * 4,
+    vx: (rng() - 0.5) * 4,
     vy: 0,
     radius: HAPPENING_RADIUS,
   }

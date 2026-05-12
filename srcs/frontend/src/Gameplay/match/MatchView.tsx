@@ -12,7 +12,7 @@ import { Scene } from '../components/Scene'
 import { type ThemeConfig, THEMES } from '../themes'
 import { saveMatchResult, fetchMyStats, type UserStats } from '../api/matches'
 
-export type GameMode = 'solo' | 'local'
+export type GameMode = 'solo' | 'local' | 'online'
 
 interface MatchViewProps {
   mode: GameMode
@@ -45,6 +45,7 @@ export function MatchView({
         score_player1: gameState.player1.score,
         score_player2: gameState.player2.score,
         winner: gameState.winner as 'player1' | 'player2' | null,
+        gameMode: mode,
       })
         .then(() => fetchMyStats())
         .then(s => { if (s) setAfterStats(s) })
@@ -66,11 +67,13 @@ export function MatchView({
   const winnerColor =
     gameState.winner === 'player1' ? PLAYER1_COLOR : PLAYER2_COLOR
 
-  const lpDelta = gameState.winner === 'player1' ? 20 : gameState.winner === null ? 5 : -13
+  const lpDelta = mode === 'online'
+    ? (gameState.winner === 'player1' ? 20 : gameState.winner === null ? 5 : -13)
+    : 0
   const xpDelta = gameState.winner === 'player1' ? 30 : gameState.winner === null ? 10 : 5
 
   const handleShowResults = afterStats ? () => {
-    navigate('/results', { state: { stats: afterStats, lpDelta, xpDelta, backRoute, gameRoute: window.location.pathname } })
+    navigate('/results', { state: { stats: afterStats, lpDelta, xpDelta, backRoute, gameRoute: window.location.pathname, gameMode: mode } })
   } : undefined
 
   return (

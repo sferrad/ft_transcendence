@@ -267,6 +267,15 @@ def register_websocket_handlers(sio: AsyncServer) -> None:
                 await leave_socket_room(sio, sid, old_room)
 
         await join_socket_room(sio, sid, room_name)
+
+        # Store the player role so _persist_match_result can identify winner_id.
+        role = str(data.get("role") or "")
+        if role in ("player1", "player2"):
+            existing_roles = await manager.get_room_data(room_name, "game_roles") or {}
+            if not isinstance(existing_roles, dict):
+                existing_roles = {}
+            existing_roles["p1" if role == "player1" else "p2"] = session.user_id
+            await manager.set_room_data(room_name, "game_roles", existing_roles)
         room_members = await manager.get_room_members(room_name)
         last_state = await manager.get_room_data(room_name, "last_game_state")
 

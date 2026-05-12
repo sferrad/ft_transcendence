@@ -107,12 +107,13 @@ export function MatchHistory({ userId }: Props) {
               const effectiveId = userId > 0 ? userId : m.player1_id
               const isWin = m.winner_id === effectiveId
               const isDraw = m.winner_id === null
+              const isRanked = m.game_mode === 'online'
               const score = `${m.score_player1} - ${m.score_player2}`
               const row = isDraw
-                ? { label: t('stats.draw'), lp: '+5',  lpCls: 'text-yellow-700', rowCls: 'bg-yellow-100/80 border-yellow-300', labelCls: 'text-yellow-800', dateCls: 'text-yellow-700' }
+                ? { label: t('stats.draw'), lp: isRanked ? '+5'  : '—', lpCls: 'text-yellow-700', rowCls: 'bg-yellow-100/80 border-yellow-300', labelCls: 'text-yellow-800', dateCls: 'text-yellow-700' }
                 : isWin
-                ? { label: t('stats.win'),  lp: '+20', lpCls: 'text-green-700',  rowCls: 'bg-green-100/80 border-green-300',  labelCls: 'text-green-800',  dateCls: 'text-green-700' }
-                : { label: t('stats.loss'), lp: '-13', lpCls: 'text-red-700',    rowCls: 'bg-red-100/80 border-red-300',      labelCls: 'text-red-800',    dateCls: 'text-red-700' }
+                ? { label: t('stats.win'),  lp: isRanked ? '+20' : '—', lpCls: 'text-green-700',  rowCls: 'bg-green-100/80 border-green-300',  labelCls: 'text-green-800',  dateCls: 'text-green-700' }
+                : { label: t('stats.loss'), lp: isRanked ? '-13' : '—', lpCls: 'text-red-700',    rowCls: 'bg-red-100/80 border-red-300',      labelCls: 'text-red-800',    dateCls: 'text-red-700' }
 
               return (
                 <div
@@ -122,7 +123,7 @@ export function MatchHistory({ userId }: Props) {
                 >
                   <span className={`font-arcade text-lg text-center ${row.labelCls}`}>{row.label}</span>
                   <span className="font-arcade text-lg tracking-widest text-center text-[#1f2937]">{score}</span>
-                  <span className={`font-arcade text-lg text-right whitespace-nowrap ${row.lpCls}`}>{row.lp} LP</span>
+                  <span className={`font-arcade text-lg text-right whitespace-nowrap ${row.lpCls}`}>{row.lp}{isRanked ? ' LP' : ''}</span>
                   <span className={`text-sm text-right whitespace-nowrap ${row.dateCls}`}>{m.created_at ? formatDate(m.created_at) : '-'}</span>
                 </div>
               )

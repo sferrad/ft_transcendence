@@ -40,6 +40,7 @@ export interface MatchResult {
   score_player1: number
   score_player2: number
   status: string
+  game_mode: string
   created_at: string
   finished_at: string | null
 }
@@ -75,6 +76,7 @@ export async function saveMatchResult(opts: {
   score_player1: number
   score_player2: number
   winner: 'player1' | 'player2' | null
+  gameMode?: string
 }): Promise<void> {
   const userId = getUserId()
   if (!userId) return
@@ -84,7 +86,7 @@ export async function saveMatchResult(opts: {
   const createRes = await fetch('/api/game/me/matches/', {
     method: 'POST',
     headers,
-    body: JSON.stringify({ player2_id: 0 }),
+    body: JSON.stringify({ player2_id: 0, game_mode: opts.gameMode ?? 'solo' }),
   })
   if (!createRes.ok) return
 

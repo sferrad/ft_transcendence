@@ -8,6 +8,7 @@ import {
   DASH_IMPULSE, DASH_DECAY, DASH_STOP_EPSILON, DASH_COOLDOWN_FRAMES,
 } from './constants'
 import { dashBoosts, dashCooldowns } from './input'
+import { rng } from './rng'
 
 const AI_SPEED_NORMAL = 4.5
 const AI_SPEED_DEFEND = 7.5
@@ -100,14 +101,14 @@ export function computeAIVelocity(ai: Player, ball: Ball, happening: Happening |
     const distToTarget = Math.abs(targetX - ai.x)
 
     // Repositionnement rapide si cible lointaine (~1 fois/2s).
-    if (distToTarget > 200 && Math.random() < 0.008) {
+    if (distToTarget > 200 && rng() < 0.008) {
       dashBoosts[1] = targetX > ai.x ? DASH_IMPULSE : -DASH_IMPULSE
       dashCooldowns[1] = DASH_COOLDOWN_FRAMES
     }
 
     // Dash offensif pour écraser le ballon à portée.
     const distToBall = Math.hypot(ball.x - ai.x, ball.y - ai.y)
-    if (!ballHeadingToAIGoal && distToBall < ai.radius * 5 && Math.random() < 0.012) {
+    if (!ballHeadingToAIGoal && distToBall < ai.radius * 5 && rng() < 0.012) {
       dashBoosts[1] = ball.x > ai.x ? DASH_IMPULSE : -DASH_IMPULSE
       dashCooldowns[1] = DASH_COOLDOWN_FRAMES
     }
@@ -135,5 +136,5 @@ export function aiWantsToShoot(ai: Player, ball: Ball): boolean {
   const dist = Math.hypot(ball.x - ai.x, ball.y - ai.y)
   const inRange = dist <= ai.radius + ball.radius + KICK_RANGE + 20
   const prob = ai.kickBoostFrames > 0 ? AI_SHOOT_PROBABILITY * 2 : AI_SHOOT_PROBABILITY
-  return inRange && Math.random() < prob
+  return inRange && rng() < prob
 }

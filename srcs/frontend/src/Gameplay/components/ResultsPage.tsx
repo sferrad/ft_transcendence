@@ -9,6 +9,7 @@ interface ResultsState {
   xpDelta: number
   backRoute: string
   gameRoute: string
+  gameMode?: string
 }
 
 const KEYFRAMES = `
@@ -82,7 +83,8 @@ export default function ResultsPage() {
     return null
   }
 
-  const { stats, lpDelta, xpDelta, backRoute, gameRoute } = state
+  const { stats, lpDelta, xpDelta, backRoute, gameRoute, gameMode } = state
+  const isRanked = gameMode === 'online'
 
   const tier = TIER_THRESHOLDS.find(th => th.name === stats.tier) ?? TIER_THRESHOLDS[TIER_THRESHOLDS.length - 1]
   const nextTier = TIER_THRESHOLDS[TIER_THRESHOLDS.indexOf(tier) + 1]
@@ -134,7 +136,8 @@ export default function ResultsPage() {
           boxShadow: '0 0 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)',
         }}>
 
-          {/* ── LP ── */}
+          {/* ── LP (mode online uniquement) ── */}
+          {isRanked && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
               <span className="font-arcade" style={{
@@ -171,6 +174,7 @@ export default function ResultsPage() {
               }
             </div>
           </div>
+          )}
 
           {/* ── XP / Niveau ── */}
           <div>

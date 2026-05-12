@@ -233,5 +233,10 @@
     "tier.Silver": "Plata",
     "tier.Gold": "Oro",
     "tier.Platinum": "Platino",
-    "tier.Diamond": "Diamante"
+    "tier.Diamond": "Diamante",
+    
+    "Opponent disconnected": "Oponente desconectado",
+    "Waiting for reconnection...": "Esperando reconexión...",
+    "Game Paused": "Juego en pausa",
+    "Waiting for opponent...": "Esperando al oponente..."
 }

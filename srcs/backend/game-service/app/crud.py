@@ -70,8 +70,8 @@ class MatchEventSequenceAllocationError(RuntimeError):
 	# - Quand l'utilisateur est authentifié via api-gateway, `player1_id` doit venir du header `X-User-Id`.
 	# - Ça empêche un client malveillant de créer un match "au nom" d'un autre user.
 	# """
-def create_match_for_players(db: Session, *, player1_id: int, player2_id: int) -> models.Match:
-	db_match = models.Match(player1_id=player1_id, player2_id=player2_id)
+def create_match_for_players(db: Session, *, player1_id: int, player2_id: int, game_mode: str = "solo") -> models.Match:
+	db_match = models.Match(player1_id=player1_id, player2_id=player2_id, game_mode=game_mode)
 	db.add(db_match)
 	db.commit()
 	db.refresh(db_match)
@@ -338,19 +338,23 @@ def compute_user_stats(db: Session, user_id: int) -> dict:
 	lp = 0
 
 	for m in matches:
+		ranked = getattr(m, "game_mode", "solo") == "online"
 		if m.winner_id is None:
 			draws += 1
-			lp += _LP_DRAW
+			if ranked:
+				lp += _LP_DRAW
 		elif m.winner_id == user_id:
 			wins += 1
-			lp += _LP_WIN
+			if ranked:
+				lp += _LP_WIN
 			if m.player1_id == user_id and m.score_player2 == 0:
 				has_clean_sheet = True
 			elif m.player2_id == user_id and m.score_player1 == 0:
 				has_clean_sheet = True
 		else:
 			losses += 1
-			lp = max(0, lp + _LP_LOSS)
+			if ranked:
+				lp = max(0, lp + _LP_LOSS)
 
 	total = wins + losses + draws
 	xp = wins * 30 + draws * 10 + losses * 5
@@ -376,8 +380,9 @@ def compute_user_stats(db: Session, user_id: int) -> dict:
 	}
 
 def get_leaderboard(db: Session, limit: int = 10) -> list:
-	p1_ids = db.query(distinct(models.Match.player1_id)).filter(models.Match.status == "finished").all()
-	p2_ids = db.query(distinct(models.Match.player2_id)).filter(models.Match.status == "finished").all()
+	online_filter = (models.Match.status == "finished", models.Match.game_mode == "online")
+	p1_ids = db.query(distinct(models.Match.player1_id)).filter(*online_filter).all()
+	p2_ids = db.query(distinct(models.Match.player2_id)).filter(*online_filter).all()
 
 	all_ids = (set(r[0] for r in p1_ids) | set(r[0] for r in p2_ids)) - {0}
 

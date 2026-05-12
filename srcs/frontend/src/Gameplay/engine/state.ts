@@ -12,6 +12,7 @@ import {
 import { resetDashBoosts, resetDashCooldowns } from './input'
 import { resetKickCooldown } from './physics'
 import { resetAIJumpDash } from './ai'
+import { seedRng, rng } from './rng'
 
 function createGoals(): { goal1: Goal; goal2: Goal } {
   const postHeight = GOAL_BASE_HEIGHT + CROSSBAR_HEIGHT
@@ -48,14 +49,15 @@ function createPlayer(startX: number): Player {
 }
 
 function randomKickoffVx(): number {
-  return (Math.random() > 0.5 ? 1 : -1) * 3
+  return (rng() > 0.5 ? 1 : -1) * 3
 }
 
 function createObstacles(): Obstacle[] {
   return OBSTACLE_POSITIONS.map(({ x, y }) => ({ x, y, radius: OBSTACLE_RADIUS }))
 }
 
-export function createInitialState(winningScore: number | null = WINNING_SCORE): GameState {
+export function createInitialState(winningScore: number | null = WINNING_SCORE, seed?: number): GameState {
+  seedRng(seed ?? Date.now())
   resetDashBoosts()
   resetDashCooldowns()
   resetKickCooldown()

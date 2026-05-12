@@ -85,3 +85,11 @@ export const VERSUS_SCREEN_DURATION_MS = 3500
 // Durées proposées dans la sélection de personnages (en secondes). null = illimité.
 export const TIMER_OPTIONS: ReadonlyArray<30 | 60 | null> = [30, 60, null]
 export const TIMER_DEFAULT: 30 | 60 | null = 30
+
+// ─────────── GAME LOOP (fixed timestep) ───────────
+// La physique avance par pas fixes de ~16.67ms (60 ticks/s) indépendamment
+// du refresh rate du monitor. Garantit la même simulation sur tous les clients.
+export const FIXED_STEP_MS = 1000 / 60
+// Évite le "spiral of death" : si une frame dure trop longtemps, on bride
+// le rattrapage à MAX_CATCHUP_MS (≈ 3 ticks) pour ne pas bloquer davantage.
+export const MAX_CATCHUP_MS = 50

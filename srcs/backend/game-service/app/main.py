@@ -25,6 +25,10 @@
 # - Depends : injection de dépendances (ex: fournir un `db: Session`).
 # - HTTPException : renvoyer une erreur HTTP propre (status + message).
 # - status : constantes de codes HTTP (200, 404, 500...).
+import threading
+import time
+import random as _random
+
 from fastapi import Depends, FastAPI, Header, HTTPException, status
 
 # `text()` : permet d'exécuter une requête SQL brute (ici SELECT 1 pour ping).
@@ -45,6 +49,11 @@ from . import schemas, crud
 from .database import get_db, init_db, init_engine
 
 app = FastAPI(title="game-service")
+
+# ─── Matchmaking in-memory state ───────────────────────────────────────────────
+_mq_lock = threading.Lock()
+_mq_queue: list[dict] = []        # players waiting for an opponent
+_mq_results: dict[int, dict] = {} # user_id → match result waiting to be fetched
 
 Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
@@ -138,7 +147,7 @@ async def db_ping(db: Session = Depends(get_db)):
 def create_my_match(payload: schemas.MatchCreateMe, user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
 	if payload.player2_id == user_id:
 		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="player2_id must be different from current user")
-	return crud.create_match_for_players(db, player1_id=user_id, player2_id=payload.player2_id)
+	return crud.create_match_for_players(db, player1_id=user_id, player2_id=payload.player2_id, game_mode=payload.game_mode)
 
 	# """Récupère un match + tous ses events.
 
@@ -236,6 +245,89 @@ def get_my_stats(user_id: int = Depends(_current_user_id), db: Session = Depends
 @app.get("/leaderboard/", response_model=list[schemas.LeaderboardEntry])
 def get_leaderboard(user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
 	return crud.get_leaderboard(db)
+
+@app.post("/me/matchmaking/join", response_model=schemas.MatchmakingResult)
+def matchmaking_join(
+	payload: schemas.MatchmakingJoin,
+	user_id: int = Depends(_current_user_id),
+	db: Session = Depends(get_db),
+):
+	with _mq_lock:
+		# Already has a result waiting to be consumed?
+		if user_id in _mq_results:
+			return _mq_results.pop(user_id)
+		# Already in the queue?
+		for entry in _mq_queue:
+			if entry["user_id"] == user_id:
+				return {"status": "waiting"}
+		# Try to match with the first person in queue (must be a different user).
+		for i, other in enumerate(_mq_queue):
+			if other["user_id"] != user_id:
+				_mq_queue.pop(i)
+				seed = _random.randint(1, 2**31 - 1)
+				# other is player1, current user is player2
+				match = crud.create_match_for_players(
+					db,
+					player1_id=other["user_id"],
+					player2_id=user_id,
+					game_mode="online",
+				)
+				winning_score = other.get("winning_score", 3)
+				duration = other.get("duration", None)
+				p1_result = {
+					"status": "matched",
+					"match_id": match.id,
+					"game_room_id": str(match.id),
+					"role": "player1",
+					"seed": seed,
+					"opponent_name": payload.player_name,
+					"opponent_nation": payload.player_nation,
+					"winning_score": winning_score,
+					"duration": duration,
+				}
+				p2_result = {
+					"status": "matched",
+					"match_id": match.id,
+					"game_room_id": str(match.id),
+					"role": "player2",
+					"seed": seed,
+					"opponent_name": other["player_name"],
+					"opponent_nation": other["player_nation"],
+					"winning_score": winning_score,
+					"duration": duration,
+				}
+				_mq_results[other["user_id"]] = p1_result
+				return p2_result
+		# No match found: add to queue.
+		_mq_queue.append({
+			"user_id": user_id,
+			"player_name": payload.player_name,
+			"player_nation": payload.player_nation,
+			"winning_score": payload.winning_score,
+			"duration": payload.duration,
+			"joined_at": time.time(),
+		})
+		return {"status": "waiting"}
+
+
+@app.get("/me/matchmaking/status", response_model=schemas.MatchmakingResult)
+def matchmaking_status(user_id: int = Depends(_current_user_id)):
+	with _mq_lock:
+		if user_id in _mq_results:
+			return _mq_results.pop(user_id)
+		for entry in _mq_queue:
+			if entry["user_id"] == user_id:
+				return {"status": "waiting"}
+		return {"status": "idle"}
+
+
+@app.delete("/me/matchmaking/leave", status_code=204)
+def matchmaking_leave(user_id: int = Depends(_current_user_id)):
+	global _mq_queue
+	with _mq_lock:
+		_mq_queue = [e for e in _mq_queue if e["user_id"] != user_id]
+		_mq_results.pop(user_id, None)
+
 
 @app.post("/internal/user/cleanup")
 def internal_user_cleanup(payload: dict, db: Session = Depends(get_db)) -> dict:

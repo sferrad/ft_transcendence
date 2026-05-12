@@ -7,6 +7,8 @@ import Charselectsolo from './Solo/Charselect';
 import LocalCharselect from './Local/Charselect';
 import SoloMode from './Gameplay/modes/SoloMode';
 import LocalMode from './Gameplay/modes/LocalMode';
+import OnlineMode from './Gameplay/modes/OnlineMode';
+import LobbyPage from './Online/LobbyPage';
 import NotFound from './error/404';
 import Settingpage from './setting/Settingpage';
 import ChangePass from './setting/Acc/Changepass';
@@ -54,6 +56,8 @@ const App = () => {
         <Route path="/local-select" element={<LocalCharselect />} />
         <Route path="/solo-gameplay" element={<SoloMode />} />
         <Route path="/local-gameplay" element={<LocalMode />} />
+        <Route path="/lobby" element={<LobbyPage />} />
+        <Route path="/online-gameplay" element={<OnlineMode />} />
         <Route path="/settings" element={<Settingpage />} />
         <Route path="/settings/change-password" element={<ChangePass />} />
         <Route path="/settings/change-email" element={<ChangeMail />} />
