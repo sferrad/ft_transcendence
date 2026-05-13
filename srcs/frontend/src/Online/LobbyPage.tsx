@@ -82,8 +82,8 @@ export default function LobbyPage() {
   }, [phase])
 
   const handleMatched = useCallback((result: MatchmakingResult) => {
-    navigate('/online-gameplay', { state: result })
-  }, [navigate])
+    navigate('/online-gameplay', { state: { ...result, myNation: nation } })
+  }, [navigate, nation])
 
   const handleFindMatch = async () => {
     if (!user?.accessToken) { navigate('/login'); return }

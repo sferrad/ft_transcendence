@@ -125,15 +125,11 @@ def get_matches(db: Session, skip: int = 0, limit: int = 100) -> List[models.Mat
 	# - Pour une pagination stable, on ajoute un `order_by(created_at desc)`.
 	#   Sinon, la DB peut renvoyer un ordre "non garanti" (surtout quand il y a des insertions).
 	# """
-def get_matches_for_user(db: Session, *, user_id: int, skip: int = 0, limit: int = 100) -> List[models.Match]:
-	return (
-		db.query(models.Match)
-		.filter(or_(models.Match.player1_id == user_id, models.Match.player2_id == user_id))
-		.order_by(models.Match.created_at.desc())
-		.offset(skip)
-		.limit(limit)
-		.all()
-	)
+def get_matches_for_user(db: Session, *, user_id: int, skip: int = 0, limit: int = 100, game_mode: Optional[str] = None) -> List[models.Match]:
+	q = db.query(models.Match).filter(or_(models.Match.player1_id == user_id, models.Match.player2_id == user_id))
+	if game_mode:
+		q = q.filter(models.Match.game_mode == game_mode)
+	return q.order_by(models.Match.created_at.desc()).offset(skip).limit(limit).all()
 
 
 	# """Met à jour un match (update partiel).

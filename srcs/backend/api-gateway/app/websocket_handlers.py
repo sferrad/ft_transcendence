@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -17,7 +18,7 @@ from .websocket_manager import ClientSession, get_manager
 logger = logging.getLogger(__name__)
 
 CHAT_SERVICE_URL = os.getenv("CHAT_SERVICE_URL", "https://chat-service:8002")
-GAME_SERVICE_URL = os.getenv("GAME_SERVICE_URL", "https://game-service:8003")
+GAME_SERVICE_URL = os.getenv("GAME_SERVICE_URL", "https://game-service:8005")
 INTERNAL_CA_CERT = os.getenv("INTERNAL_CA_CERT", "/certs/ca.crt")
 MAX_GAME_PAYLOAD_BYTES = 4096
 MAX_CHAT_MESSAGE_CHARS = 2000
@@ -31,7 +32,15 @@ ALLOWED_GAME_ACTIONS = {
     "pause",
     "resume",
     "input",
+    "sync",
 }
+
+FORFEIT_TIMEOUT_S = 20
+
+# task_key → asyncio.Task running the 20-s forfeit countdown
+_disconnect_tasks: dict[str, asyncio.Task[None]] = {}
+# room_name → forfeit result persisted after the timer fires (survives room cleanup)
+_forfeit_results: dict[str, dict[str, Any]] = {}
 
 
 def utc_now() -> str:
@@ -73,6 +82,72 @@ def _parse_match_id(room_name: str) -> int | None:
     return match_id if match_id > 0 else None
 
 
+async def _forfeit_timer(
+    sio: AsyncServer,
+    room_name: str,
+    disconnected_user_id: int,
+    disconnected_username: str,
+    roles: dict[str, Any],
+) -> None:
+    await asyncio.sleep(FORFEIT_TIMEOUT_S)
+
+    task_key = f"{room_name}:{disconnected_user_id}"
+    _disconnect_tasks.pop(task_key, None)
+
+    manager = get_manager()
+
+    match_saved = await manager.get_room_data(room_name, "match_saved")
+    if match_saved:
+        return
+
+    winner_role: str | None = None
+    winner_id: int | None = None
+    if roles.get("p1") == disconnected_user_id:
+        winner_role = "player2"
+        winner_id = roles.get("p2")
+    elif roles.get("p2") == disconnected_user_id:
+        winner_role = "player1"
+        winner_id = roles.get("p1")
+
+    match_id = _parse_match_id(room_name)
+    if match_id and winner_id:
+        # Forfeit gives the remaining player a 3-0 win.
+        score_p1 = 3 if winner_role == "player1" else 0
+        score_p2 = 3 if winner_role == "player2" else 0
+        payload = {
+            "status": "finished",
+            "score_player1": score_p1,
+            "score_player2": score_p2,
+            "winner_id": winner_id,
+            "finished_at": utc_now(),
+        }
+        try:
+            async with httpx.AsyncClient(timeout=5.0, verify=INTERNAL_CA_CERT) as client:
+                await client.put(
+                    f"{GAME_SERVICE_URL}/matches/{match_id}",
+                    headers={"X-User-Id": str(winner_id)},
+                    json=payload,
+                )
+            await manager.set_room_data(room_name, "match_saved", True)
+        except httpx.RequestError as exc:
+            logger.warning("Failed to persist forfeit for match_id=%s: %s", match_id, exc)
+
+    forfeit_result: dict[str, Any] = {
+        "forfeit_user_id": disconnected_user_id,
+        "forfeit_username": disconnected_username,
+        "winner_role": winner_role,
+        "timestamp": utc_now(),
+    }
+    _forfeit_results[room_name] = forfeit_result
+
+    await manager.broadcast_to_room(
+        sio,
+        room_name,
+        "game.forfeit",
+        {"game_room_id": public_room_id(room_name), **forfeit_result},
+    )
+
+
 async def _persist_match_result(
     *,
     session: ClientSession,
@@ -111,7 +186,7 @@ async def _persist_match_result(
     }
 
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with httpx.AsyncClient(timeout=5.0, verify=INTERNAL_CA_CERT) as client:
             response = await client.put(
                 f"{GAME_SERVICE_URL}/matches/{match_id}",
                 headers={"X-User-Id": str(session.user_id)},
@@ -119,8 +194,13 @@ async def _persist_match_result(
             )
         if response.status_code < 400:
             await manager.set_room_data(room_name, "match_saved", True)
-    except httpx.RequestError:
-        logger.warning("Failed to persist match result for match_id=%s", match_id)
+        else:
+            logger.warning(
+                "Match persistence rejected for match_id=%s: %s %s",
+                match_id, response.status_code, response.text[:200],
+            )
+    except httpx.RequestError as exc:
+        logger.warning("Failed to persist match result for match_id=%s: %s", match_id, exc)
 
 
 async def authenticate_socket(auth: dict[str, Any] | None) -> tuple[int, str, dict[str, Any]]:
@@ -230,25 +310,71 @@ def register_websocket_handlers(sio: AsyncServer) -> None:
     async def disconnect(sid: str) -> None:
         session = await manager.get_session(sid)
         rooms = await manager.get_session_rooms(sid) if session else []
+
+        # Capture game room data before unregister_connection may clean up rooms_data.
+        game_snapshots: dict[str, dict[str, Any]] = {}
+        for room_name in rooms:
+            if room_name.startswith("game:"):
+                game_snapshots[room_name] = {
+                    "roles": await manager.get_room_data(room_name, "game_roles") or {},
+                    "last_state": await manager.get_room_data(room_name, "last_game_state"),
+                    "match_saved": bool(await manager.get_room_data(room_name, "match_saved")),
+                }
+
         removed = await manager.unregister_connection(sid)
         if removed is None:
             return
 
         for room_name in rooms:
             if room_name.startswith("game:"):
-                room_members = await manager.get_room_members(room_name)
-                await manager.broadcast_to_room(
-                    sio,
-                    room_name,
-                    "game.user_left",
-                    {
-                        "game_room_id": public_room_id(room_name),
-                        "user_id": removed.user_id,
-                        "username": removed.username,
-                        "room_members": room_members,
-                        "timestamp": utc_now(),
-                    },
-                )
+                # If the user still has another socket in this room (StrictMode
+                # double-mount, multiple tabs, etc.), this is NOT a real
+                # disconnect — skip the forfeit/disconnect broadcast entirely.
+                remaining_members = await manager.get_room_members(room_name)
+                if removed.user_id in remaining_members:
+                    continue
+
+                snap = game_snapshots.get(room_name, {})
+                last_state = snap.get("last_state") or {}
+                game_finished = last_state.get("status") == "finished" if last_state else False
+                match_saved = snap.get("match_saved", False)
+                already_forfeit = room_name in _forfeit_results
+
+                if not game_finished and not match_saved and not already_forfeit:
+                    # Active game: start 20-s forfeit countdown.
+                    await manager.broadcast_to_room(
+                        sio,
+                        room_name,
+                        "game.opponent_disconnected",
+                        {
+                            "game_room_id": public_room_id(room_name),
+                            "user_id": removed.user_id,
+                            "username": removed.username,
+                            "timeout_seconds": FORFEIT_TIMEOUT_S,
+                            "timestamp": utc_now(),
+                        },
+                    )
+                    task_key = f"{room_name}:{removed.user_id}"
+                    existing = _disconnect_tasks.pop(task_key, None)
+                    if existing:
+                        existing.cancel()
+                    _disconnect_tasks[task_key] = asyncio.create_task(
+                        _forfeit_timer(sio, room_name, removed.user_id, removed.username, dict(snap.get("roles", {})))
+                    )
+                else:
+                    room_members = await manager.get_room_members(room_name)
+                    await manager.broadcast_to_room(
+                        sio,
+                        room_name,
+                        "game.user_left",
+                        {
+                            "game_room_id": public_room_id(room_name),
+                            "user_id": removed.user_id,
+                            "username": removed.username,
+                            "room_members": room_members,
+                            "timestamp": utc_now(),
+                        },
+                    )
             elif room_name.startswith("chat:"):
                 await _cleanup_chat_room_on_disconnect(sio, sid, removed, room_name)
 
@@ -268,6 +394,15 @@ def register_websocket_handlers(sio: AsyncServer) -> None:
 
         await join_socket_room(sio, sid, room_name)
 
+        # Cancel any pending forfeit timer for this user in this room. This
+        # makes game.join idempotent: if the client reloaded or remounted
+        # between disconnect and now, we treat the rejoin as a reconnect
+        # rather than letting the 20-s timer expire mid-game.
+        task_key = f"{room_name}:{session.user_id}"
+        cancelled_task = _disconnect_tasks.pop(task_key, None)
+        if cancelled_task:
+            cancelled_task.cancel()
+
         # Store the player role so _persist_match_result can identify winner_id.
         role = str(data.get("role") or "")
         if role in ("player1", "player2"):
@@ -278,6 +413,23 @@ def register_websocket_handlers(sio: AsyncServer) -> None:
             await manager.set_room_data(room_name, "game_roles", existing_roles)
         room_members = await manager.get_room_members(room_name)
         last_state = await manager.get_room_data(room_name, "last_game_state")
+
+        # If we just cancelled a forfeit task, the opponent's UI still shows
+        # the disconnect countdown overlay — clear it.
+        if cancelled_task:
+            await manager.broadcast_to_room(
+                sio,
+                room_name,
+                "game.opponent_reconnected",
+                {
+                    "game_room_id": public_room_id(room_name),
+                    "user_id": session.user_id,
+                    "username": session.username,
+                    "room_members": room_members,
+                    "timestamp": utc_now(),
+                },
+                skip_sid=sid,
+            )
 
         await manager.broadcast_to_room(
             sio,
@@ -294,6 +446,72 @@ def register_websocket_handlers(sio: AsyncServer) -> None:
         )
         await sio.emit(
             "game.joined",
+            {
+                "game_room_id": public_room_id(room_name),
+                "your_user_id": session.user_id,
+                "room_members": room_members,
+                "last_state": last_state,
+                "timestamp": utc_now(),
+            },
+            to=sid,
+        )
+
+    @sio.on("game.rejoin")
+    async def game_rejoin(sid: str, data: dict[str, Any] | None) -> None:
+        session = await manager.get_session(sid)
+        if session is None:
+            await emit_error(sio, sid, "Session not found", "not_authenticated")
+            return
+
+        data = data if isinstance(data, dict) else {}
+        room_name = game_room_name(data.get("game_room_id"))
+
+        # Cancel any pending forfeit timer for this player.
+        task_key = f"{room_name}:{session.user_id}"
+        task = _disconnect_tasks.pop(task_key, None)
+        if task:
+            task.cancel()
+
+        # If forfeit already fired, send the result directly to this player.
+        forfeit_result = _forfeit_results.get(room_name)
+        if forfeit_result:
+            await sio.emit(
+                "game.forfeit",
+                {"game_room_id": public_room_id(room_name), **forfeit_result},
+                to=sid,
+            )
+            return
+
+        # Restore role mapping.
+        role = str(data.get("role") or "")
+        if role in ("player1", "player2"):
+            existing_roles = await manager.get_room_data(room_name, "game_roles") or {}
+            if not isinstance(existing_roles, dict):
+                existing_roles = {}
+            existing_roles["p1" if role == "player1" else "p2"] = session.user_id
+            await manager.set_room_data(room_name, "game_roles", existing_roles)
+
+        await join_socket_room(sio, sid, room_name)
+
+        room_members = await manager.get_room_members(room_name)
+        last_state = await manager.get_room_data(room_name, "last_game_state")
+
+        await manager.broadcast_to_room(
+            sio,
+            room_name,
+            "game.opponent_reconnected",
+            {
+                "game_room_id": public_room_id(room_name),
+                "user_id": session.user_id,
+                "username": session.username,
+                "room_members": room_members,
+                "timestamp": utc_now(),
+            },
+            skip_sid=sid,
+        )
+
+        await sio.emit(
+            "game.rejoined",
             {
                 "game_room_id": public_room_id(room_name),
                 "your_user_id": session.user_id,
@@ -698,6 +916,95 @@ def register_websocket_handlers(sio: AsyncServer) -> None:
         await manager.broadcast_to_room(sio, room_name, "dm.message", payload)
         if target_user_id not in room_members:
             await manager.send_to_user(sio, target_user_id, "dm.message", payload)
+
+    # ─── Typing indicator (public channels + DMs) ─────────────────────────
+    @sio.on("chat.typing")
+    async def chat_typing(sid: str, data: dict[str, Any] | None) -> None:
+        session = await manager.get_session(sid)
+        if session is None or not isinstance(data, dict):
+            return
+        try:
+            room_name = chat_room_name(data.get("room_id"))
+        except (TypeError, ValueError):
+            return
+        if room_name not in await manager.get_session_rooms(sid, "chat:"):
+            return
+        await manager.broadcast_to_room(
+            sio,
+            room_name,
+            "chat.typing",
+            {
+                "room_id": int(public_room_id(room_name)),
+                "user_id": session.user_id,
+                "username": session.username,
+                "timestamp": utc_now(),
+            },
+            skip_sid=sid,
+        )
+
+    @sio.on("dm.typing")
+    async def dm_typing(sid: str, data: dict[str, Any] | None) -> None:
+        session = await manager.get_session(sid)
+        if session is None or not isinstance(data, dict):
+            return
+        try:
+            target_user_id = int(data.get("target_user_id"))
+        except (TypeError, ValueError):
+            return
+        if target_user_id <= 0 or target_user_id == session.user_id:
+            return
+        room_name = dm_room_name(session.user_id, target_user_id)
+        await manager.broadcast_to_room(
+            sio,
+            room_name,
+            "dm.typing",
+            {
+                "from_user_id": session.user_id,
+                "username": session.username,
+                "timestamp": utc_now(),
+            },
+            skip_sid=sid,
+        )
+        # If recipient isn't currently in the DM room, push the event
+        # directly to their user channel so the chat list can show a hint.
+        room_members = await manager.get_room_members(room_name)
+        if target_user_id not in room_members:
+            await manager.send_to_user(
+                sio,
+                target_user_id,
+                "dm.typing",
+                {
+                    "from_user_id": session.user_id,
+                    "username": session.username,
+                    "timestamp": utc_now(),
+                },
+            )
+
+    # ─── Read receipts (DM only) ──────────────────────────────────────────
+    @sio.on("dm.read")
+    async def dm_read(sid: str, data: dict[str, Any] | None) -> None:
+        session = await manager.get_session(sid)
+        if session is None or not isinstance(data, dict):
+            return
+        try:
+            target_user_id = int(data.get("target_user_id"))
+        except (TypeError, ValueError):
+            return
+        if target_user_id <= 0 or target_user_id == session.user_id:
+            return
+        last_read_at = data.get("last_read_at")
+        room_name = dm_room_name(session.user_id, target_user_id)
+        payload = {
+            "reader_user_id": session.user_id,
+            "last_read_at": last_read_at,
+            "timestamp": utc_now(),
+        }
+        await manager.broadcast_to_room(sio, room_name, "dm.read", payload, skip_sid=sid)
+        # Always notify the target user directly too, in case they're not
+        # focused on this DM room.
+        room_members = await manager.get_room_members(room_name)
+        if target_user_id not in room_members:
+            await manager.send_to_user(sio, target_user_id, "dm.read", payload)
 
     @sio.on("ping")
     async def ping(sid: str) -> None:

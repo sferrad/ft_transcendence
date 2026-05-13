@@ -742,6 +742,10 @@ function Profile() {
                                     <div className="mt-1">{profile?.language ?? "-"}</div>
                                 </div>
                             </div>
+
+                            {profile?.user_id && (
+                                <MatchHistory userId={profile.user_id} isSelf={false} />
+                            )}
                         </div>
                     ) : (
                         <div className="mt-4 rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-4 text-[#1f2937]">

@@ -238,5 +238,23 @@
     "Opponent disconnected": "Opponent disconnected",
     "Waiting for reconnection...": "Waiting for reconnection...",
     "Game Paused": "Game Paused",
-    "Waiting for opponent...": "Waiting for opponent..."
+    "Waiting for opponent...": "Waiting for opponent...",
+    "disconnect.countdown_hint": "Waiting for opponent to reconnect...",
+    "forfeit.win_title": "Victory by Forfeit!",
+    "forfeit.win_desc": "{{name}} failed to reconnect in time.",
+    "forfeit.loss_title": "Defeat by Forfeit",
+    "forfeit.loss_desc": "You failed to reconnect in time.",
+    "rejoin.title": "Match in progress",
+    "rejoin.desc": "You left an ongoing match. Rejoin before time runs out.",
+    "rejoin.button": "Rejoin",
+    "rejoin.dismiss": "Abandon",
+    "Results": "Results",
+
+    "Invite to game": "Invite to game",
+    "Sending...": "Sending...",
+    "Game invite": "Game invite",
+    "Failed to send invite": "Failed to send invite",
+    "Invite expired": "Invite expired",
+    "is typing...": "is typing...",
+    "Seen": "Seen"
 }

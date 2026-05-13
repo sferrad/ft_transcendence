@@ -109,14 +109,32 @@ export async function saveMatchResult(opts: {
   })
 }
 
-export async function fetchMyMatches(): Promise<MatchResult[]> {
-  const res = await fetch('/api/game/me/matches/?limit=50', { headers: authHeaders() })
+export async function fetchMyMatches(opts?: { gameMode?: string }): Promise<MatchResult[]> {
+  const qs = new URLSearchParams({ limit: '50' })
+  if (opts?.gameMode) qs.set('game_mode', opts.gameMode)
+  const res = await fetch(`/api/game/me/matches/?${qs.toString()}`, { headers: authHeaders() })
   if (!res.ok) return []
   return res.json()
 }
 
 export async function fetchMyStats(): Promise<UserStats | null> {
   const res = await fetch('/api/game/me/stats/', { headers: authHeaders() })
+  if (!res.ok) return null
+  return res.json()
+}
+
+export async function fetchUserMatches(userId: number, opts?: { gameMode?: string }): Promise<MatchResult[]> {
+  if (!userId || userId <= 0) return []
+  const qs = new URLSearchParams({ limit: '50' })
+  if (opts?.gameMode) qs.set('game_mode', opts.gameMode)
+  const res = await fetch(`/api/game/users/${userId}/matches/?${qs.toString()}`, { headers: authHeaders() })
+  if (!res.ok) return []
+  return res.json()
+}
+
+export async function fetchUserStats(userId: number): Promise<UserStats | null> {
+  if (!userId || userId <= 0) return null
+  const res = await fetch(`/api/game/users/${userId}/stats/`, { headers: authHeaders() })
   if (!res.ok) return null
   return res.json()
 }

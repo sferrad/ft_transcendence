@@ -239,6 +239,24 @@
     "Opponent disconnected": "Adversaire déconnecté",
     "Waiting for reconnection...": "En attente de reconnexion...",
     "Game Paused": "Jeu en pause",
-    "Waiting for opponent...": "En attente de l'adversaire..."
+    "Waiting for opponent...": "En attente de l'adversaire...",
+    "disconnect.countdown_hint": "En attente de la reconnexion de l'adversaire...",
+    "forfeit.win_title": "Victoire par forfait !",
+    "forfeit.win_desc": "{{name}} n'a pas pu se reconnecter à temps.",
+    "forfeit.loss_title": "Défaite par forfait",
+    "forfeit.loss_desc": "Vous n'avez pas pu vous reconnecter à temps.",
+    "rejoin.title": "Partie en cours",
+    "rejoin.desc": "Vous avez quitté une partie. Rejoignez avant la fin du compte à rebours.",
+    "rejoin.button": "Rejoindre",
+    "rejoin.dismiss": "Abandonner",
+    "Results": "Résultats",
+
+    "Invite to game": "Inviter à jouer",
+    "Sending...": "Envoi...",
+    "Game invite": "Invitation à un match",
+    "Failed to send invite": "Échec de l'invitation",
+    "Invite expired": "Invitation expirée",
+    "is typing...": "est en train d'écrire...",
+    "Seen": "Vu"
 }
 

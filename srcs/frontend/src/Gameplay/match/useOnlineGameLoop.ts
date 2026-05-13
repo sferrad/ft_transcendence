@@ -4,6 +4,9 @@ import { type GameState, createInitialState, updateGame } from '../engine'
 import { GOAL_FLASH_DURATION_MS, FIXED_STEP_MS, MAX_CATCHUP_MS } from '../engine/constants'
 import type { Keys } from './inputHandler'
 
+// Partial game state payload used for checkpoint / restore.
+export type GameStateCheckpoint = Partial<GameState> & { timeLeftMs?: number | null }
+
 // Universal input snapshot sent/received over the network.
 interface NetInput {
   left: boolean
@@ -16,7 +19,6 @@ interface NetInput {
 
 const DOUBLE_TAP_MS = 260
 
-// Build the engine's Keys object from p1 and p2 universal inputs.
 function buildKeys(p1: NetInput, p2: NetInput): Keys {
   return {
     a: p1.left, d: p1.right, w: p1.up, g: p1.shoot,
@@ -26,6 +28,12 @@ function buildKeys(p1: NetInput, p2: NetInput): Keys {
   }
 }
 
+// Online mode is player1-authoritative:
+//  • player1 runs the simulation and broadcasts the full state every tick.
+//  • player2 sends its inputs over the wire and renders the state it
+//    receives — it does NOT simulate locally. This avoids the divergence
+//    that lockstep input-forwarding suffers from when packets arrive a few
+//    frames late.
 export function useOnlineGameLoop(
   role: 'player1' | 'player2',
   socket: Socket | null,
@@ -34,8 +42,10 @@ export function useOnlineGameLoop(
   paused: boolean = false,
   duration: number | null = null,
   winningScore: number | null = 3,
-  seed: number = Date.now(),
+  seed: number = 1,
 ) {
+  const isAuthoritative = role === 'player1'
+
   const [gameState, setGameState] = useState<GameState>(() => createInitialState(winningScore, seed))
   const [goalFlash, setGoalFlash] = useState<string | null>(null)
   const [timeLeft, setTimeLeft] = useState<number | null>(duration)
@@ -49,21 +59,77 @@ export function useOnlineGameLoop(
   const lastFrameTimeRef = useRef<number>(0)
   const timeLeftMsRef    = useRef<number | null>(duration !== null ? duration * 1000 : null)
   const displaySecsRef   = useRef<number | null>(duration)
+  const prevScoreRef     = useRef<{ p1: number; p2: number }>({ p1: 0, p2: 0 })
 
   // Local held state (updated by keydown/keyup)
-  const localHeld = useRef<Pick<NetInput, 'left' | 'right' | 'up'>>({ left: false, right: false, up: false })
-  // Local pulses pending consumption at next tick
-  const localPulses = useRef<Pick<NetInput, 'shoot' | 'dashLeft' | 'dashRight'>>({ shoot: false, dashLeft: false, dashRight: false })
-  // Remote player's last received held state
-  const remoteHeld = useRef<Pick<NetInput, 'left' | 'right' | 'up'>>({ left: false, right: false, up: false })
-  // Remote pulses pending consumption at next tick
+  const localHeld    = useRef<Pick<NetInput, 'left' | 'right' | 'up'>>({ left: false, right: false, up: false })
+  // Local pulses pending consumption at next tick (authoritative side only)
+  const localPulses  = useRef<Pick<NetInput, 'shoot' | 'dashLeft' | 'dashRight'>>({ shoot: false, dashLeft: false, dashRight: false })
+  // Remote player's last received held state (authoritative side only)
+  const remoteHeld   = useRef<Pick<NetInput, 'left' | 'right' | 'up'>>({ left: false, right: false, up: false })
+  // Remote pulses pending consumption at next tick (authoritative side only)
   const remotePulses = useRef<Pick<NetInput, 'shoot' | 'dashLeft' | 'dashRight'>>({ shoot: false, dashLeft: false, dashRight: false })
 
   const socketRef = useRef<Socket | null>(socket)
   useEffect(() => { socketRef.current = socket }, [socket])
   useEffect(() => { pausedRef.current = paused }, [paused])
 
-  // Send local input snapshot to opponent.
+  const showGoalFlash = useCallback((scorer: string) => {
+    goalFlashRef.current = true
+    setGoalFlash(scorer)
+    setTimeout(() => {
+      goalFlashRef.current = false
+      setGoalFlash(null)
+    }, GOAL_FLASH_DURATION_MS)
+  }, [])
+
+  // Apply a state snapshot received over the wire. Detects score changes to
+  // trigger goal flashes on the non-authoritative side (and on rejoin).
+  const applyStateSnapshot = useCallback((snap: GameStateCheckpoint) => {
+    const s = stateRef.current
+    const merged: GameState = {
+      ...s,
+      ...(snap.ball     !== undefined ? { ball: { ...s.ball, ...snap.ball } } : {}),
+      ...(snap.player1  !== undefined ? { player1: { ...s.player1, ...snap.player1 } } : {}),
+      ...(snap.player2  !== undefined ? { player2: { ...s.player2, ...snap.player2 } } : {}),
+      ...(snap.goal1    !== undefined ? { goal1: { ...s.goal1, ...snap.goal1 } } : {}),
+      ...(snap.goal2    !== undefined ? { goal2: { ...s.goal2, ...snap.goal2 } } : {}),
+      ...(snap.happening !== undefined ? { happening: snap.happening } : {}),
+      ...(typeof snap.framesUntilNextHappening === 'number' ? { framesUntilNextHappening: snap.framesUntilNextHappening } : {}),
+      ...(typeof snap.slowBallFrames === 'number' ? { slowBallFrames: snap.slowBallFrames } : {}),
+      ...(snap.status   !== undefined ? { status: snap.status } : {}),
+      ...(snap.winner   !== undefined ? { winner: snap.winner } : {}),
+    }
+
+    const prev = prevScoreRef.current
+    if (merged.player1.score > prev.p1) showGoalFlash(player1Name)
+    else if (merged.player2.score > prev.p2) showGoalFlash(player2Name)
+    prevScoreRef.current = { p1: merged.player1.score, p2: merged.player2.score }
+
+    stateRef.current = merged
+    setGameState(merged)
+
+    if (typeof snap.timeLeftMs === 'number') {
+      timeLeftMsRef.current = snap.timeLeftMs
+      const secs = Math.ceil(snap.timeLeftMs / 1000)
+      if (secs !== displaySecsRef.current) {
+        displaySecsRef.current = secs
+        setTimeLeft(secs)
+      }
+    }
+  }, [player1Name, player2Name, showGoalFlash])
+
+  // Exposed to OnlineMode so it can restore the last server-side state on
+  // rejoin (game.rejoined → last_state).
+  const restoreState = useCallback((checkpoint: GameStateCheckpoint) => {
+    applyStateSnapshot(checkpoint)
+  }, [applyStateSnapshot])
+
+  // ──────────────────────────────────────────────────────────────────────
+  //  INPUT CAPTURE: both sides capture local keystrokes and forward them.
+  //  player1 also uses its own input locally; player2's input only matters
+  //  once it reaches player1.
+  // ──────────────────────────────────────────────────────────────────────
   const sendInput = useCallback((extra?: Partial<Pick<NetInput, 'shoot' | 'dashLeft' | 'dashRight'>>) => {
     const s = socketRef.current
     if (!s?.connected) return
@@ -80,7 +146,6 @@ export function useOnlineGameLoop(
     })
   }, [])
 
-  // Keyboard handler: capture local input and relay to opponent.
   useEffect(() => {
     const lastTapAt = { left: 0, right: 0 }
 
@@ -133,9 +198,9 @@ export function useOnlineGameLoop(
     }
   }, [sendInput])
 
-  // Receive opponent's input from WebSocket.
+  // Authoritative side listens for remote input (player2's keystrokes).
   useEffect(() => {
-    if (!socket) return
+    if (!socket || !isAuthoritative) return
     const handler = (payload: unknown) => {
       const data = payload as { action?: { type?: string; keys?: Partial<NetInput> } }
       if (data?.action?.type !== 'input') return
@@ -149,18 +214,23 @@ export function useOnlineGameLoop(
     }
     socket.on('game.action', handler)
     return () => { socket.off('game.action', handler) }
-  }, [socket])
+  }, [socket, isAuthoritative])
 
-  const showGoalFlash = useCallback((scorer: string) => {
-    goalFlashRef.current = true
-    setGoalFlash(scorer)
-    setTimeout(() => {
-      goalFlashRef.current = false
-      setGoalFlash(null)
-    }, GOAL_FLASH_DURATION_MS)
-  }, [])
+  // Non-authoritative side listens for state broadcasts from player1.
+  useEffect(() => {
+    if (!socket || isAuthoritative) return
+    const handler = (payload: unknown) => {
+      const data = payload as { state?: GameStateCheckpoint }
+      if (!data?.state) return
+      applyStateSnapshot(data.state)
+    }
+    socket.on('game.update', handler)
+    return () => { socket.off('game.update', handler) }
+  }, [socket, isAuthoritative, applyStateSnapshot])
 
-  // Consume pending pulses and build Keys for one tick.
+  // ──────────────────────────────────────────────────────────────────────
+  //  SIMULATION (authoritative side only)
+  // ──────────────────────────────────────────────────────────────────────
   const consumeAndBuildKeys = useCallback((): Keys => {
     const localSnap: NetInput = {
       ...localHeld.current,
@@ -182,20 +252,46 @@ export function useOnlineGameLoop(
     remotePulses.current.dashLeft = false
     remotePulses.current.dashRight = false
 
-    const p1Input = role === 'player1' ? localSnap : remoteSnap
-    const p2Input = role === 'player1' ? remoteSnap : localSnap
-    return buildKeys(p1Input, p2Input)
-  }, [role])
+    return buildKeys(localSnap, remoteSnap)
+  }, [])
+
+  const broadcastState = useCallback(() => {
+    const s = socketRef.current
+    if (!s?.connected) return
+    const st = stateRef.current
+    s.emit('game.update', {
+      ball: st.ball,
+      player1: st.player1,
+      player2: st.player2,
+      goal1: st.goal1,
+      goal2: st.goal2,
+      happening: st.happening,
+      framesUntilNextHappening: st.framesUntilNextHappening,
+      slowBallFrames: st.slowBallFrames,
+      status: st.status,
+      winner: st.winner,
+      timeLeftMs: timeLeftMsRef.current,
+    })
+  }, [])
 
   const startLoop = useCallback(() => {
     let prevScore1 = stateRef.current.player1.score
     let prevScore2 = stateRef.current.player2.score
+    prevScoreRef.current = { p1: prevScore1, p2: prevScore2 }
 
     const loop = () => {
+      // Non-authoritative side: no local simulation. We just keep an RAF
+      // ticking so React batches re-renders smoothly when state arrives.
+      if (!isAuthoritative) {
+        animFrameRef.current = requestAnimationFrame(loop)
+        return
+      }
+
       if (pausedRef.current || goalFlashRef.current) {
         if (pausedRef.current) {
-          // Drain local pulses while paused so they don't fire on resume
+          // Drain pulses while paused so they don't fire on resume.
           localPulses.current = { shoot: false, dashLeft: false, dashRight: false }
+          remotePulses.current = { shoot: false, dashLeft: false, dashRight: false }
         }
         lastFrameTimeRef.current = performance.now()
         accumulatorRef.current = 0
@@ -217,7 +313,7 @@ export function useOnlineGameLoop(
 
       while (accumulatorRef.current >= FIXED_STEP_MS) {
         const keys = consumeAndBuildKeys()
-        const newState = updateGame(stateRef.current, keys, false) // isSolo=false: no AI
+        const newState = updateGame(stateRef.current, keys, false)
         accumulatorRef.current -= FIXED_STEP_MS
         stateRef.current = newState
         didUpdate = true
@@ -242,10 +338,12 @@ export function useOnlineGameLoop(
 
         if (newState.player1.score > prevScore1) {
           prevScore1 = newState.player1.score
+          prevScoreRef.current = { p1: prevScore1, p2: prevScore2 }
           showGoalFlash(player1Name)
           break
         } else if (newState.player2.score > prevScore2) {
           prevScore2 = newState.player2.score
+          prevScoreRef.current = { p1: prevScore1, p2: prevScore2 }
           showGoalFlash(player2Name)
           break
         }
@@ -253,7 +351,10 @@ export function useOnlineGameLoop(
         if (newState.status !== 'playing') break
       }
 
-      if (didUpdate) setGameState({ ...stateRef.current })
+      if (didUpdate) {
+        setGameState({ ...stateRef.current })
+        broadcastState()
+      }
 
       if (stateRef.current.status === 'playing') {
         animFrameRef.current = requestAnimationFrame(loop)
@@ -261,12 +362,12 @@ export function useOnlineGameLoop(
     }
 
     animFrameRef.current = requestAnimationFrame(loop)
-  }, [player1Name, player2Name, showGoalFlash, consumeAndBuildKeys])
+  }, [isAuthoritative, player1Name, player2Name, showGoalFlash, consumeAndBuildKeys, broadcastState])
 
   useEffect(() => {
     startLoop()
     return () => { cancelAnimationFrame(animFrameRef.current) }
   }, [startLoop])
 
-  return { gameState, goalFlash, timeLeft }
+  return { gameState, goalFlash, timeLeft, restoreState }
 }

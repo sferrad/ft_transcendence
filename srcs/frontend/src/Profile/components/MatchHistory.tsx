@@ -1,9 +1,19 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { fetchMyMatches, fetchMyStats, type MatchResult, type UserStats } from '../../Gameplay/api/matches'
+import {
+  fetchMyMatches,
+  fetchMyStats,
+  fetchUserMatches,
+  fetchUserStats,
+  type MatchResult,
+  type UserStats,
+} from '../../Gameplay/api/matches'
 
 interface Props {
+  // Owner of the displayed history. If `isSelf` is true, we use the
+  // authenticated /me endpoints; otherwise we use the public /users/{id} ones.
   userId: number
+  isSelf?: boolean
 }
 
 function formatDate(iso: string): string {
@@ -32,21 +42,27 @@ function XpBar({ xpInLevel, xpToNext }: { xpInLevel: number; xpToNext: number })
   )
 }
 
-export function MatchHistory({ userId }: Props) {
+export function MatchHistory({ userId, isSelf = true }: Props) {
   const { t } = useTranslation()
   const [matches, setMatches] = useState<MatchResult[]>([])
   const [stats, setStats] = useState<UserStats | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    setLoading(true)
+    const matchesPromise = isSelf
+      ? fetchMyMatches({ gameMode: 'online' })
+      : fetchUserMatches(userId, { gameMode: 'online' })
+    const statsPromise = isSelf ? fetchMyStats() : fetchUserStats(userId)
+
     Promise.all([
-      fetchMyMatches().then(data => data.filter(m => m.status === 'finished')),
-      fetchMyStats(),
+      matchesPromise.then(data => data.filter(m => m.status === 'finished')),
+      statsPromise,
     ]).then(([m, s]) => {
       setMatches(m)
       setStats(s)
     }).finally(() => setLoading(false))
-  }, [])
+  }, [userId, isSelf])
 
   if (loading) {
     return (
@@ -107,23 +123,23 @@ export function MatchHistory({ userId }: Props) {
               const effectiveId = userId > 0 ? userId : m.player1_id
               const isWin = m.winner_id === effectiveId
               const isDraw = m.winner_id === null
-              const isRanked = m.game_mode === 'online'
               const score = `${m.score_player1} - ${m.score_player2}`
+              // All matches here are online (filtered server-side) → always show LP.
               const row = isDraw
-                ? { label: t('stats.draw'), lp: isRanked ? '+5'  : '—', lpCls: 'text-yellow-700', rowCls: 'bg-yellow-100/80 border-yellow-300', labelCls: 'text-yellow-800', dateCls: 'text-yellow-700' }
+                ? { label: t('stats.draw'), lp: '+5',  lpCls: 'text-yellow-700', rowCls: 'bg-yellow-100/80 border-yellow-300', labelCls: 'text-yellow-800', dateCls: 'text-yellow-700' }
                 : isWin
-                ? { label: t('stats.win'),  lp: isRanked ? '+20' : '—', lpCls: 'text-green-700',  rowCls: 'bg-green-100/80 border-green-300',  labelCls: 'text-green-800',  dateCls: 'text-green-700' }
-                : { label: t('stats.loss'), lp: isRanked ? '-13' : '—', lpCls: 'text-red-700',    rowCls: 'bg-red-100/80 border-red-300',      labelCls: 'text-red-800',    dateCls: 'text-red-700' }
+                ? { label: t('stats.win'),  lp: '+20', lpCls: 'text-green-700',  rowCls: 'bg-green-100/80 border-green-300',  labelCls: 'text-green-800',  dateCls: 'text-green-700' }
+                : { label: t('stats.loss'), lp: '-13', lpCls: 'text-red-700',    rowCls: 'bg-red-100/80 border-red-300',      labelCls: 'text-red-800',    dateCls: 'text-red-700' }
 
               return (
                 <div
                   key={m.id}
                   className={`grid items-center rounded border px-3 py-1.5 text-sm gap-x-2 ${row.rowCls}`}
-                  style={{ gridTemplateColumns: '2rem 1fr 3rem 4rem' }}
+                  style={{ gridTemplateColumns: '2rem 1fr 4rem 4rem' }}
                 >
                   <span className={`font-arcade text-lg text-center ${row.labelCls}`}>{row.label}</span>
                   <span className="font-arcade text-lg tracking-widest text-center text-[#1f2937]">{score}</span>
-                  <span className={`font-arcade text-lg text-right whitespace-nowrap ${row.lpCls}`}>{row.lp}{isRanked ? ' LP' : ''}</span>
+                  <span className={`font-arcade text-lg text-right whitespace-nowrap ${row.lpCls}`}>{row.lp} LP</span>
                   <span className={`text-sm text-right whitespace-nowrap ${row.dateCls}`}>{m.created_at ? formatDate(m.created_at) : '-'}</span>
                 </div>
               )
@@ -132,8 +148,8 @@ export function MatchHistory({ userId }: Props) {
         )}
       </div>
 
-      {/* Achievements */}
-      {stats && stats.achievements.length > 0 && (
+      {/* Achievements (only on own profile) */}
+      {isSelf && stats && stats.achievements.length > 0 && (
         <div className="rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-4 text-[#1f2937]">
           <div className="mb-3 font-arcade tracking-wide text-base min-[481px]:text-lg">{t('stats.achievements')}</div>
           <div className="grid grid-cols-3 min-[481px]:grid-cols-6 gap-2">
