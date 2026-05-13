@@ -252,16 +252,33 @@ export function useGameWebSocket(gameRoomId?: string) {
   };
 }
 
+export interface TypingEvent {
+  from_user_id: number;
+  username?: string;
+  room_id?: number;
+  timestamp: number;
+}
+
+export interface ReadReceiptEvent {
+  reader_user_id: number;
+  last_read_at: string | null;
+  timestamp: number;
+}
+
 export function useChatWebSocket(roomId?: number, dmUserId?: number) {
   const { socket, connected, emit, on, off, error } = useWebSocket({ enabled: Boolean(roomId || dmUserId) });
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [roomMembers, setRoomMembers] = useState<number[]>([]);
   const [memberEvent, setMemberEvent] = useState<ChatMemberEvent | null>(null);
   const [lastMessage, setLastMessage] = useState<ChatMessage | null>(null);
+  const [typingEvent, setTypingEvent] = useState<TypingEvent | null>(null);
+  const [readReceipt, setReadReceipt] = useState<ReadReceiptEvent | null>(null);
 
   useEffect(() => {
     setMemberEvent(null);
-  }, [roomId]);
+    setTypingEvent(null);
+    setReadReceipt(null);
+  }, [roomId, dmUserId]);
 
   useEffect(() => {
     if (!socket) return;
@@ -342,11 +359,42 @@ export function useChatWebSocket(roomId?: number, dmUserId?: number) {
       });
     };
 
+    const handleTyping: EventHandler = (payload) => {
+      const data = asPayload(payload);
+      const fromUserId = Number(data.user_id ?? data.from_user_id);
+      if (!Number.isFinite(fromUserId) || fromUserId <= 0) return;
+      // Ignore our own typing pings.
+      const myId = typeof window !== 'undefined' ? Number(localStorage.getItem('user_id') ?? '0') : 0;
+      if (fromUserId === myId) return;
+      setTypingEvent({
+        from_user_id: fromUserId,
+        username: data.username === undefined ? undefined : String(data.username),
+        room_id: data.room_id === undefined ? undefined : Number(data.room_id),
+        timestamp: Date.now(),
+      });
+    };
+
+    const handleRead: EventHandler = (payload) => {
+      const data = asPayload(payload);
+      const readerUserId = Number(data.reader_user_id);
+      if (!Number.isFinite(readerUserId) || readerUserId <= 0) return;
+      const myId = typeof window !== 'undefined' ? Number(localStorage.getItem('user_id') ?? '0') : 0;
+      if (readerUserId === myId) return;
+      setReadReceipt({
+        reader_user_id: readerUserId,
+        last_read_at: data.last_read_at === undefined || data.last_read_at === null ? null : String(data.last_read_at),
+        timestamp: Date.now(),
+      });
+    };
+
     on('chat.joined', handleJoined);
     on('chat.message', handleMessage);
     on('chat.user_joined', handleUserJoined);
     on('chat.user_left', handleUserLeft);
     on('dm.message', handleDmMessage);
+    on('chat.typing', handleTyping);
+    on('dm.typing', handleTyping);
+    on('dm.read', handleRead);
 
     return () => {
       off('chat.joined', handleJoined);
@@ -354,6 +402,9 @@ export function useChatWebSocket(roomId?: number, dmUserId?: number) {
       off('chat.user_joined', handleUserJoined);
       off('chat.user_left', handleUserLeft);
       off('dm.message', handleDmMessage);
+      off('chat.typing', handleTyping);
+      off('dm.typing', handleTyping);
+      off('dm.read', handleRead);
     };
   }, [socket, on, off, roomId]);
 
@@ -364,6 +415,20 @@ export function useChatWebSocket(roomId?: number, dmUserId?: number) {
     if (!roomId) return false;
     return emit('chat.message', { room_id: roomId, content });
   }, [roomId, dmUserId, emit]);
+
+  const sendTyping = useCallback(() => {
+    if (dmUserId) {
+      return emit('dm.typing', { target_user_id: dmUserId });
+    }
+    if (!roomId) return false;
+    return emit('chat.typing', { room_id: roomId });
+  }, [roomId, dmUserId, emit]);
+
+  const sendRead = useCallback((lastReadAt?: string | null) => {
+    // Read receipts are DM-only for now.
+    if (!dmUserId) return false;
+    return emit('dm.read', { target_user_id: dmUserId, last_read_at: lastReadAt ?? null });
+  }, [dmUserId, emit]);
 
   const joinRoom = useCallback(() => {
     if (dmUserId) {
@@ -395,7 +460,11 @@ export function useChatWebSocket(roomId?: number, dmUserId?: number) {
     roomMembers,
     memberEvent,
     lastMessage,
+    typingEvent,
+    readReceipt,
     sendMessage,
+    sendTyping,
+    sendRead,
     joinRoom,
     leaveRoom,
   };

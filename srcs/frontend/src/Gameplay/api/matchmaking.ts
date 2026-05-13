@@ -50,6 +50,52 @@ export async function leaveMatchmaking(): Promise<void> {
   })
 }
 
+// ── DM invites: bypass the matchmaking queue and pair two known users. ──
+export async function createDmInvite(opts: {
+  targetUserId: number
+  playerName: string
+  playerNation: string
+  winningScore?: number | null
+  duration?: number | null
+}): Promise<MatchmakingResult> {
+  const res = await fetch(`/api/game/me/invites/dm/${opts.targetUserId}`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({
+      player_name: opts.playerName,
+      player_nation: opts.playerNation,
+      winning_score: opts.winningScore ?? 3,
+      duration: opts.duration ?? null,
+    }),
+  })
+  if (!res.ok) throw new Error(`Invite failed: ${res.status}`)
+  return res.json()
+}
+
+export async function acceptInvite(opts: {
+  matchId: number
+  playerName: string
+  playerNation: string
+}): Promise<MatchmakingResult> {
+  const res = await fetch(`/api/game/me/invites/${opts.matchId}/accept`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({
+      player_name: opts.playerName,
+      player_nation: opts.playerNation,
+    }),
+  })
+  if (!res.ok) throw new Error(`Accept failed: ${res.status}`)
+  return res.json()
+}
+
+export async function cancelInvite(matchId: number): Promise<void> {
+  await fetch(`/api/game/me/invites/${matchId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  })
+}
+
 export async function updateOnlineMatch(opts: {
   matchId: number
   score_player1: number

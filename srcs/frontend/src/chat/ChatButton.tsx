@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { MessageOut, ProfileOut, RoomOut } from "../Profile/types";
 import { createRoom, deleteRoom, getMessages, getPrivateMessages, getRoomMembers, getRooms, joinRoom } from "../Profile/api/chat";
@@ -6,6 +6,31 @@ import { fetchProfileByUserId } from "../Profile/api/profile";
 import { useTranslation } from "react-i18next";
 import { useChatWebSocket } from "../hooks/useWebSocket";
 import { setRoomLastSeen, useChatNotifications } from "../hooks/useChatNotifications";
+import { acceptInvite, cancelInvite, createDmInvite } from "../Gameplay/api/matchmaking";
+
+// Marker used to identify chat messages that are actually game invites.
+// Format: __GAME_INVITE__|<match_id>|<from_user_id>|<from_name>|<from_nation>
+const INVITE_PREFIX = "__GAME_INVITE__|";
+
+interface ParsedInvite {
+    matchId: number;
+    fromUserId: number;
+    fromName: string;
+    fromNation: string;
+}
+
+function parseInviteContent(content: string): ParsedInvite | null {
+    if (!content.startsWith(INVITE_PREFIX)) return null;
+    const parts = content.slice(INVITE_PREFIX.length).split("|");
+    if (parts.length < 4) return null;
+    const matchId = Number(parts[0]);
+    const fromUserId = Number(parts[1]);
+    if (!Number.isFinite(matchId) || matchId <= 0) return null;
+    if (!Number.isFinite(fromUserId) || fromUserId <= 0) return null;
+    return { matchId, fromUserId, fromName: parts[2], fromNation: parts[3] };
+}
+
+const TYPING_TIMEOUT_MS = 3500;
 
 type ChatButtonProps = {
     initialRoomId?: number | null;
@@ -27,10 +52,16 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
     const [isCreatingRoom, setIsCreatingRoom] = useState(false);
     const [isSubmittingMessage, setIsSubmittingMessage] = useState(false);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [typingUser, setTypingUser] = useState<{ userId: number; username?: string } | null>(null);
+    const [partnerLastReadAt, setPartnerLastReadAt] = useState<string | null>(null);
+    const [isInviting, setIsInviting] = useState(false);
+    const [busyInviteId, setBusyInviteId] = useState<number | null>(null);
     const avatarBlobsRef = useRef<Record<number, string>>({});
     const seenMemberEventRef = useRef<Set<string>>(new Set());
     const membersLoadedRoomIdRef = useRef<number | null>(null);
     const messageEndRef = useRef<HTMLDivElement | null>(null);
+    const lastTypingSentRef = useRef<number>(0);
+    const typingClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 
     const { t } = useTranslation();
@@ -94,7 +125,11 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
         lastMessage: wsLastMessage,
         connected: wsConnected,
         error: wsError,
+        typingEvent: wsTypingEvent,
+        readReceipt: wsReadReceipt,
         sendMessage: sendWsMessage,
+        sendTyping: sendWsTyping,
+        sendRead: sendWsRead,
         joinRoom: joinWsRoom,
         leaveRoom: leaveWsRoom,
     } = useChatWebSocket(selectedRoomId ?? undefined, selectedDmUserId ?? undefined);
@@ -404,6 +439,53 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
         hydrateProfilesByUserIds(partnerIds).catch(() => undefined);
     }, [rooms, token, currentUserId]);
 
+    // ── Typing indicator: handle incoming events, auto-clear after a delay ──
+    useEffect(() => {
+        if (!wsTypingEvent || selectedRoomId == null) return;
+        // For public channels, ignore typings from other rooms.
+        if (!isSelectedRoomDm && wsTypingEvent.room_id !== selectedRoomId) return;
+        // For DMs, only show typings from the DM partner.
+        if (isSelectedRoomDm && wsTypingEvent.from_user_id !== selectedDmUserId) return;
+
+        setTypingUser({ userId: wsTypingEvent.from_user_id, username: wsTypingEvent.username });
+        if (typingClearTimerRef.current) clearTimeout(typingClearTimerRef.current);
+        typingClearTimerRef.current = setTimeout(() => setTypingUser(null), TYPING_TIMEOUT_MS);
+    }, [wsTypingEvent, selectedRoomId, isSelectedRoomDm, selectedDmUserId]);
+
+    useEffect(() => () => {
+        if (typingClearTimerRef.current) clearTimeout(typingClearTimerRef.current);
+    }, []);
+
+    useEffect(() => {
+        setTypingUser(null);
+        setPartnerLastReadAt(null);
+    }, [selectedRoomId]);
+
+    // ── Read receipts: store the DM partner's last_read_at ──
+    useEffect(() => {
+        if (!wsReadReceipt || !isSelectedRoomDm) return;
+        if (wsReadReceipt.reader_user_id !== selectedDmUserId) return;
+        setPartnerLastReadAt(wsReadReceipt.last_read_at);
+    }, [wsReadReceipt, isSelectedRoomDm, selectedDmUserId]);
+
+    // ── Send a "read" event for the current DM whenever new messages arrive ──
+    useEffect(() => {
+        if (!isSelectedRoomDm || !selectedDmUserId || !wsConnected) return;
+        if (messages.length === 0) return;
+        const last = messages[messages.length - 1];
+        // Only signal "read" for messages from the partner.
+        if (last.sender_user_id !== selectedDmUserId) return;
+        sendWsRead(last.created_at ?? null);
+    }, [messages, isSelectedRoomDm, selectedDmUserId, wsConnected, sendWsRead]);
+
+    const handleTypingPing = useCallback(() => {
+        // Throttle: send at most once per 1.5s.
+        const now = Date.now();
+        if (now - lastTypingSentRef.current < 1500) return;
+        lastTypingSentRef.current = now;
+        sendWsTyping();
+    }, [sendWsTyping]);
+
     useEffect(() => {
         messageEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
     }, [messages, systemEvents, selectedRoomId]);
@@ -461,6 +543,73 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
             setStatus(null);
         } catch (error) {
             setStatus(error instanceof Error ? error.message : t("Failed to join room"));
+        }
+    };
+
+    const handleSendInvite = async () => {
+        if (!isSelectedRoomDm || !selectedDmUserId || !token) return;
+        const myName = localStorage.getItem("username") || "Player";
+        // Best-effort: read the user's preferred nation from their profile.
+        const me = profiles[currentUserId];
+        const myNation = me?.country?.trim() || "Algeria";
+
+        try {
+            setIsInviting(true);
+            const result = await createDmInvite({
+                targetUserId: selectedDmUserId,
+                playerName: myName,
+                playerNation: myNation,
+            });
+            if (result.status !== "matched" || !result.match_id) {
+                setStatus(t("Failed to send invite"));
+                return;
+            }
+            // Post a special chat message so the other side sees a clickable card.
+            const inviteContent = `${INVITE_PREFIX}${result.match_id}|${currentUserId}|${myName}|${myNation}`;
+            sendWsMessage(inviteContent);
+            setStatus(null);
+            // The inviter navigates to the online gameplay screen right away.
+            navigate("/online-gameplay", { state: { ...result, myNation } });
+        } catch (err) {
+            setStatus(err instanceof Error ? err.message : t("Failed to send invite"));
+        } finally {
+            setIsInviting(false);
+        }
+    };
+
+    const handleAcceptInvite = async (invite: ParsedInvite) => {
+        if (!token) return;
+        const myName = localStorage.getItem("username") || "Player";
+        const me = profiles[currentUserId];
+        const myNation = me?.country?.trim() || "Algeria";
+
+        try {
+            setBusyInviteId(invite.matchId);
+            const result = await acceptInvite({
+                matchId: invite.matchId,
+                playerName: myName,
+                playerNation: myNation,
+            });
+            if (result.status !== "matched" || !result.match_id) {
+                setStatus(t("Invite expired"));
+                return;
+            }
+            navigate("/online-gameplay", { state: { ...result, myNation } });
+        } catch (err) {
+            setStatus(err instanceof Error ? err.message : t("Invite expired"));
+        } finally {
+            setBusyInviteId(null);
+        }
+    };
+
+    const handleDeclineInvite = async (invite: ParsedInvite) => {
+        try {
+            setBusyInviteId(invite.matchId);
+            await cancelInvite(invite.matchId);
+        } catch {
+            // best-effort
+        } finally {
+            setBusyInviteId(null);
         }
     };
 
@@ -697,6 +846,16 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
                                 </div>
 
                                 <div className="flex flex-wrap gap-2">
+                                    {isSelectedRoomDm && (
+                                        <button
+                                            type="button"
+                                            onClick={handleSendInvite}
+                                            disabled={isInviting}
+                                            className="rounded-xl border-2 border-[#1f2937] bg-[#facc15] px-3 py-2 text-sm font-semibold text-[#1f2937] shadow-[3px_3px_0_#1f2937] transition hover:translate-x-[1px] hover:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
+                                        >
+                                            🎮 {isInviting ? t("Sending...") : t("Invite to game")}
+                                        </button>
+                                    )}
                                     {!isSelectedRoomDm && !isMember && (
                                         <button
                                             onClick={handleJoinRoom}
@@ -746,6 +905,12 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
                                 const displayName = profile?.display_name || `User ${message.sender_user_id}`;
                                 const avatarUrl = renderAvatar(message.sender_user_id);
                                 const isMine = currentUserId > 0 && message.sender_user_id === currentUserId;
+                                const invite = parseInviteContent(message.content);
+                                const isLastMine = isMine && index === messages.length - 1;
+                                const seenByPartner = Boolean(
+                                    isLastMine && isSelectedRoomDm && partnerLastReadAt && message.created_at &&
+                                    Date.parse(partnerLastReadAt) >= Date.parse(message.created_at)
+                                );
 
                                 return (
                                     <article
@@ -768,15 +933,59 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
                                             </button>
                                         )}
 
-                                        <div
-                                            className={`max-w-[86%] rounded-3xl border-2 border-[#1f2937] px-3 py-2.5 shadow-[4px_4px_0_#1f2937] sm:max-w-[80%] sm:px-4 sm:py-3 ${
-                                                isMine ? "bg-[#1f2937] text-white" : "bg-white text-[#1f2937]"
-                                            }`}
-                                        >
-                                            <div className={`mb-1 text-xs font-bold uppercase tracking-[0.18em] ${isMine ? "text-white/70" : "text-[#6b7280]"}`}>
-                                                {isMine ? t("You") : displayName}
-                                            </div>
-                                            <div className="break-words text-sm leading-6 sm:text-[0.95rem]">{message.content}</div>
+                                        <div className="flex max-w-[86%] flex-col gap-1 sm:max-w-[80%]">
+                                            {invite ? (
+                                                <div
+                                                    className={`rounded-3xl border-2 border-[#1f2937] px-3 py-3 shadow-[4px_4px_0_#1f2937] sm:px-4 sm:py-4 ${
+                                                        isMine ? "bg-blue-700 text-white" : "bg-white text-[#1f2937]"
+                                                    }`}
+                                                >
+                                                    <div className={`mb-1 text-xs font-bold uppercase tracking-[0.18em] ${isMine ? "text-white/70" : "text-[#6b7280]"}`}>
+                                                        {isMine ? t("You") : displayName}
+                                                    </div>
+                                                    <div className="font-semibold text-sm sm:text-base mb-2">
+                                                        🎮 {t("Game invite")}
+                                                    </div>
+                                                    {isMine ? (
+                                                        <div className={`text-xs ${isMine ? "text-white/80" : "text-[#6b7280]"}`}>{t("Waiting for opponent...")}</div>
+                                                    ) : (
+                                                        <div className="flex flex-wrap gap-2 mt-2">
+                                                            <button
+                                                                type="button"
+                                                                disabled={busyInviteId === invite.matchId}
+                                                                onClick={() => handleAcceptInvite(invite)}
+                                                                className="rounded-xl border-2 border-[#1f2937] bg-[#4AD95A] px-3 py-1.5 text-xs font-semibold text-[#1f2937] shadow-[2px_2px_0_#1f2937] transition hover:translate-x-[1px] hover:translate-y-[1px] disabled:opacity-60"
+                                                            >
+                                                                {t("Accept")}
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                disabled={busyInviteId === invite.matchId}
+                                                                onClick={() => handleDeclineInvite(invite)}
+                                                                className="rounded-xl border-2 border-[#1f2937] bg-white px-3 py-1.5 text-xs font-semibold text-[#1f2937] shadow-[2px_2px_0_#1f2937] transition hover:translate-x-[1px] hover:translate-y-[1px] disabled:opacity-60"
+                                                            >
+                                                                {t("Reject")}
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div
+                                                    className={`rounded-3xl border-2 border-[#1f2937] px-3 py-2.5 shadow-[4px_4px_0_#1f2937] sm:px-4 sm:py-3 ${
+                                                        isMine ? "bg-[#1f2937] text-white" : "bg-white text-[#1f2937]"
+                                                    }`}
+                                                >
+                                                    <div className={`mb-1 text-xs font-bold uppercase tracking-[0.18em] ${isMine ? "text-white/70" : "text-[#6b7280]"}`}>
+                                                        {isMine ? t("You") : displayName}
+                                                    </div>
+                                                    <div className="break-words text-sm leading-6 sm:text-[0.95rem]">{message.content}</div>
+                                                </div>
+                                            )}
+                                            {seenByPartner && (
+                                                <div className="text-[10px] text-blue-600 self-end font-semibold uppercase tracking-wider">
+                                                    ✓✓ {t("Seen")}
+                                                </div>
+                                            )}
                                         </div>
 
                                         {isMine && (
@@ -797,6 +1006,18 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
                                     </article>
                                 );
                             })}
+
+                            {/* Typing indicator */}
+                            {typingUser && isMember && (
+                                <div className="flex items-center gap-2 text-xs text-[#6b7280] pl-2">
+                                    <span className="inline-flex gap-1">
+                                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#6b7280] animate-bounce" style={{ animationDelay: "0ms" }} />
+                                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#6b7280] animate-bounce" style={{ animationDelay: "150ms" }} />
+                                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#6b7280] animate-bounce" style={{ animationDelay: "300ms" }} />
+                                    </span>
+                                    <span>{(profiles[typingUser.userId]?.display_name || typingUser.username || "Someone")} {t("is typing...")}</span>
+                                </div>
+                            )}
 
                             {systemEvents.map((event) => (
                                 <div
@@ -825,7 +1046,10 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
                                     type="text"
                                     placeholder={isMember ? t("Write a message...") : t("Join the channel to chat")}
                                     value={messageText}
-                                    onChange={(e) => setMessageText(e.target.value)}
+                                    onChange={(e) => {
+                                        setMessageText(e.target.value);
+                                        if (isMember && e.target.value.length > 0) handleTypingPing();
+                                    }}
                                     disabled={!isMember}
                                     className="min-w-0 flex-1 rounded-2xl border-2 border-[#1f2937] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-60 sm:px-4 sm:py-3"
                                 />
