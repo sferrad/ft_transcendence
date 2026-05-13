@@ -12,25 +12,49 @@ alerting:
 
 scrape_configs:
   - job_name: api-gateway
+    scheme: https
+    tls_config:
+      ca_file: /certs/ca.crt
+      insecure_skip_verify: false
     static_configs:
       - targets: ["api-gateway:8000"]
 
   - job_name: chat-service
+    scheme: https
+    tls_config:
+      ca_file: /certs/ca.crt
+      insecure_skip_verify: false
     static_configs:
       - targets: ["chat-service:8002"]
 
   - job_name: friends-service
+    scheme: https
+    tls_config:
+      ca_file: /certs/ca.crt
+      insecure_skip_verify: false
     static_configs:
       - targets: ["friends-service:8004"]
 
   - job_name: game-service
+    scheme: https
+    tls_config:
+      ca_file: /certs/ca.crt
+      insecure_skip_verify: false
     static_configs:
       - targets: ["game-service:8005"]
 
   - job_name: profile-service
+    scheme: https
+    tls_config:
+      ca_file: /certs/ca.crt
+      insecure_skip_verify: false
     static_configs:
       - targets: ["profile-service:8006"]
       
   - job_name: user-service
+    scheme: https
+    tls_config:
+      ca_file: /certs/ca.crt
+      insecure_skip_verify: false
     static_configs:
       - targets: ["user-service:8001"]
