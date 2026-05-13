@@ -95,7 +95,8 @@ function Profile() {
     const [editableLanguage, setEditableLanguage] = useState<string>("");
     const myUsername = localStorage.getItem("username") ?? "";
     const myUserId = Number(localStorage.getItem("user_id") ?? "0");
-    const isMe = (!user && !userIdParam) || user === myUsername || (!!userId && myUserId > 0 && userId === myUserId);
+    const hasAuthToken = Boolean(localStorage.getItem("access_token"));
+    const isMe = hasAuthToken && ((!user && !userIdParam) || user === myUsername || (!!userId && myUserId > 0 && userId === myUserId));
 
     const isAlreadyFriend = !isMe && !!profile?.user_id && friends.some((f) => f.userId === profile.user_id);
 
@@ -630,9 +631,9 @@ function Profile() {
                                 </button>
                             </div>
 
-                            <div className="whitespace-pre-wrap break-words text-sm min-[481px]:text-base">
+                            <pre className="whitespace-pre-wrap break-words text-sm min-[481px]:text-base font-sans m-0">
                                 {profile?.bio ?? t("Aucune bio")}
-                            </div>
+                            </pre>
 
                             <div className="mt-4 flex flex-wrap gap-3">
                                 <button
