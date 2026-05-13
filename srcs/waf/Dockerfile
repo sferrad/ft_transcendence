@@ -26,6 +26,10 @@ COPY ./conf/nginx.conf /etc/nginx/nginx.conf
 COPY ./conf/modsecurity.conf /etc/nginx/modsecurity.d/modsecurity-override.conf
 COPY ./conf/crs-setup.conf /etc/modsecurity.d/owasp-crs/crs-setup.conf
 
+# Script d'entrypoint: détecte le DNS resolver (Docker vs Podman) et patch nginx.conf.
+COPY ./conf/20-set-resolver.sh /docker-entrypoint.d/20-set-resolver.sh
+RUN chmod +x /docker-entrypoint.d/20-set-resolver.sh
+
 EXPOSE 80 443
 
 CMD ["nginx", "-g", "daemon off;"]
