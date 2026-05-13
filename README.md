@@ -31,10 +31,10 @@ Recommended role split for evaluation:
 
 | Role | Suggested owner |
 | --- | --- |
-| Product Owner | Fill with your actual team member |
-| Project Manager / Scrum Master | Fill with your actual team member |
-| Technical Lead / Architect | Fill with your actual team member |
-| Developers | Fill with your actual team members |
+| Product Owner | Sabry Ferrad |
+| Project Manager / Scrum Master | Idriss Taharbouche |
+| Technical Lead / Architect | Andy Kammerer |
+| Developers | Ilias Kaddouri, Mohamed Bilal El Halimi |
 
 ## Main Features
 

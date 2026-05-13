@@ -539,6 +539,7 @@ services:
     image: prometheus
     volumes:
     - prometheus-data:/prometheus
+    - ./certs/internal:/certs:ro
     ports:
       - "9090:9090"
     networks:
