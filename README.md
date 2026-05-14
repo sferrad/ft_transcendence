@@ -141,23 +141,23 @@ Models are defined in SQLAlchemy and serve as the single source of truth.
 
 | Feature | Description | Team member(s) |
 |---|---|---|
-| Register / login | Email + password, bcrypt hash, JWT issued by API gateway | ankammer, moel-hal |
+| Register / login | Email + password, bcrypt hash, JWT issued by API gateway | ankammer |
 | JWT auth & revocation | JWT secret from Vault, Redis blacklist on logout/deletion | ankammer |
-| User profile | Avatar upload, bio, language, country, display name | moel-hal, ilkaddou |
-| Friends system | Send/accept/decline/block requests, online status | moel-hal |
-| Public chat rooms | Create rooms, send/receive messages in real time | moel-hal, ilkaddou |
-| Private messages (DM) | Find-or-create DM room, bilateral message deletion on account removal | moel-hal |
-| Real-time (WebSocket) | Socket.IO via API gateway, room events broadcast | ankammer, ilkaddou |
-| Browser game (solo) | Headball-style game vs AI opponent | ilkaddou |
-| Browser game (local) | Two players on the same screen | ilkaddou |
-| AI opponent | Rule-based AI with adjustable difficulty | ilkaddou |
-| GDPR account deletion | Public messages anonymised (`sender_user_id=0`), DMs deleted, JWT blacklisted | moel-hal, ankammer |
-| Data export | User can download their data as JSON | moel-hal |
-| Internationalisation | EN / FR / ES with language switcher | ilkaddou |
-| WAF | Nginx + ModSecurity OWASP CRS, rate limiting, TLS termination | ankammer |
-| Secrets management | HashiCorp Vault for JWT secret, DB credentials | ankammer, itaharbo |
+| User profile | Avatar upload, bio, language, country, display name | sferrad |
+| Friends system | Send/accept/decline/block requests, online status | sferrad |
+| Public chat rooms | Create rooms, send/receive messages in real time | sferrad, ilkaddou |
+| Private messages (DM) | Find-or-create DM room, bilateral message deletion on account removal | sferrad, ilkaddou |
+| Real-time (WebSocket) | Socket.IO via API gateway, room events broadcast | itaharbo, sferrad |
+| Browser game (solo) | Headball-style game vs AI opponent | ilkaddou, moel-hal |
+| Browser game (local) | Two players on the same screen | ilkaddou, moel-hal |
+| AI opponent | Rule-based AI with adjustable difficulty | ilkaddou, moel-hal |
+| GDPR account deletion | Public messages anonymised (`sender_user_id=0`), DMs deleted, JWT blacklisted | ankammer |
+| Data export | User can download their data as JSON | ankammer |
+| Internationalisation | EN / FR / ES with language switcher | sferrad |
+| WAF | Nginx + ModSecurity OWASP CRS, rate limiting, TLS termination | ankammer, ilkaddou |
+| Secrets management | HashiCorp Vault for JWT secret, DB credentials | ankammer |
 | Monitoring | Prometheus metrics on all services, Grafana dashboards | itaharbo |
-| Privacy Policy & ToS | Accessible from footer, real content | sferrad |
+| Privacy Policy & ToS | Accessible from footer, real content | ankammer |
 | Containerisation | docker-compose / podman-compose, single `make` command | itaharbo |
 
 ---
