@@ -10,9 +10,12 @@ import { acceptInvite, cancelInvite, createDmInvite } from "../Gameplay/api/matc
 import { savePendingInvite } from "../utils/pendingInvite";
 import { markInviteResolved, getResolvedIds, onResolvedUpdated } from "../utils/resolvedInvites";
 import { getFriendsWithStatus } from "../Profile/api/friends";
+import { CHARACTERS } from "../characters";
+import { SCORE_OPTIONS, TIMER_OPTIONS, SCORE_DEFAULT, TIMER_DEFAULT } from "../Gameplay/engine/constants";
+import { THEMES, THEME_DEFAULT } from "../Gameplay/themes";
 
 // Marker used to identify chat messages that are actually game invites.
-// Format: __GAME_INVITE__|<match_id>|<from_user_id>|<from_name>|<from_nation>
+// Format: __GAME_INVITE__|<match_id>|<from_user_id>|<from_name>|<from_nation>|<winning_score>|<duration>|<theme_id>
 const INVITE_PREFIX = "__GAME_INVITE__|";
 
 interface ParsedInvite {
@@ -20,6 +23,9 @@ interface ParsedInvite {
     fromUserId: number;
     fromName: string;
     fromNation: string;
+    winningScore: 3 | 5 | null;
+    duration: 30 | 60 | null;
+    themeId: string;
 }
 
 function parseInviteContent(content: string): ParsedInvite | null {
@@ -30,16 +36,22 @@ function parseInviteContent(content: string): ParsedInvite | null {
     const fromUserId = Number(parts[1]);
     if (!Number.isFinite(matchId) || matchId <= 0) return null;
     if (!Number.isFinite(fromUserId) || fromUserId <= 0) return null;
-    return { matchId, fromUserId, fromName: parts[2], fromNation: parts[3] };
+    const rawScore = parts[4];
+    const rawDuration = parts[5];
+    const winningScore = rawScore === "null" ? null : ([3, 5] as const).includes(Number(rawScore) as 3 | 5) ? Number(rawScore) as 3 | 5 : SCORE_DEFAULT;
+    const duration = rawDuration === "null" ? null : ([30, 60] as const).includes(Number(rawDuration) as 30 | 60) ? Number(rawDuration) as 30 | 60 : TIMER_DEFAULT;
+    const themeId = parts[6] || THEME_DEFAULT.id;
+    return { matchId, fromUserId, fromName: parts[2], fromNation: parts[3], winningScore, duration, themeId };
 }
 
 const TYPING_TIMEOUT_MS = 3500;
 
 type ChatButtonProps = {
     initialRoomId?: number | null;
+    initialDmUserId?: number | null;
 };
 
-export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
+export function ChatButton({ initialRoomId = null, initialDmUserId = null }: ChatButtonProps) {
     const navigate = useNavigate();
     const [rooms, setRooms] = useState<RoomOut[]>([]);
     const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
@@ -67,6 +79,13 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
     const [partnerLastReadAt, setPartnerLastReadAt] = useState<string | null>(null);
     const [isInviting, setIsInviting] = useState(false);
     const [busyInviteId, setBusyInviteId] = useState<number | null>(null);
+    const [showInviteModal, setShowInviteModal] = useState(false);
+    const [inviteNation, setInviteNation] = useState<string>("Algeria");
+    const [inviteScore, setInviteScore] = useState<3 | 5 | null>(SCORE_DEFAULT);
+    const [inviteDuration, setInviteDuration] = useState<30 | 60 | null>(TIMER_DEFAULT);
+    const [inviteThemeId, setInviteThemeId] = useState<string>(THEME_DEFAULT.id);
+    const [pendingAccept, setPendingAccept] = useState<ParsedInvite | null>(null);
+    const [acceptNation, setAcceptNation] = useState<string>("Algeria");
     const [resolvedInviteIds, setResolvedInviteIds] = useState<Set<number>>(() => getResolvedIds());
     const avatarBlobsRef = useRef<Record<number, string>>({});
     const seenMemberEventRef = useRef<Set<string>>(new Set());
@@ -195,9 +214,6 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
     const publicChannels = useMemo(() => orderedRooms.filter(r => !r.is_private && !getDmOtherUserId(r)), [orderedRooms]);
     // Private groups: is_private=true, not a DM
     const privateGroups = useMemo(() => orderedRooms.filter(r => r.is_private && !getDmOtherUserId(r)), [orderedRooms]);
-    // Keep channelRooms for backward compat (used in existing sidebar)
-    const channelRooms = useMemo(() => [...publicChannels, ...privateGroups], [publicChannels, privateGroups]);
-
     const dmUserIds = useMemo(() => new Set(dmRooms.map(r => getDmOtherUserId(r)).filter(Boolean) as number[]), [dmRooms]);
     const friendsWithoutDm = useMemo(() => allFriendIds.filter(id => !dmUserIds.has(id)), [allFriendIds, dmUserIds]);
 
@@ -280,6 +296,12 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
         const exists = visibleRooms.some((room) => room.id === initialRoomId);
         if (exists) setSelectedRoomId(initialRoomId);
     }, [initialRoomId, visibleRooms, selectedRoomId]);
+
+    useEffect(() => {
+        if (!initialDmUserId || selectedRoomId != null || visibleRooms.length === 0) return;
+        const dmRoom = visibleRooms.find((room) => getDmOtherUserId(room) === initialDmUserId);
+        if (dmRoom) setSelectedRoomId(dmRoom.id);
+    }, [initialDmUserId, visibleRooms, selectedRoomId]);
 
     useEffect(() => {
         if (selectedRoomId == null) return;
@@ -607,29 +629,36 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
         }
     };
 
-    const handleSendInvite = async () => {
+    const handleSendInvite = () => {
+        if (!isSelectedRoomDm || !selectedDmUserId || !token) return;
+        const me = profiles[currentUserId];
+        setInviteNation(me?.country?.trim() || "Algeria");
+        setInviteScore(SCORE_DEFAULT);
+        setInviteDuration(TIMER_DEFAULT);
+        setInviteThemeId(THEME_DEFAULT.id);
+        setShowInviteModal(true);
+    };
+
+    const handleConfirmInvite = async () => {
         if (!isSelectedRoomDm || !selectedDmUserId || !token) return;
         const myName = localStorage.getItem("username") || "Player";
-        // Best-effort: read the user's preferred nation from their profile.
-        const me = profiles[currentUserId];
-        const myNation = me?.country?.trim() || "Algeria";
-
         try {
             setIsInviting(true);
+            setShowInviteModal(false);
             const result = await createDmInvite({
                 targetUserId: selectedDmUserId,
                 playerName: myName,
-                playerNation: myNation,
+                playerNation: inviteNation,
+                winningScore: inviteScore,
+                duration: inviteDuration,
             });
             if (result.status !== "matched" || !result.match_id) {
                 setStatus(t("Failed to send invite"));
                 return;
             }
-            // Post a special chat message so the other side sees a clickable card.
-            const inviteContent = `${INVITE_PREFIX}${result.match_id}|${currentUserId}|${myName}|${myNation}`;
+            const inviteContent = `${INVITE_PREFIX}${result.match_id}|${currentUserId}|${myName}|${inviteNation}|${inviteScore}|${inviteDuration}|${inviteThemeId}`;
             sendWsMessage(inviteContent);
-            // Save pending invite so GlobalOverlays can notify the inviter when opponent joins.
-            savePendingInvite({ ...result, myNation });
+            savePendingInvite({ ...result, myNation: inviteNation, themeId: inviteThemeId });
             setStatus(t("Invite sent! Waiting for opponent…"));
         } catch (err) {
             setStatus(err instanceof Error ? err.message : t("Failed to send invite"));
@@ -638,18 +667,23 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
         }
     };
 
-    const handleAcceptInvite = async (invite: ParsedInvite) => {
-        if (!token) return;
-        const myName = localStorage.getItem("username") || "Player";
+    const handleAcceptInvite = (invite: ParsedInvite) => {
         const me = profiles[currentUserId];
-        const myNation = me?.country?.trim() || "Algeria";
+        setAcceptNation(me?.country?.trim() || "Algeria");
+        setPendingAccept(invite);
+    };
 
+    const handleConfirmAccept = async () => {
+        if (!pendingAccept || !token) return;
+        const invite = pendingAccept;
+        const myName = localStorage.getItem("username") || "Player";
         try {
             setBusyInviteId(invite.matchId);
+            setPendingAccept(null);
             const result = await acceptInvite({
                 matchId: invite.matchId,
                 playerName: myName,
-                playerNation: myNation,
+                playerNation: acceptNation,
             });
             if (result.status !== "matched" || !result.match_id) {
                 markInviteResolved(invite.matchId);
@@ -657,7 +691,7 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
                 return;
             }
             markInviteResolved(invite.matchId);
-            navigate("/online-gameplay", { state: { ...result, myNation } });
+            navigate("/online-gameplay", { state: { ...result, myNation: acceptNation, themeId: invite.themeId } });
         } catch {
             markInviteResolved(invite.matchId);
         } finally {
@@ -740,7 +774,16 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
         try {
             const ids = [currentUserId, friendId].sort((a, b) => a - b);
             const name = `dm-${ids[0]}-${ids[1]}`;
-            const room = await createRoom(token, { name, is_private: true });
+            let room: RoomOut;
+            try {
+                room = await createRoom(token, { name, is_private: true });
+            } catch {
+                // Room déjà existante (409) — récupérer depuis la liste fraîche
+                const freshRooms = await getRooms(token);
+                const found = freshRooms.find(r => r.name === name);
+                if (!found) { setStatus(t("Failed to start conversation")); return; }
+                room = found;
+            }
             await refreshRooms();
             setSelectedRoomId(room.id);
             setIsNewDmOpen(false);
@@ -1205,10 +1248,10 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
                                             {isInviteMemberOpen && (
                                                 <div className="absolute right-0 top-full mt-2 z-50 w-56 rounded-2xl border-2 border-[#1f2937] bg-white shadow-[4px_4px_0_#1f2937] p-3 flex flex-col gap-2">
                                                     <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#374151]">{t("Invite a friend")}</div>
-                                                    {allFriendIds.filter(id => !memberIds.includes(id)).length === 0 ? (
+                                                    {allFriendIds.filter(id => !roomMemberIds.includes(id)).length === 0 ? (
                                                         <p className="text-xs text-[#9ca3af]">{t("All friends are already in this group.")}</p>
                                                     ) : (
-                                                        allFriendIds.filter(id => !memberIds.includes(id)).map(fid => {
+                                                        allFriendIds.filter(id => !roomMemberIds.includes(id)).map(fid => {
                                                             const name = profiles[fid]?.display_name || `User ${fid}`;
                                                             return (
                                                                 <button
@@ -1350,8 +1393,15 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
                                                             <div className={`mb-1 text-xs font-bold uppercase tracking-[0.18em] ${isMine ? "text-white/70" : "text-[#6b7280]"}`}>
                                                                 {isMine ? t("You") : displayName}
                                                             </div>
-                                                            <div className="font-semibold text-sm sm:text-base mb-2">
+                                                            <div className="font-semibold text-sm sm:text-base mb-1">
                                                                 🎮 {t("Game invite")}
+                                                            </div>
+                                                            <div className={`flex gap-2 text-[11px] mb-2 ${isMine ? "text-white/70" : "text-[#6b7280]"}`}>
+                                                                <span>{invite.winningScore !== null ? `${invite.winningScore} ${t("goals")}` : "∞ " + t("goals")}</span>
+                                                                <span>·</span>
+                                                                <span>{invite.duration !== null ? `${invite.duration}s` : "∞"}</span>
+                                                                <span>·</span>
+                                                                <span>{t(THEMES.find(th => th.id === invite.themeId)?.nameKey ?? THEME_DEFAULT.nameKey, invite.themeId)}</span>
                                                             </div>
                                                             {resolvedInviteIds.has(invite.matchId) ? (
                                                                 <div className="text-xs text-gray-400 italic mt-1">{t("Invite expired", "Invitation expirée")}</div>
@@ -1509,6 +1559,97 @@ export function ChatButton({ initialRoomId = null }: ChatButtonProps) {
                     </div>
                 </main>
             </div>
+
+            {/* ── Modal sélection inviteur ── */}
+            {showInviteModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowInviteModal(false)}>
+                    <div className="w-[min(92vw,22rem)] rounded-3xl border-4 border-[#1f2937] bg-[#f5efe2] p-6 shadow-[8px_8px_0_#1f2937]" onClick={e => e.stopPropagation()}>
+                        <div className="mb-4 text-center text-base font-bold uppercase tracking-widest text-[#1f2937]">🎮 {t("Game invite")}</div>
+
+                        {/* Nation picker */}
+                        <div className="mb-4 flex flex-col items-center gap-2">
+                            <span className="text-xs font-bold uppercase tracking-widest text-[#6b7280]">{t("Your character")}</span>
+                            <div className="flex items-center gap-3">
+                                <button type="button" onClick={() => { const i = CHARACTERS.indexOf(inviteNation as typeof CHARACTERS[number]); setInviteNation(CHARACTERS[(i - 1 + CHARACTERS.length) % CHARACTERS.length]); }} className="rounded-xl border-2 border-[#1f2937] bg-white px-3 py-1.5 text-lg font-bold shadow-[2px_2px_0_#1f2937]">◀</button>
+                                <div className="flex flex-col items-center gap-1 w-24">
+                                    <img src={`/assets/perso/faces/${inviteNation.toLowerCase()}-face.png`} alt={inviteNation} className="w-14 h-14 object-contain" />
+                                    <span className="text-xs font-semibold text-[#1f2937]">{inviteNation}</span>
+                                </div>
+                                <button type="button" onClick={() => { const i = CHARACTERS.indexOf(inviteNation as typeof CHARACTERS[number]); setInviteNation(CHARACTERS[(i + 1) % CHARACTERS.length]); }} className="rounded-xl border-2 border-[#1f2937] bg-white px-3 py-1.5 text-lg font-bold shadow-[2px_2px_0_#1f2937]">▶</button>
+                            </div>
+                        </div>
+
+                        {/* Score */}
+                        <div className="mb-3 flex items-center justify-between gap-2">
+                            <span className="text-xs font-bold uppercase tracking-widest text-[#6b7280]">{t("Goals")}</span>
+                            <div className="flex gap-1.5">
+                                {SCORE_OPTIONS.map(opt => (
+                                    <button key={String(opt)} type="button" onClick={() => setInviteScore(opt)} className={`rounded-xl border-2 border-[#1f2937] px-3 py-1 text-xs font-bold shadow-[2px_2px_0_#1f2937] transition ${inviteScore === opt ? "bg-[#facc15] text-[#1f2937]" : "bg-white text-[#1f2937]"}`}>{opt === null ? "∞" : opt}</button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Timer */}
+                        <div className="mb-3 flex items-center justify-between gap-2">
+                            <span className="text-xs font-bold uppercase tracking-widest text-[#6b7280]">{t("Time")}</span>
+                            <div className="flex gap-1.5">
+                                {TIMER_OPTIONS.map(opt => (
+                                    <button key={String(opt)} type="button" onClick={() => setInviteDuration(opt)} className={`rounded-xl border-2 border-[#1f2937] px-3 py-1 text-xs font-bold shadow-[2px_2px_0_#1f2937] transition ${inviteDuration === opt ? "bg-[#facc15] text-[#1f2937]" : "bg-white text-[#1f2937]"}`}>{opt === null ? "∞" : `${opt}s`}</button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Theme */}
+                        <div className="mb-5 flex items-center justify-between gap-2">
+                            <span className="text-xs font-bold uppercase tracking-widest text-[#6b7280]">{t("Theme")}</span>
+                            <div className="flex gap-1.5">
+                                {THEMES.map(th => (
+                                    <button key={th.id} type="button" onClick={() => setInviteThemeId(th.id)} className={`rounded-xl border-2 border-[#1f2937] px-3 py-1 text-xs font-bold shadow-[2px_2px_0_#1f2937] transition ${inviteThemeId === th.id ? "bg-[#facc15] text-[#1f2937]" : "bg-white text-[#1f2937]"}`}>{t(th.nameKey, th.id)}</button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="flex gap-2">
+                            <button type="button" onClick={() => setShowInviteModal(false)} className="flex-1 rounded-2xl border-2 border-[#1f2937] bg-white py-2 text-sm font-semibold text-[#1f2937] shadow-[2px_2px_0_#1f2937]">{t("Cancel")}</button>
+                            <button type="button" onClick={handleConfirmInvite} disabled={isInviting} className="flex-1 rounded-2xl border-2 border-[#1f2937] bg-[#4AD95A] py-2 text-sm font-semibold text-[#1f2937] shadow-[2px_2px_0_#1f2937] disabled:opacity-60">{t("Send invite")}</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Modal sélection accepteur ── */}
+            {pendingAccept && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setPendingAccept(null)}>
+                    <div className="w-[min(92vw,22rem)] rounded-3xl border-4 border-[#1f2937] bg-[#f5efe2] p-6 shadow-[8px_8px_0_#1f2937]" onClick={e => e.stopPropagation()}>
+                        <div className="mb-4 text-center text-base font-bold uppercase tracking-widest text-[#1f2937]">🎮 {t("Game invite")}</div>
+
+                        {/* Nation picker */}
+                        <div className="mb-3 flex flex-col items-center gap-2">
+                            <span className="text-xs font-bold uppercase tracking-widest text-[#6b7280]">{t("Your character")}</span>
+                            <div className="flex items-center gap-3">
+                                <button type="button" onClick={() => { const i = CHARACTERS.indexOf(acceptNation as typeof CHARACTERS[number]); setAcceptNation(CHARACTERS[(i - 1 + CHARACTERS.length) % CHARACTERS.length]); }} className="rounded-xl border-2 border-[#1f2937] bg-white px-3 py-1.5 text-lg font-bold shadow-[2px_2px_0_#1f2937]">◀</button>
+                                <div className="flex flex-col items-center gap-1 w-24">
+                                    <img src={`/assets/perso/faces/${acceptNation.toLowerCase()}-face.png`} alt={acceptNation} className="w-14 h-14 object-contain" />
+                                    <span className="text-xs font-semibold text-[#1f2937]">{acceptNation}</span>
+                                </div>
+                                <button type="button" onClick={() => { const i = CHARACTERS.indexOf(acceptNation as typeof CHARACTERS[number]); setAcceptNation(CHARACTERS[(i + 1) % CHARACTERS.length]); }} className="rounded-xl border-2 border-[#1f2937] bg-white px-3 py-1.5 text-lg font-bold shadow-[2px_2px_0_#1f2937]">▶</button>
+                            </div>
+                        </div>
+
+                        {/* Paramètres imposés par l'inviteur (lecture seule) */}
+                        <div className="mb-5 flex items-center justify-between gap-2 text-xs text-[#6b7280]">
+                            <span>{pendingAccept.winningScore !== null ? `${pendingAccept.winningScore} ${t("goals")}` : "∞ " + t("goals")}</span>
+                            <span>{pendingAccept.duration !== null ? `${pendingAccept.duration}s` : "∞"}</span>
+                            <span>{t(THEMES.find(th => th.id === pendingAccept.themeId)?.nameKey ?? THEME_DEFAULT.nameKey, pendingAccept.themeId)}</span>
+                        </div>
+
+                        <div className="flex gap-2">
+                            <button type="button" onClick={() => { handleDeclineInvite(pendingAccept); setPendingAccept(null); }} className="flex-1 rounded-2xl border-2 border-[#1f2937] bg-white py-2 text-sm font-semibold text-[#1f2937] shadow-[2px_2px_0_#1f2937]">{t("Decline")}</button>
+                            <button type="button" onClick={handleConfirmAccept} disabled={busyInviteId === pendingAccept.matchId} className="flex-1 rounded-2xl border-2 border-[#1f2937] bg-[#4AD95A] py-2 text-sm font-semibold text-[#1f2937] shadow-[2px_2px_0_#1f2937] disabled:opacity-60">{t("Accept")}</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

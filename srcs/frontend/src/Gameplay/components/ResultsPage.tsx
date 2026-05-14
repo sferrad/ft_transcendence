@@ -121,7 +121,7 @@ export default function ResultsPage() {
           textShadow: '0 0 24px rgba(255,255,255,0.12)',
           animation: 'go-slide 0.45s cubic-bezier(0.34,1.56,0.64,1) 0.05s both',
         }}>
-          Résultats
+          {t('Results')}
         </div>
 
         {/* Carte */}

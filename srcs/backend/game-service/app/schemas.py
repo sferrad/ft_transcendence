@@ -178,6 +178,7 @@ class MatchmakingJoin(BaseModel):
 	player_nation: str = "Algeria"
 	winning_score: Optional[int] = 3
 	duration: Optional[int] = None
+	ranked: bool = True
 
 
 class MatchmakingResult(BaseModel):

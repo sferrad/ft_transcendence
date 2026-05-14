@@ -12,9 +12,8 @@ export default defineConfig({
     port: 3000,
     allowedHosts: ['frontend', 'localhost'],
     hmr: {
-      host: 'localhost',
-      port: 3000,
-      protocol: 'ws',
+      clientPort: 8443,
+      protocol: 'wss',
     },
     proxy: {
       '/api': {

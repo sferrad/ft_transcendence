@@ -58,7 +58,7 @@ export function Leaderboard({ myUserId }: { myUserId: number }) {
       <div className="mb-3 font-arcade tracking-wide text-base min-[481px]:text-lg">{t('leaderboard.title')}</div>
 
       {loading ? (
-        <div className="text-lg text-center text-[#6b7280] py-2">{t('Chargement...')}</div>
+        <div className="text-lg text-center text-[#6b7280] py-2">{t('Loading...')}</div>
       ) : entries.length === 0 ? (
         <div className="text-lg text-center text-[#6b7280] py-2">{t('leaderboard.empty')}</div>
       ) : (

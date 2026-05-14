@@ -285,17 +285,17 @@ def matchmaking_join(
 		for entry in _mq_queue:
 			if entry["user_id"] == user_id:
 				return {"status": "waiting"}
-		# Try to match with the first person in queue (must be a different user).
+		# Try to match with the first person in the same mode queue (must be a different user).
 		for i, other in enumerate(_mq_queue):
-			if other["user_id"] != user_id:
+			if other["user_id"] != user_id and other.get("ranked", True) == payload.ranked:
 				_mq_queue.pop(i)
 				seed = _random.randint(1, 2**31 - 1)
-				# other is player1, current user is player2
+				# other is player1, current user is player2 — same mode guaranteed by the filter above
 				match = crud.create_match_for_players(
 					db,
 					player1_id=other["user_id"],
 					player2_id=user_id,
-					game_mode="online",
+					game_mode="online" if payload.ranked else "friendly",
 				)
 				winning_score = other.get("winning_score", 3)
 				duration = other.get("duration", None)
@@ -330,6 +330,7 @@ def matchmaking_join(
 			"player_nation": payload.player_nation,
 			"winning_score": payload.winning_score,
 			"duration": payload.duration,
+			"ranked": payload.ranked,
 			"joined_at": time.time(),
 		})
 		return {"status": "waiting"}
@@ -369,7 +370,7 @@ def create_dm_invite(
 		db,
 		player1_id=user_id,
 		player2_id=target_user_id,
-		game_mode="online",
+		game_mode="friendly",
 	)
 	seed = _random.randint(1, 2**31 - 1)
 	winning_score = payload.winning_score if payload.winning_score is not None else 3

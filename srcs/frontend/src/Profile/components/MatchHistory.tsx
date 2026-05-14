@@ -67,7 +67,7 @@ export function MatchHistory({ userId, isSelf = true }: Props) {
   if (loading) {
     return (
       <div className="mt-4 rounded-lg bg-white/75 border-2 border-[#2b2b2b] shadow-[3px_3px_0_#2b2b2b] px-4 py-4 text-[#1f2937] text-center text-sm">
-        {t('Chargement...')}
+        {t('Loading...')}
       </div>
     )
   }

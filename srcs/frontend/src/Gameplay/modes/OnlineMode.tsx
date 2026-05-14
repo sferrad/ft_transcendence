@@ -16,7 +16,7 @@ import { THEMES } from '../themes'
 import { VERSUS_SCREEN_DURATION_MS } from '../engine/constants'
 import { fetchMyStats, type UserStats } from '../api/matches'
 import type { MatchmakingResult } from '../api/matchmaking'
-import { savePendingMatch, clearPendingMatch } from '../../utils/pendingMatch'
+import { clearPendingMatch } from '../../utils/pendingMatch'
 
 const PLAYER1_COLOR = '#3b82f6'
 const PLAYER2_COLOR = '#ef4444'
@@ -27,19 +27,24 @@ const ARCADE_BTN = '0px 4px rgb(255,255,255), 0px -4px rgb(255,255,255), 4px 0px
 interface ForfeitState {
   isWin: boolean
   opponentName: string
+  voluntary: boolean
+  winnerRole: 'player1' | 'player2' | null
+  score1: number
+  score2: number
 }
 
 export default function OnlineMode() {
   const { t } = useTranslation()
   const location = useLocation()
   const navigate = useNavigate()
-  const matchInfo = location.state as (MatchmakingResult & { myNation?: string; isRejoin?: boolean }) | null
+  const matchInfo = location.state as (MatchmakingResult & { myNation?: string; themeId?: string; isRejoin?: boolean }) | null
 
   useEffect(() => {
-    if (!matchInfo?.match_id) navigate('/')
+    const valid = matchInfo?.match_id || (matchInfo?.isRejoin && matchInfo?.game_room_id)
+    if (!valid) navigate('/')
   }, [matchInfo, navigate])
 
-  if (!matchInfo?.match_id) return null
+  if (!matchInfo?.match_id && !(matchInfo?.isRejoin && matchInfo?.game_room_id)) return null
 
   const {
     game_room_id,
@@ -50,8 +55,8 @@ export default function OnlineMode() {
     isRejoin = false,
   } = matchInfo
 
-  const ONLINE_WINNING_SCORE = 5
-  const ONLINE_DURATION = 60
+  const ONLINE_WINNING_SCORE = matchInfo.winning_score ?? 5
+  const ONLINE_DURATION = matchInfo.duration ?? 120
 
   const myNation = matchInfo.myNation ?? 'Algeria'
   const player1Name = role === 'player1' ? (localStorage.getItem('username') || 'Me') : opponent_name
@@ -60,7 +65,7 @@ export default function OnlineMode() {
   const player2Nation = role === 'player2' ? myNation : opponent_nation
   const myName = role === 'player1' ? player1Name : player2Name
 
-  const theme = THEMES[0]
+  const theme = THEMES[(parseInt(game_room_id ?? '0') || seed) % THEMES.length]
 
   const { socket, connected } = useWebSocket()
   const [opponentConnected, setOpponentConnected] = useState(false)
@@ -70,27 +75,20 @@ export default function OnlineMode() {
   const [forfeit, setForfeit] = useState<ForfeitState | null>(null)
   const [afterStats, setAfterStats] = useState<UserStats | null>(null)
 
+  const [showAbandon, setShowAbandon] = useState(false)
   const matchSavedRef = useRef(false)
+  const hasAbandonedRef = useRef(false)
+  const hadDisconnectCountdownRef = useRef(false)
   const gameInProgressRef = useRef(isRejoin)
   const disconnectIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const hasJoinedRef = useRef(false)
-
+  // Stable snapshot of matchInfo so the beforeunload effect never re-runs (and never clears on re-render)
   useEffect(() => { gameInProgressRef.current = gameInProgress }, [gameInProgress])
 
-  // ── Save pending match on tab/window close only (not on SPA navigation) ──
+  // Clear any stale localStorage pending match on mount (server is now the source of truth)
   useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (gameInProgressRef.current && !matchSavedRef.current) {
-        savePendingMatch({ ...matchInfo, myNation }, FORFEIT_TIMEOUT_S * 1000)
-      }
-    }
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload)
-      // SPA navigation: clear the pending match so no popup appears
-      clearPendingMatch()
-    }
-  }, [matchInfo, myNation])
+    clearPendingMatch()
+  }, [])
 
   // ── Join / rejoin game room on (re)connect ──
   useEffect(() => {
@@ -102,6 +100,21 @@ export default function OnlineMode() {
       socket.emit('game.join', { game_room_id, role })
     }
   }, [connected, socket, game_room_id, role, isRejoin])
+
+  // ── Sortie volontaire : prévenir le backend au démontage ──
+  // Le socket est désormais un singleton global : quitter cette page ne coupe
+  // plus la connexion. Si la partie n'est pas finie quand le composant se
+  // démonte, on émet `game.leave` pour que le backend démarre le grace period
+  // (popup de reconnexion). Si elle est finie (matchSavedRef) ou si on a
+  // déjà émis un forfeit (hasAbandonedRef), on ne fait rien.
+  useEffect(() => {
+    return () => {
+      if (matchSavedRef.current) return
+      if (hasAbandonedRef.current) return
+      if (!socket || !game_room_id) return
+      socket.emit('game.leave', { game_room_id })
+    }
+  }, [socket, game_room_id])
 
   // ── Game socket events ──
   const { gameState, goalFlash, timeLeft, restoreState } = useOnlineGameLoop(
@@ -115,14 +128,29 @@ export default function OnlineMode() {
     seed,
   )
 
-  const handleForfeit = useCallback((data: { forfeit_user_id: number; winner_role: string | null }) => {
+  const handleAbandon = useCallback(() => {
+    if (!socket || !game_room_id) { navigate('/lobby'); return }
+    hasAbandonedRef.current = true
+    clearPendingMatch()
+    setShowAbandon(false)
+    socket.emit('game.action', { type: 'forfeit' })
+    // Ne pas naviguer ici — attendre game.forfeit du serveur pour afficher l'overlay
+  }, [socket, game_room_id, navigate])
+
+  const handleForfeit = useCallback((data: { forfeit_user_id: number; winner_role: string | null; score_player1?: number; score_player2?: number }) => {
     if (matchSavedRef.current) return
     matchSavedRef.current = true
     setGameInProgress(false)
     clearPendingMatch()
     const myUserId = parseInt(localStorage.getItem('user_id') || '0', 10)
     const isWin = data.forfeit_user_id !== myUserId
-    setForfeit({ isWin, opponentName: opponent_name })
+    // Voluntary = j'ai cliqué abandon, ou l'adversaire n'avait pas eu de countdown de déco avant
+    const voluntary = hasAbandonedRef.current || (!isWin ? true : !hadDisconnectCountdownRef.current)
+    const winnerRole = data.winner_role as 'player1' | 'player2' | null
+    // Scores officiels envoyés par le serveur (3-0), avec fallback dérivé de winnerRole
+    const score1 = data.score_player1 ?? (winnerRole === 'player1' ? 3 : 0)
+    const score2 = data.score_player2 ?? (winnerRole === 'player2' ? 3 : 0)
+    setForfeit({ isWin, opponentName: opponent_name, voluntary, winnerRole, score1, score2 })
     fetchMyStats().then(s => { if (s) setAfterStats(s) }).catch(() => {})
   }, [opponent_name])
 
@@ -144,6 +172,7 @@ export default function OnlineMode() {
 
     const onOpponentDisconnected = (data: { timeout_seconds?: number }) => {
       setOpponentConnected(false)
+      hadDisconnectCountdownRef.current = true
       const secs = data?.timeout_seconds ?? FORFEIT_TIMEOUT_S
       setDisconnectSecs(secs)
       if (disconnectIntervalRef.current) clearInterval(disconnectIntervalRef.current)
@@ -161,6 +190,7 @@ export default function OnlineMode() {
 
     const onOpponentReconnected = () => {
       setOpponentConnected(true)
+      hadDisconnectCountdownRef.current = false
       setDisconnectSecs(null)
       if (disconnectIntervalRef.current) {
         clearInterval(disconnectIntervalRef.current)
@@ -195,9 +225,6 @@ export default function OnlineMode() {
 
     const onDisconnect = () => {
       setOpponentConnected(false)
-      if (!matchSavedRef.current) {
-        savePendingMatch({ ...matchInfo, myNation }, FORFEIT_TIMEOUT_S * 1000)
-      }
     }
 
     socket.on('game.joined', onJoined)
@@ -357,6 +384,68 @@ export default function OnlineMode() {
         )}
       </Scene>
 
+      {/* ── Abandon button (visible during active gameplay only) ── */}
+      {gameInProgress && !forfeit && gameState.status !== 'finished' && !showVersus && (
+        <>
+          <button
+            onClick={() => setShowAbandon(true)}
+            title={t('Abandon')}
+            style={{
+              position: 'fixed', top: 10, right: 10, zIndex: 45,
+              width: 42, height: 42,
+              background: 'rgba(10, 15, 30, 0.85)',
+              border: '2px solid rgba(255,255,255,0.25)',
+              borderRadius: 6,
+              cursor: 'pointer',
+              color: '#ef4444',
+              fontSize: 20,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              backdropFilter: 'blur(4px)',
+            }}
+          >
+            ✕
+          </button>
+
+          {showAbandon && (
+            <>
+              <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 55, backdropFilter: 'blur(3px)' }} />
+              <div
+                className="font-arcade"
+                style={{
+                  position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                  zIndex: 56,
+                  background: 'rgba(10, 15, 30, 0.97)',
+                  border: '2px solid rgba(239,68,68,0.4)',
+                  borderRadius: 8,
+                  padding: '40px 56px',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
+                  minWidth: 300,
+                }}
+              >
+                <div style={{ color: '#ef4444', fontSize: 22, letterSpacing: 3, textTransform: 'uppercase', marginBottom: 4 }}>
+                  {t('abandon.confirm_title')}
+                </div>
+                <div style={{ color: '#9ca3af', fontSize: 13, letterSpacing: 1, textAlign: 'center', marginBottom: 8 }}>
+                  {t('abandon.confirm_desc')}
+                </div>
+                <button
+                  onClick={handleAbandon}
+                  style={{ width: '100%', padding: '13px 0', fontSize: 15, letterSpacing: 2, textTransform: 'uppercase', cursor: 'pointer', border: 'none', borderRadius: 0, background: '#ef4444', color: '#fff', boxShadow: ARCADE_BTN }}
+                >
+                  {t('Abandon')}
+                </button>
+                <button
+                  onClick={() => setShowAbandon(false)}
+                  style={{ width: '100%', padding: '13px 0', fontSize: 15, letterSpacing: 2, textTransform: 'uppercase', cursor: 'pointer', border: 'none', borderRadius: 0, background: '#4b5563', color: '#fff', boxShadow: ARCADE_BTN }}
+                >
+                  {t('Cancel')}
+                </button>
+              </div>
+            </>
+          )}
+        </>
+      )}
+
       {/* ── Versus screen ── */}
       {showVersus && (
         <VersusScreen
@@ -364,6 +453,8 @@ export default function OnlineMode() {
           player2Name={player2Name}
           player1Nation={player1Nation}
           player2Nation={player2Nation}
+          themeId={theme.id}
+          themeNameKey={theme.nameKey}
         />
       )}
 
@@ -395,7 +486,26 @@ export default function OnlineMode() {
           <div
             className="font-arcade"
             style={{
-              fontSize: 'clamp(28px, 5vw, 64px)',
+              display: 'flex', alignItems: 'center', gap: 24,
+              fontSize: 'clamp(32px, 5vw, 72px)',
+              color: '#fff',
+              letterSpacing: 6,
+              marginBottom: 8,
+            }}
+          >
+            <span style={{ color: forfeit.winnerRole === 'player1' ? '#22c55e' : '#ef4444' }}>
+              {forfeit.score1}
+            </span>
+            <span style={{ color: '#4b5563', fontSize: '0.6em' }}>–</span>
+            <span style={{ color: forfeit.winnerRole === 'player2' ? '#22c55e' : '#ef4444' }}>
+              {forfeit.score2}
+            </span>
+          </div>
+
+          <div
+            className="font-arcade"
+            style={{
+              fontSize: 'clamp(20px, 3vw, 42px)',
               color: forfeit.isWin ? '#22c55e' : '#ef4444',
               letterSpacing: 4, textTransform: 'uppercase',
               textShadow: forfeit.isWin
@@ -403,15 +513,21 @@ export default function OnlineMode() {
                 : '0 0 28px #ef444499, 4px 4px 0 #000',
             }}
           >
-            {forfeit.isWin ? t('forfeit.win_title') : t('forfeit.loss_title')}
+            {forfeit.isWin
+              ? (forfeit.voluntary ? t('forfeit.win_abandon_title') : t('forfeit.win_title'))
+              : (forfeit.voluntary ? t('forfeit.abandon_title') : t('forfeit.loss_title'))}
           </div>
           <div className="font-arcade text-gray-300 text-lg text-center px-8">
             {forfeit.isWin
-              ? t('forfeit.win_desc', { name: forfeit.opponentName })
-              : t('forfeit.loss_desc', { name: myName })}
+              ? (forfeit.voluntary
+                  ? t('forfeit.win_abandon_desc', { name: forfeit.opponentName })
+                  : t('forfeit.win_desc', { name: forfeit.opponentName }))
+              : (forfeit.voluntary
+                  ? t('forfeit.abandon_desc')
+                  : t('forfeit.loss_desc', { name: myName }))}
           </div>
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center', marginTop: 8 }}>
-            {forfeit.isWin && handleShowResults && (
+            {handleShowResults && (
               <button
                 className="font-arcade"
                 onClick={handleShowResults}

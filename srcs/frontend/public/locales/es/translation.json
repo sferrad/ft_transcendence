@@ -267,5 +267,37 @@
     "toast.group_invite": "{{name}} te invitó a un grupo",
     "toast.channel_message": "{{name}} envió un mensaje",
     "Decline": "RECHAZAR",
-    "invite.declined": "INVITACIÓN RECHAZADA"
+    "invite.declined": "INVITACIÓN RECHAZADA",
+    "OK": "OK",
+    "remaining": "restante",
+    "View": "VER",
+    "Someone": "Alguien",
+    "invite.ready_title": "¡ADVERSARIO LISTO!",
+    "invite.ready_body": "Tu adversario se ha unido. ¿Empezar la partida?",
+
+    "Ranked": "Clasificado",
+    "Friendly": "Amistoso",
+    "ranked.info": "Reglas estándar · 5 goles · 2 min · Da LP",
+    "friendly.info": "Casual · 5 goles · 2 min · Sin LP",
+    "Profile menu": "Menú de perfil",
+    "Find Match": "Buscar partida",
+    "Searching": "Buscando",
+    "vs.map_label": "MAPA",
+
+    "Home": "Inicio",
+    "Profile Picture": "Foto de perfil",
+    "Loading...": "Cargando...",
+    "Success!": "¡Éxito!",
+
+    "forfeit.win_abandon_title": "¡Victoria por abandono!",
+    "forfeit.win_abandon_desc": "{{name}} abandonó la partida.",
+    "forfeit.abandon_title": "Partida abandonada",
+    "forfeit.abandon_desc": "Abandonaste la partida.",
+
+    "Pause": "Pausa",
+    "Resume": "Reanudar",
+    "Restart": "Reiniciar",
+    "Abandon": "Abandonar",
+    "abandon.confirm_title": "¿Abandonar la partida?",
+    "abandon.confirm_desc": "Perderás la partida y los LP."
 }

@@ -1,3 +1,4 @@
+import re as _re
 from fastapi import Depends, FastAPI, HTTPException, status, Header
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
@@ -43,12 +44,21 @@ def _current_user_id(x_user_id: str | None = Header(default=None, alias="X-User-
 		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid X-User-Id")
 	return user_id
 
+_DM_RE = _re.compile(r"^dm-(\d+)-(\d+)$")
+
 @app.post("/rooms", response_model=schemas.RoomOut, status_code=201)
 def create_room(payload: schemas.RoomCreate, user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
 	try:
-		return crud.create_room(db, name=payload.name, is_private=payload.is_private, owner_user_id=user_id)
+		room = crud.create_room(db, name=payload.name, is_private=payload.is_private, owner_user_id=user_id)
 	except IntegrityError:
 		raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Room already exist")
+	# Pour une room DM (dm-A-B), ajouter automatiquement les deux participants
+	m = _DM_RE.match(payload.name)
+	if m:
+		for uid in (int(m.group(1)), int(m.group(2))):
+			if uid != user_id:
+				crud.join_room(db, room_id=room.id, user_id=uid)
+	return room
 	
 @app.get("/rooms", response_model=list[schemas.RoomOut])
 def get_rooms(skip: int = 0, limit: int = 100, user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):

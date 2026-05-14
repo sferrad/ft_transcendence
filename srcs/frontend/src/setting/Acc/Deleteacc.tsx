@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { closeSocket } from "../../hooks/socketSingleton";
 
 type TFunction = (key: string) => string;
 
@@ -103,6 +104,7 @@ const DeleteAcc = () => {
                 throw new Error(t("Failed to delete account"));
             }
 
+            closeSocket();
             localStorage.removeItem("access_token");
             localStorage.removeItem("username");
             localStorage.removeItem("email");

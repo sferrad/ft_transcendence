@@ -20,9 +20,10 @@ import {
     removeFriend,
 } from "./api/friends";
 import { fetchMyProfile, fetchProfileByUserId, fetchUserByUsername, uploadMyAvatar, updateMyProfile } from "./api/profile";
-import { createRoom, getRooms, joinRoom } from "./api/chat";
+import { createRoom, getRooms } from "./api/chat";
 import { MatchHistory } from "./components/MatchHistory";
 import { Leaderboard } from "./components/Leaderboard";
+import { closeSocket } from "../hooks/socketSingleton";
 
 function normalizeAvatarUrl(url: string | null): string | null {
     if (!url) return null;
@@ -388,6 +389,7 @@ function Profile() {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (response.ok) {
+                closeSocket();
                 localStorage.removeItem("access_token");
                 localStorage.removeItem("username");
                 localStorage.removeItem("email");
@@ -432,7 +434,6 @@ function Profile() {
                 room = await createRoom(token, { name: dmRoomName, is_private: true });
             }
 
-            await joinRoom(token, room.id);
             navigate(`/chat?roomId=${encodeURIComponent(String(room.id))}`);
         } catch (err) {
             const msg = err instanceof Error ? err.message : "Impossible d'ouvrir le message privé";
@@ -781,7 +782,7 @@ function Profile() {
                                             clipRule="evenodd"
                                         />
                                     </svg>
-                                    <span className="text-sm min-[481px]:text-base font-medium">✓ {t("Succès!")}</span>
+                                    <span className="text-sm min-[481px]:text-base font-medium">✓ {t("Success!")}</span>
                                 </div>
                             </div>
                         )}

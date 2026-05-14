@@ -3,10 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { getCurrentUser } from '../utils/auth'
 import { CHARACTERS } from '../characters'
-import { SCORE_OPTIONS, SCORE_DEFAULT, TIMER_OPTIONS, TIMER_DEFAULT } from '../Gameplay/engine/constants'
 import { joinMatchmaking, getMatchmakingStatus, leaveMatchmaking, type MatchmakingResult } from '../Gameplay/api/matchmaking'
 
 type Phase = 'idle' | 'searching' | 'error'
+type GameMode = 'ranked' | 'friendly'
+
+// Règles fixes imposées — les joueurs ne peuvent pas les modifier.
+const ONLINE_SCORE = 5
+const ONLINE_DURATION = 120 // 2 min
 
 const arcadeBase =
   'hb-tap font-arcade border-0 shadow-[0px_4px_rgb(255,255,255),0px_-4px_rgb(255,255,255),4px_0px_rgb(255,255,255),-4px_0px_rgb(255,255,255),0px_4px_rgba(0,0,0,0.22),4px_4px_rgba(0,0,0,0.22),-4px_4px_rgba(0,0,0,0.22),inset_0px_4px_rgba(255,255,255,0.21)] cursor-pointer no-underline inline-flex items-center justify-center transition-transform duration-100 active:translate-y-0.5'
@@ -27,45 +31,13 @@ function NationPicker({ value, onChange }: { value: string; onChange: (v: string
   )
 }
 
-function OptionRow<T extends string | number | null>({
-  label, options, value, onChange, format,
-}: {
-  label: string
-  options: readonly T[]
-  value: T
-  onChange: (v: T) => void
-  format: (v: T) => string
-}) {
-  return (
-    <div className="flex items-center gap-3 flex-wrap justify-center">
-      <span className="font-arcade text-white text-lg w-32 text-right">{label}</span>
-      <div className="flex gap-2">
-        {options.map((opt) => (
-          <button
-            key={String(opt)}
-            onClick={() => onChange(opt)}
-            className={`${arcadeBase} px-4 py-1 text-base font-arcade ${
-              value === opt
-                ? 'bg-yellow-400 text-black'
-                : 'bg-gray-600 text-white hover:bg-gray-500'
-            }`}
-          >
-            {format(opt)}
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 export default function LobbyPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const user = getCurrentUser()
 
+  const [gameMode, setGameMode] = useState<GameMode>('ranked')
   const [nation, setNation] = useState<string>('Algeria')
-  const [winningScore, setWinningScore] = useState<3 | 5 | null>(SCORE_DEFAULT)
-  const [duration, setDuration] = useState<30 | 60 | null>(TIMER_DEFAULT)
   const [phase, setPhase] = useState<Phase>('idle')
   const [errorMsg, setErrorMsg] = useState('')
   const [dots, setDots] = useState('.')
@@ -74,7 +46,6 @@ export default function LobbyPage() {
 
   const playerName = user?.username || 'Player'
 
-  // Animated dots while searching
   useEffect(() => {
     if (phase !== 'searching') return
     const id = window.setInterval(() => setDots(d => d.length >= 3 ? '.' : d + '.'), 500)
@@ -90,11 +61,17 @@ export default function LobbyPage() {
     cancelledRef.current = false
     setPhase('searching')
     setErrorMsg('')
+    const isRanked = gameMode === 'ranked'
     try {
-      const result = await joinMatchmaking({ playerName, playerNation: nation, winningScore, duration })
+      const result = await joinMatchmaking({
+        playerName,
+        playerNation: nation,
+        winningScore: ONLINE_SCORE,
+        duration: ONLINE_DURATION,
+        ranked: isRanked,
+      })
       if (cancelledRef.current) return
       if (result.status === 'matched') { handleMatched(result); return }
-      // Poll until matched
       pollRef.current = window.setInterval(async () => {
         try {
           const status = await getMatchmakingStatus()
@@ -109,7 +86,7 @@ export default function LobbyPage() {
           setErrorMsg('Connection error')
         }
       }, 2000)
-    } catch (e) {
+    } catch {
       setPhase('error')
       setErrorMsg('Failed to reach server')
     }
@@ -140,28 +117,31 @@ export default function LobbyPage() {
 
         {phase !== 'searching' && (
           <>
+            {/* Mode toggle */}
+            <div className="flex gap-2 bg-black/40 rounded-xl p-3 border-2 border-white/30">
+              <button
+                onClick={() => setGameMode('ranked')}
+                className={`${arcadeBase} px-6 py-2 text-lg ${gameMode === 'ranked' ? 'bg-yellow-400 text-black' : 'bg-gray-600 text-white hover:bg-gray-500'}`}
+              >
+                {t('Ranked')}
+              </button>
+              <button
+                onClick={() => setGameMode('friendly')}
+                className={`${arcadeBase} px-6 py-2 text-lg ${gameMode === 'friendly' ? 'bg-green-400 text-black' : 'bg-gray-600 text-white hover:bg-gray-500'}`}
+              >
+                {t('Friendly')}
+              </button>
+            </div>
+
+            {/* Règles fixes du mode sélectionné */}
+            <p className="font-arcade text-white/60 text-sm">
+              {gameMode === 'ranked' ? t('ranked.info') : t('friendly.info')}
+            </p>
+
             {/* Player info */}
             <div className="flex flex-col items-center gap-4 bg-black/40 rounded-xl p-6 border-2 border-white/30">
               <span className="font-arcade text-yellow-300 text-2xl">{playerName}</span>
               <NationPicker value={nation} onChange={setNation} />
-            </div>
-
-            {/* Game options */}
-            <div className="flex flex-col gap-4 bg-black/40 rounded-xl p-6 border-2 border-white/30">
-              <OptionRow
-                label={t('Goals')}
-                options={SCORE_OPTIONS}
-                value={winningScore}
-                onChange={v => setWinningScore(v as 3 | 5 | null)}
-                format={v => v === null ? '∞' : String(v)}
-              />
-              <OptionRow
-                label={t('Time')}
-                options={TIMER_OPTIONS}
-                value={duration}
-                onChange={v => setDuration(v as 30 | 60 | null)}
-                format={v => v === null ? '∞' : `${v}s`}
-              />
             </div>
 
             {phase === 'error' && (

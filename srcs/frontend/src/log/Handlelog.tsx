@@ -25,12 +25,14 @@ const HandleLog = () => {
 
           <input type="text"
             placeholder={t("Username or email")}
+            autoComplete="username"
             value={identifier}
             onChange={e => setIdentifier(e.target.value)}
             className="border p-2 rounded mb-3 w-full"></input>
 
           <input type="password"
             placeholder={t("Password")}
+            autoComplete="current-password"
             value={password}
             onChange={e => setPassword(e.target.value)}
             className="border p-2 rounded mb-3 w-full"></input>
@@ -49,8 +51,8 @@ const HandleLog = () => {
           </button>
 
           <p className={
-            `mt-3 text-center transition-all duration-350 ${t(message) ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"} 
-          ${message === t("Connexion Successful") ? "text-green-500" : "text-red-500"}`}>{t(message)}</p>
+            `mt-3 text-center transition-all duration-350 ${message ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}
+          ${message === "Connexion Successful" ? "text-green-500" : "text-red-500"}`}>{message ? t(message) : ""}</p>
 
         </form>
         <a className="text-blue-500 cursor-pointer hover:underline mt-4 block text-center" onClick={() => navigate("/register")}>{t("Don't have an account? Register")}</a>

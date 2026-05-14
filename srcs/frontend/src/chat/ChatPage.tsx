@@ -11,6 +11,8 @@ function ChatPage() {
     const [searchParams] = useSearchParams();
     const roomIdParam = searchParams.get("roomId");
     const initialRoomId = roomIdParam ? Number(roomIdParam) : null;
+    const dmUserIdParam = searchParams.get("dmUserId");
+    const initialDmUserId = dmUserIdParam ? Number(dmUserIdParam) : null;
     const { hasUnread } = useChatNotifications({ enabled: Boolean(localStorage.getItem("access_token")) });
 
     // localStorage.setItem("access_token", "debug_token"); // TODO: Remove this line after implementing proper authentication
@@ -45,7 +47,10 @@ function ChatPage() {
                 </div>
 
                 <div className="min-h-0 flex-1 overflow-hidden rounded-[1.5rem] border-4 border-[#1f2937] bg-white/90 shadow-[10px_10px_0_#1f2937]">
-                    <ChatButton initialRoomId={Number.isFinite(initialRoomId) && (initialRoomId ?? 0) > 0 ? initialRoomId : null} />
+                    <ChatButton
+                        initialRoomId={Number.isFinite(initialRoomId) && (initialRoomId ?? 0) > 0 ? initialRoomId : null}
+                        initialDmUserId={Number.isFinite(initialDmUserId) && (initialDmUserId ?? 0) > 0 ? initialDmUserId : null}
+                    />
                 </div>
             </div>
         </div>

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { io } from 'socket.io-client';
 import type { Socket } from 'socket.io-client';
+import { getSocket } from './socketSingleton';
 
 type EventHandler = (...args: unknown[]) => void;
 type SocketPayload = Record<string, unknown>;
 
 export interface UseWebSocketOptions {
+  /** @deprecated le socket est désormais un singleton global ; conservé pour compat. */
   url?: string;
   enabled?: boolean;
   reconnection?: boolean;
@@ -44,23 +45,6 @@ export interface ChatMemberEvent {
   timestamp?: string;
 }
 
-const normalizeSocketUrl = (rawUrl: string) => {
-  const withoutSocketPath = rawUrl.replace(/\/ws\/socket\.io\/?$/, '').replace(/\/ws\/?$/, '');
-  if (withoutSocketPath.startsWith('ws://')) {
-    return `http://${withoutSocketPath.slice('ws://'.length)}`;
-  }
-  if (withoutSocketPath.startsWith('wss://')) {
-    return `https://${withoutSocketPath.slice('wss://'.length)}`;
-  }
-  return withoutSocketPath;
-};
-
-const defaultSocketUrl = () => {
-  const envUrl = import.meta.env.VITE_WS_URL as string | undefined;
-  if (envUrl) return normalizeSocketUrl(envUrl);
-  return typeof window === 'undefined' ? '' : window.location.origin;
-};
-
 const numberList = (value: unknown): number[] => {
   return Array.isArray(value)
     ? value.map((item) => Number(item)).filter((item) => Number.isFinite(item))
@@ -73,86 +57,57 @@ const asPayload = (value: unknown): SocketPayload => {
     : {};
 };
 
-const buildAuthPayload = (): SocketPayload => {
-  if (typeof window === 'undefined') return {};
-
-  const token = localStorage.getItem('access_token') || '';
-  const userId = localStorage.getItem('user_id') || '';
-  const username = localStorage.getItem('username') || '';
-
-  return {
-    token,
-    user_id: userId,
-    username,
-  };
-};
-
 export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketReturn {
-  const {
-    url = defaultSocketUrl(),
-    enabled = true,
-    reconnection = true,
-    reconnectionDelay = 500,
-    reconnectionDelayMax = 3000,
-    reconnectionAttempts = 10,
-  } = options;
+  const { enabled = true } = options;
 
   const [socket, setSocket] = useState<Socket | null>(null);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
+  // Le socket est un SINGLETON global (cf. socketSingleton.ts). Ce hook ne
+  // crée plus de connexion : il se contente de s'abonner à l'état du socket
+  // partagé. Démonter un composant ne ferme donc JAMAIS la connexion — c'est
+  // ce qui rend le `disconnect` backend fiable (un seul socket par user).
   useEffect(() => {
-    if (!enabled || !url) {
+    if (!enabled) {
       setSocket(null);
       setConnected(false);
       return;
     }
 
-    const auth = buildAuthPayload();
-    if (!auth.token) {
+    const shared = getSocket();
+    if (!shared) {
       setSocket(null);
       setConnected(false);
       setError(new Error('Missing access token'));
       return;
     }
 
-    const nextSocket = io(url, {
-      path: '/ws/socket.io',
-      auth,
-      reconnection,
-      reconnectionDelay,
-      reconnectionDelayMax,
-      reconnectionAttempts,
-      transports: ['websocket'],
-    });
+    setSocket(shared);
+    setConnected(shared.connected);
 
-    nextSocket.on('connect', () => {
-      setConnected(true);
-      setError(null);
-    });
-
-    nextSocket.on('disconnect', () => {
-      setConnected(false);
-    });
-
-    nextSocket.on('connect_error', (err: Error) => {
-      setConnected(false);
-      setError(err);
-    });
-
-    nextSocket.on('ws.error', (payload: unknown) => {
+    const onConnect = () => { setConnected(true); setError(null); };
+    const onDisconnect = () => { setConnected(false); };
+    const onConnectError = (err: Error) => { setConnected(false); setError(err); };
+    const onWsError = (payload: unknown) => {
       const data = asPayload(payload);
       setError(new Error(String(data.message || 'WebSocket error')));
-    });
+    };
 
-    setSocket(nextSocket);
+    shared.on('connect', onConnect);
+    shared.on('disconnect', onDisconnect);
+    shared.on('connect_error', onConnectError);
+    shared.on('ws.error', onWsError);
 
     return () => {
-      nextSocket.disconnect();
-      setSocket(null);
-      setConnected(false);
+      // On se désabonne UNIQUEMENT de nos propres listeners. Le socket
+      // partagé reste vivant pour le reste de l'application.
+      shared.off('connect', onConnect);
+      shared.off('disconnect', onDisconnect);
+      shared.off('connect_error', onConnectError);
+      shared.off('ws.error', onWsError);
     };
-  }, [enabled, url, reconnection, reconnectionDelay, reconnectionDelayMax, reconnectionAttempts]);
+  }, [enabled]);
 
   const emit = useCallback((event: string, data?: SocketPayload) => {
     if (!socket?.connected) {
@@ -179,76 +134,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     emit,
     on,
     off,
-  };
-}
-
-export function useGameWebSocket(gameRoomId?: string) {
-  const { socket, connected, emit, on, off, error } = useWebSocket({ enabled: Boolean(gameRoomId) });
-  const [gameState, setGameState] = useState<SocketPayload | null>(null);
-  const [roomMembers, setRoomMembers] = useState<number[]>([]);
-
-  useEffect(() => {
-    if (connected && gameRoomId) {
-      emit('game.join', { game_room_id: gameRoomId });
-    }
-  }, [connected, gameRoomId, emit]);
-
-  useEffect(() => {
-    if (!socket) return;
-
-    const handleJoined: EventHandler = (payload) => {
-      const data = asPayload(payload);
-      setRoomMembers(numberList(data.room_members));
-      setGameState(asPayload(data.last_state));
-    };
-
-    const handleUpdate: EventHandler = (payload) => {
-      const data = asPayload(payload);
-      setGameState(asPayload(data.state));
-    };
-
-    const handleMembersChanged: EventHandler = (payload) => {
-      const data = asPayload(payload);
-      setRoomMembers(numberList(data.room_members));
-    };
-
-    on('game.joined', handleJoined);
-    on('game.update', handleUpdate);
-    on('game.user_joined', handleMembersChanged);
-    on('game.user_left', handleMembersChanged);
-
-    return () => {
-      off('game.joined', handleJoined);
-      off('game.update', handleUpdate);
-      off('game.user_joined', handleMembersChanged);
-      off('game.user_left', handleMembersChanged);
-    };
-  }, [socket, on, off]);
-
-  useEffect(() => {
-    return () => {
-      if (connected && gameRoomId) {
-        emit('game.leave', { game_room_id: gameRoomId });
-      }
-    };
-  }, [connected, gameRoomId, emit]);
-
-  const sendAction = useCallback((action: SocketPayload) => {
-    return emit('game.action', action);
-  }, [emit]);
-
-  const sendUpdate = useCallback((state: SocketPayload) => {
-    return emit('game.update', state);
-  }, [emit]);
-
-  return {
-    socket,
-    connected,
-    error,
-    gameState,
-    roomMembers,
-    sendAction,
-    sendUpdate,
   };
 }
 

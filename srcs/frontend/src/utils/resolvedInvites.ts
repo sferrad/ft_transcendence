@@ -1,22 +1,15 @@
-const RESOLVED_KEY = 'resolved_invite_ids'
 const EVENT = 'resolved-invite-updated'
 
-function readIds(): number[] {
-  try { return JSON.parse(localStorage.getItem(RESOLVED_KEY) ?? '[]') as number[] } catch { return [] }
-}
+const _resolved = new Set<number>()
 
 export function markInviteResolved(matchId: number | null | undefined): void {
   if (!matchId) return
-  const ids = readIds()
-  if (!ids.includes(matchId)) {
-    ids.push(matchId)
-    try { localStorage.setItem(RESOLVED_KEY, JSON.stringify(ids)) } catch { /* quota */ }
-  }
-  window.dispatchEvent(new CustomEvent(EVENT, { detail: ids }))
+  _resolved.add(matchId)
+  window.dispatchEvent(new CustomEvent(EVENT, { detail: Array.from(_resolved) }))
 }
 
 export function getResolvedIds(): Set<number> {
-  return new Set(readIds())
+  return new Set(_resolved)
 }
 
 export function onResolvedUpdated(cb: (ids: Set<number>) => void): () => void {

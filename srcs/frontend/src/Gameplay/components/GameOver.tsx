@@ -157,7 +157,7 @@ export function GameOver({
               onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)' }}
               style={{ padding: '14px 38px', fontSize: 'clamp(12px, 1.6vw, 20px)', cursor: 'pointer', border: 'none', borderRadius: 0, background: '#7c3aed', color: '#fff', letterSpacing: 2, textTransform: 'uppercase', boxShadow: ARCADE_BTN, transition: 'transform 0.1s' }}
             >
-              Résultats ›
+              {t('Results')} ›
             </button>
           )}
           <button

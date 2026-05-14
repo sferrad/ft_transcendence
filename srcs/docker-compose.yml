@@ -1,5 +1,31 @@
 version: '3.8'
 
+## EXTENSION FIELDS ####
+
+x-postgres-base: &postgres-base
+  build:
+    context: ./postgres-databases
+    dockerfile: Dockerfile
+  expose:
+    - "5432"
+  env_file:
+    - .env
+  networks:
+    - transcendence-database
+  restart: unless-stopped
+
+x-hc-fast: &hc-fast
+  interval: 5s
+  timeout: 3s
+  retries: 5
+  start_period: 5s
+
+x-hc-service: &hc-service
+  interval: 10s
+  timeout: 5s
+  retries: 3
+  start_period: 15s
+
 ## NETWORKS ####
 
 networks:
@@ -13,7 +39,6 @@ networks:
     driver: bridge
 
 ## VOLUMES ####
-
 
 volumes:
   user-db:
@@ -37,130 +62,69 @@ volumes:
 
 services:
   user-db:
-    build:
-      context: ./postgres-databases
-      dockerfile: Dockerfile
-    expose:
-      - 5432
+    <<: *postgres-base
     image: user-db
-    env_file:
-      - .env
     environment:
       - POSTGRES_DB=user_db
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - user-db:/var/lib/postgresql/data
-    networks:
-      - transcendence-database
-    restart: unless-stopped
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d user_db" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d user_db"]
+      <<: *hc-fast
 
   chat-db:
-    build:
-      context: ./postgres-databases
-      dockerfile: Dockerfile
-    expose:
-      - 5432
+    <<: *postgres-base
     image: chat-db
-    env_file:
-      - .env
     environment:
       - POSTGRES_DB=chat_db
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - chat-db:/var/lib/postgresql/data
-    networks:
-      - transcendence-database
-    restart: unless-stopped
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d chat_db" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d chat_db"]
+      <<: *hc-fast
 
   friends-db:
-    build:
-      context: ./postgres-databases
-      dockerfile: Dockerfile
-    expose:
-      - 5432
+    <<: *postgres-base
     image: friends-db
-    env_file:
-      - .env
     environment:
       - POSTGRES_DB=friends_db
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - friends-db:/var/lib/postgresql/data
-    networks:
-      - transcendence-database
-    restart: unless-stopped
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d friends_db" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d friends_db"]
+      <<: *hc-fast
 
   game-db:
-    build:
-      context: ./postgres-databases
-      dockerfile: Dockerfile
-    expose:
-      - 5432
+    <<: *postgres-base
     image: game-db
-    env_file:
-      - .env
     environment:
       - POSTGRES_DB=game_db
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - game-db:/var/lib/postgresql/data
-    networks:
-      - transcendence-database
-    restart: unless-stopped
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d game_db" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
-
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d game_db"]
+      <<: *hc-fast
 
   profile-db:
-    build:
-      context: ./postgres-databases
-      dockerfile: Dockerfile
-    expose:
-      - 5432
+    <<: *postgres-base
     image: profile-db
-    env_file:
-      - .env
     environment:
       - POSTGRES_DB=profile_db
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - profile-db:/var/lib/postgresql/data
-    networks:
-      - transcendence-database
-    restart: unless-stopped
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d profile_db" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d profile_db"]
+      <<: *hc-fast
 
   ## SECRETS ####
 
@@ -201,11 +165,8 @@ services:
       profile-db:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD", "vault", "status" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
+      test: ["CMD", "vault", "status"]
+      <<: *hc-fast
 
   ## MICRO SERVICES ####
 
@@ -219,7 +180,7 @@ services:
       - VAULT_TOKEN_FILE=/vault/data/api-gateway.token
       - VAULT_CA_CERT=/certs/ca.crt
       - INTERNAL_CA_CERT=/certs/ca.crt
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY} ## a generer avec openssl rand -hex 32
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - CHAT_SERVICE_URL=https://chat-service:8002
@@ -239,11 +200,9 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "curl", "--fail", "--silent", "--show-error", "--cacert", "/certs/ca.crt", "https://localhost:8000/health" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "--cacert", "/certs/ca.crt", "https://localhost:8000/health"]
+      <<: *hc-service
+
   user-service:
     build:
       context: ./backend/user-service
@@ -260,7 +219,7 @@ services:
       - DB_HOST=user-db
       - DB_PORT=${DB_PORT}
       - DB_NAME=user_db
-      - VAULT_DB_CREDS_PATH=database/creds/user-role # credentials tmp pour acces DB accessible avec vault token
+      - VAULT_DB_CREDS_PATH=database/creds/user-role
     expose:
       - "8001"
     volumes:
@@ -276,11 +235,8 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "curl", "--fail", "--silent", "--show-error", "--cacert", "/certs/ca.crt", "https://localhost:8001/health" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "--cacert", "/certs/ca.crt", "https://localhost:8001/health"]
+      <<: *hc-service
 
   chat-service:
     build:
@@ -314,12 +270,8 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "curl", "--fail", "--silent", "--show-error", "--cacert", "/certs/ca.crt", "https://localhost:8002/health" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "--cacert", "/certs/ca.crt", "https://localhost:8002/health"]
+      <<: *hc-service
 
   friends-service:
     build:
@@ -356,11 +308,8 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "curl", "--fail", "--silent", "--show-error", "--cacert", "/certs/ca.crt", "https://localhost:8004/health" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "--cacert", "/certs/ca.crt", "https://localhost:8004/health"]
+      <<: *hc-service
 
   game-service:
     build:
@@ -394,11 +343,8 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "curl", "--fail", "--silent", "--show-error", "--cacert", "/certs/ca.crt", "https://localhost:8005/health" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "--cacert", "/certs/ca.crt", "https://localhost:8005/health"]
+      <<: *hc-service
 
   mailhog:
     build:
@@ -411,6 +357,7 @@ services:
     restart: unless-stopped
     networks:
       - transcendence-backend
+
   profile-service:
     build:
       context: ./backend/profile-service
@@ -432,7 +379,6 @@ services:
       - MAIL_SERVER=mailhog
       - MAIL_PORT=1025
       - MAIL_FROM=noreply@team42.com
-
     expose:
       - "8006"
     volumes:
@@ -451,11 +397,8 @@ services:
         condition: service_started
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "curl", "--fail", "--silent", "--show-error", "--cacert", "/certs/ca.crt", "https://localhost:8006/health" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "--cacert", "/certs/ca.crt", "https://localhost:8006/health"]
+      <<: *hc-service
 
   ## FRONTEND ####
 
@@ -464,27 +407,23 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     image: frontend-react
-    # Dev only: mount the source so Vite sees changes immediately.
     environment:
-      # Podman/Docker detect file changes more reliably with polling here.
       - CHOKIDAR_USEPOLLING=true
-      # Vite dev proxy target for /api and /ws when opening the frontend directly.
       - VITE_DEV_PROXY_TARGET=http://waf
     volumes:
-      # Source monté en live, mais node_modules reste dans le conteneur.
-    - ./frontend:/app
-    - node_modules-frontend:/app/node_modules
+      - ./frontend:/app
+      - node_modules-frontend:/app/node_modules
     expose:
       - "3000"
     networks:
       - transcendence-frontend
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:3000" ]
-      interval: 20s
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 10s
       timeout: 5s
       retries: 3
-      start_period: 20s
+      start_period: 10s
 
   ## WAF ####
 
@@ -509,11 +448,11 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "curl", "-fk", "https://localhost:443/health" ]
-      interval: 20s
+      test: ["CMD", "curl", "-fk", "https://localhost:443/health"]
+      interval: 10s
       timeout: 5s
       retries: 3
-      start_period: 20s
+      start_period: 10s
 
   redis:
     build:
@@ -528,34 +467,35 @@ services:
       - transcendence-backend
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-      
+      test: ["CMD", "redis-cli", "ping"]
+      <<: *hc-fast
+
+  ## MONITORING (optionnel : docker compose --profile monitoring up -d) ####
+
   prometheus:
     build:
       context: ./monitoring/prometheus
       dockerfile: Dockerfile
     image: prometheus
+    profiles:
+      - monitoring
     volumes:
-    - prometheus-data:/prometheus
+      - prometheus-data:/prometheus
     ports:
       - "9090:9090"
     networks:
       - transcendence-backend
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:9090/-/ready || exit 1"]
-      interval: 20s
-      timeout: 5s
-      retries: 3
-      start_period: 20s
+      <<: *hc-service
+
   grafana:
     build:
       context: ./monitoring/grafana
       dockerfile: Dockerfile
     image: grafana
+    profiles:
+      - monitoring
     ports:
       - "3001:3000"
     env_file:
@@ -573,17 +513,16 @@ services:
     volumes:
       - grafana-data:/var/lib/grafana
     healthcheck:
-      test: [ "CMD", "curl", "-fsS", "http://localhost:3000/api/health" ]
-      interval: 20s
-      timeout: 5s
-      retries: 3
-      start_period: 20s
+      test: ["CMD", "curl", "-fsS", "http://localhost:3000/api/health"]
+      <<: *hc-service
 
   alertmanager:
     build:
       context: ./monitoring/alertmanager
       dockerfile: Dockerfile
     image: alertmanager
+    profiles:
+      - monitoring
     volumes:
       - alertmanager-data-extra:/alertmanager
       - alertmanager-data:/var/lib/alertmanager
@@ -596,7 +535,4 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:9093/-/ready || exit 1"]
-      interval: 20s
-      timeout: 5s
-      retries: 3
-      start_period: 20s
+      <<: *hc-service

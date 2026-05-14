@@ -1,6 +1,6 @@
 import type { MatchmakingResult } from '../Gameplay/api/matchmaking'
 
-export type PendingInviteInfo = MatchmakingResult & { myNation?: string }
+export type PendingInviteInfo = MatchmakingResult & { myNation?: string; themeId?: string }
 
 const KEY = 'pending_invite_info'
 const TTL_MS = 5 * 60 * 1000

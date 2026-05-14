@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useTranslation } from "react-i18next";
+import { closeSocket } from "../hooks/socketSingleton";
 
 
 // Base d'API "same-origin": tout passe par le WAF via /api/*.
@@ -60,6 +60,7 @@ const getUserInfo = async (token: string) => {
           if (payload?.sub) {
             localStorage.setItem("user_id", String(payload.sub));
           }
+          window.dispatchEvent(new Event('auth:login'))
             } else {
                 console.error("Failed to fetch user info:", data.error?.message || "Unknown error");
             }
@@ -102,7 +103,6 @@ export const useLogin = () => {
 
   // navigate = redirection (React Router), t() = traduction i18n
   const navigate = useNavigate();
-  const { t } = useTranslation();
 
   // Handler du submit du formulaire de login.
   const login = async (e: React.FormEvent) => {
@@ -129,7 +129,7 @@ export const useLogin = () => {
 
       if (response.ok) {
         // Succès: on récupère data.access_token, puis on charge /auth/me.
-        setMessage(t("Connexion Successful"));
+        setMessage("Connexion Successful");
         getUserInfo(data.access_token);
         setTimeout(() => {
           // Redirection vers /profile (route définie dans App.tsx).
@@ -141,7 +141,7 @@ export const useLogin = () => {
       }
     } catch {
       // Erreur réseau / exception fetch
-      setMessage(t("An error occurred. Please try again."));
+      setMessage("An error occurred. Please try again.");
     }
     setLoading(false);
   };
@@ -168,43 +168,41 @@ export const useRegister = () => {
 
   // navigate = redirection après succès
   const navigate = useNavigate();
-  const { t } = useTranslation();
-
 
   const register = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Vérification simple côté client avant l'appel API.
     if (password !== confirmPassword) {
-      setMessage(t("Passwords do not match"));
+      setMessage("Passwords do not match");
       return;
     }
     if (username.length > 15) {
-        setMessage(t("Username must be at most 15 characters"));
+        setMessage("Username must be at most 15 characters");
         return;
     }
     if (username.length < 3) {
-        setMessage(t("Username must be at least 3 characters"));
+        setMessage("Username must be at least 3 characters");
         return;
     }
     if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-        setMessage(t("Username can only contain letters, numbers, and underscores"));
+        setMessage("Username can only contain letters, numbers, and underscores");
         return;
     }
     if (username.trim() === "") {
-        setMessage(t("Username must contain at least one visible character"));
+        setMessage("Username must contain at least one visible character");
         return;
     }
     if (email.trim() === "") {
-        setMessage(t("Email must contain at least one visible character"));
+        setMessage("Email must contain at least one visible character");
         return;
     }
     if (password.trim() === "") {
-        setMessage(t("Password must contain at least one visible character"));
+        setMessage("Password must contain at least one visible character");
         return;
     }
     if (password.length < 6) {
-        setMessage(t("Password must be at least 6 characters long"));
+        setMessage("Password must be at least 6 characters long");
         return;
     }
     setLoading(true);
@@ -224,12 +222,12 @@ export const useRegister = () => {
 
       if (response.ok) {
         // Succès: auto-login puis redirection vers /profile.
-        setMessage(t("Registration successful"));
-        
+        setMessage("Registration successful");
+
         // Auto-login avec l'email et le mot de passe qu'on vient de créer
         const loginSuccess = await performLogin(email, password);
         getUserInfo(localStorage.getItem("access_token") || ""); // Charger les infos utilisateur après le login
-        
+
         if (loginSuccess) {
           setTimeout(() => {
             navigate("/profile");
@@ -247,7 +245,7 @@ export const useRegister = () => {
       }
     } catch {
       // Erreur réseau / exception fetch
-      setMessage(t("An error occurred. Please try again."));
+      setMessage("An error occurred. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -272,6 +270,7 @@ export const useLogout = () => {
     const navigate = useNavigate();
 
     const disconnect = () => {
+        closeSocket();
         localStorage.removeItem("access_token");
         localStorage.removeItem("username");
         localStorage.removeItem("email");

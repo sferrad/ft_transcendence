@@ -278,5 +278,36 @@
     "toast.group_invite": "{{name}} invited you to a group",
     "toast.channel_message": "{{name}} sent a message",
     "Decline": "DECLINE",
-    "invite.declined": "INVITE DECLINED"
+    "invite.declined": "INVITE DECLINED",
+    "OK": "OK",
+    "remaining": "remaining",
+    "View": "VIEW",
+    "Someone": "Someone",
+    "invite.ready_title": "OPPONENT READY!",
+    "invite.ready_body": "Your opponent has joined. Start the match?",
+
+    "Ranked": "Ranked",
+    "Friendly": "Friendly",
+    "ranked.info": "Standard rules · 5 goals · 2 min · Earns LP",
+    "friendly.info": "Casual · 5 goals · 2 min · No LP",
+    "Find Match": "Find Match",
+    "Searching": "Searching",
+    "vs.map_label": "MAP",
+
+    "Home": "Home",
+    "Profile Picture": "Profile Picture",
+    "Loading...": "Loading...",
+    "Success!": "Success!",
+
+    "forfeit.win_abandon_title": "Victory by abandon!",
+    "forfeit.win_abandon_desc": "{{name}} abandoned the match.",
+    "forfeit.abandon_title": "Match abandoned",
+    "forfeit.abandon_desc": "You abandoned the match.",
+
+    "Pause": "Pause",
+    "Resume": "Resume",
+    "Restart": "Restart",
+    "Abandon": "Abandon",
+    "abandon.confirm_title": "Abandon match?",
+    "abandon.confirm_desc": "You will forfeit and lose LP."
 }

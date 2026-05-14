@@ -38,10 +38,175 @@ ALLOWED_GAME_ACTIONS = {
 
 FORFEIT_TIMEOUT_S = 20
 
-# task_key → asyncio.Task running the 20-s forfeit countdown
+# task_key → asyncio.Task running the 20-s forfeit countdown (in-memory, cancellable)
 _disconnect_tasks: dict[str, asyncio.Task[None]] = {}
 # room_name → forfeit result persisted after the timer fires (survives room cleanup)
 _forfeit_results: dict[str, dict[str, Any]] = {}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# État "match actif" par user — source de vérité unique, persistée dans Redis.
+#
+# Une seule clé `match:active:<user_id>` par joueur, avec un champ `status` :
+#   - "playing"      → le joueur est dans la partie, socket connecté
+#   - "disconnected" → le joueur a perdu sa connexion, grace period en cours
+#
+# Écrite dès `game.join`/`game.rejoin` (statut "playing"), basculée en
+# "disconnected" au `disconnect`. Comme l'état existe AVANT toute déconnexion,
+# il survit à tout : fermeture d'onglet, perte réseau, redémarrage du
+# container, navigation privée. Le frontend interroge `/ws/active-match` qui
+# ne renvoie un match à rejoindre QUE si `status == "disconnected"`.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# TTL de la clé "playing" : la partie ne dépasse jamais quelques minutes.
+# Renouvelé à chaque game.update via `_redis_touch_match`.
+_MATCH_PLAYING_TTL_S = 600
+
+
+def _redis_match_key(user_id: int) -> str:
+    return f"match:active:{user_id}"
+
+
+def _redis_forfeit_notif_key(user_id: int) -> str:
+    return f"match:forfeited:{user_id}"
+
+
+async def _redis_set_match_playing(user_id: int, game_room_id: str, role: str) -> None:
+    """Marque le joueur comme étant DANS la partie (socket connecté)."""
+    from .middleware.redis import redis_client
+    payload = json.dumps({
+        "status": "playing",
+        "game_room_id": game_room_id,
+        "role": role,
+    })
+    try:
+        await redis_client.setex(_redis_match_key(user_id), _MATCH_PLAYING_TTL_S, payload)
+        logger.info("[REJOIN] match PLAYING user=%s room=%s role=%s", user_id, game_room_id, role)
+    except Exception as exc:
+        logger.warning("[REJOIN] FAILED to set match playing user=%s: %s", user_id, exc)
+
+
+async def _redis_set_match_disconnected(user_id: int) -> bool:
+    """
+    Bascule l'état du joueur en "disconnected" et démarre le compte à rebours.
+    Retourne True si un match "playing" existait (donc le grace period démarre),
+    False sinon (pas de match en cours → rien à faire).
+    """
+    from .middleware.redis import redis_client
+    import time as _time
+    try:
+        raw = await redis_client.get(_redis_match_key(user_id))
+        if not raw:
+            logger.info("[REJOIN] disconnect user=%s: no active match in Redis, skip", user_id)
+            return False
+        data = json.loads(raw)
+        if data.get("status") == "disconnected":
+            # Déjà en grace period (autre socket / double event) — ne pas resetter le timer.
+            return True
+        data["status"] = "disconnected"
+        data["disconnected_at"] = _time.time()
+        await redis_client.setex(
+            _redis_match_key(user_id), FORFEIT_TIMEOUT_S + 5, json.dumps(data)
+        )
+        logger.info("[REJOIN] match DISCONNECTED user=%s room=%s", user_id, data.get("game_room_id"))
+        return True
+    except Exception as exc:
+        logger.warning("[REJOIN] FAILED to set match disconnected user=%s: %s", user_id, exc)
+        return False
+
+
+async def _redis_clear_match(user_id: int) -> None:
+    """Supprime l'état match (partie finie, forfait, ou rejoin réussi)."""
+    from .middleware.redis import redis_client
+    try:
+        deleted = await redis_client.delete(_redis_match_key(user_id))
+        if deleted:
+            logger.info("[REJOIN] match CLEARED user=%s", user_id)
+    except Exception as exc:
+        logger.warning("[REJOIN] FAILED to clear match user=%s: %s", user_id, exc)
+
+
+async def _redis_touch_match(user_id: int) -> None:
+    """
+    Rafraîchit le TTL de l'état "playing" pendant que la partie tourne.
+    No-op si le joueur n'est pas en statut "playing" (ex: déjà disconnected —
+    on ne veut surtout pas écraser le compte à rebours de forfait).
+    """
+    from .middleware.redis import redis_client
+    try:
+        raw = await redis_client.get(_redis_match_key(user_id))
+        if not raw:
+            return
+        data = json.loads(raw)
+        if data.get("status") != "playing":
+            return
+        await redis_client.expire(_redis_match_key(user_id), _MATCH_PLAYING_TTL_S)
+    except Exception:
+        pass
+
+
+async def _redis_save_forfeit_notif(user_id: int) -> None:
+    from .middleware.redis import redis_client
+    try:
+        # Garde la notif 5 minutes, largement suffisant
+        await redis_client.setex(_redis_forfeit_notif_key(user_id), 300, "1")
+    except Exception:
+        pass
+
+
+async def get_active_match_for_user(user_id: int) -> dict[str, Any] | None:
+    """
+    Renvoie le match à rejoindre SEULEMENT si le joueur est en grace period
+    (status == "disconnected" et compteur non écoulé). Sinon None.
+    """
+    from .middleware.redis import redis_client
+    import time as _time
+    try:
+        raw = await redis_client.get(_redis_match_key(user_id))
+        if not raw:
+            return None
+        data = json.loads(raw)
+        if data.get("status") != "disconnected":
+            # Le joueur est "playing" → pas de popup de reconnexion à afficher.
+            return None
+        disconnected_at = float(data.get("disconnected_at", 0))
+        elapsed = _time.time() - disconnected_at
+        time_remaining = max(0.0, FORFEIT_TIMEOUT_S - elapsed)
+        if time_remaining <= 0:
+            await redis_client.delete(_redis_match_key(user_id))
+            logger.info("[REJOIN] active-match expired user=%s", user_id)
+            return None
+        logger.info(
+            "[REJOIN] active-match HIT user=%s room=%s remaining=%ss",
+            user_id, data.get("game_room_id"), round(time_remaining, 1),
+        )
+        return {
+            "game_room_id": data["game_room_id"],
+            "role": data["role"],
+            "time_remaining": round(time_remaining, 1),
+        }
+    except Exception as exc:
+        logger.warning("[REJOIN] get_active_match error user=%s: %s", user_id, exc)
+        return None
+
+
+async def get_forfeit_notification_for_user(user_id: int) -> bool:
+    """Returns True if a forfeit notification is pending (key persists until ack'd)."""
+    from .middleware.redis import redis_client
+    try:
+        val = await redis_client.get(_redis_forfeit_notif_key(user_id))
+        return bool(val)
+    except Exception:
+        pass
+    return False
+
+
+async def ack_forfeit_notification_for_user(user_id: int) -> None:
+    """Deletes the forfeit notification key (called when user dismisses the popup)."""
+    from .middleware.redis import redis_client
+    try:
+        await redis_client.delete(_redis_forfeit_notif_key(user_id))
+    except Exception:
+        pass
 
 
 def utc_now() -> str:
@@ -106,10 +271,12 @@ async def _do_forfeit(
         winner_role = "player1"
         winner_id = roles.get("p1")
 
+    # Score officiel forfait : 3-0 comme au football
+    score_p1 = 3 if winner_role == "player1" else 0
+    score_p2 = 3 if winner_role == "player2" else 0
+
     match_id = _parse_match_id(room_name)
     if match_id and winner_id:
-        score_p1 = 3 if winner_role == "player1" else 0
-        score_p2 = 3 if winner_role == "player2" else 0
         payload = {
             "status": "finished",
             "score_player1": score_p1,
@@ -132,9 +299,17 @@ async def _do_forfeit(
         "forfeit_user_id": forfeit_user_id,
         "forfeit_username": forfeit_username,
         "winner_role": winner_role,
+        "score_player1": score_p1,
+        "score_player2": score_p2,
         "timestamp": utc_now(),
     }
     _forfeit_results[room_name] = forfeit_result
+
+    # La partie est terminée : aucun des deux joueurs ne doit garder un état
+    # "match à rejoindre". On efface les deux côtés.
+    for uid in (roles.get("p1"), roles.get("p2")):
+        if isinstance(uid, int):
+            await _redis_clear_match(uid)
 
     await manager.broadcast_to_room(
         sio,
@@ -155,6 +330,11 @@ async def _forfeit_timer(
 
     task_key = f"{room_name}:{disconnected_user_id}"
     _disconnect_tasks.pop(task_key, None)
+
+    # Le grace period est écoulé : on efface l'état match et on dépose la
+    # notification "tu as déclaré forfait" que le joueur verra à son retour.
+    await _redis_clear_match(disconnected_user_id)
+    await _redis_save_forfeit_notif(disconnected_user_id)
 
     await _do_forfeit(sio, room_name, disconnected_user_id, disconnected_username, roles)
 
@@ -321,6 +501,8 @@ def register_websocket_handlers(sio: AsyncServer) -> None:
     async def disconnect(sid: str) -> None:
         session = await manager.get_session(sid)
         rooms = await manager.get_session_rooms(sid) if session else []
+        logger.info("[REJOIN] disconnect sid=%s user=%s rooms=%s",
+                    sid, session.user_id if session else None, rooms)
 
         # Capture game room data before unregister_connection may clean up rooms_data.
         game_snapshots: dict[str, dict[str, Any]] = {}
@@ -334,15 +516,19 @@ def register_websocket_handlers(sio: AsyncServer) -> None:
 
         removed = await manager.unregister_connection(sid)
         if removed is None:
+            logger.info("[REJOIN] disconnect sid=%s: removed is None, abort", sid)
             return
 
         for room_name in rooms:
             if room_name.startswith("game:"):
-                # If the user still has another socket in this room (StrictMode
-                # double-mount, multiple tabs, etc.), this is NOT a real
-                # disconnect — skip the forfeit/disconnect broadcast entirely.
+                # Avec le socket singleton côté front, un user n'a qu'UN socket.
+                # On garde quand même ce garde-fou : si une autre connexion du
+                # même user reste dans la room (multi-onglets), ce n'est pas une
+                # vraie déconnexion.
                 remaining_members = await manager.get_room_members(room_name)
                 if removed.user_id in remaining_members:
+                    logger.info("[REJOIN] disconnect user=%s room=%s: still has another socket in room, skip",
+                                removed.user_id, room_name)
                     continue
 
                 snap = game_snapshots.get(room_name, {})
@@ -350,9 +536,19 @@ def register_websocket_handlers(sio: AsyncServer) -> None:
                 game_finished = last_state.get("status") == "finished" if last_state else False
                 match_saved = snap.get("match_saved", False)
                 already_forfeit = room_name in _forfeit_results
+                logger.info("[REJOIN] disconnect user=%s room=%s: game_finished=%s match_saved=%s already_forfeit=%s",
+                            removed.user_id, room_name, game_finished, match_saved, already_forfeit)
 
                 if not game_finished and not match_saved and not already_forfeit:
-                    # Active game: start 20-s forfeit countdown.
+                    # Partie active : on bascule l'état Redis en "disconnected"
+                    # et on démarre le compte à rebours de forfait. La bascule
+                    # ne réussit que si un match "playing" existait pour ce user.
+                    started = await _redis_set_match_disconnected(removed.user_id)
+                    if not started:
+                        # Pas d'état match en Redis → rien à faire (le joueur
+                        # n'avait jamais émis game.join, ou état déjà nettoyé).
+                        continue
+
                     await manager.broadcast_to_room(
                         sio,
                         room_name,
@@ -369,10 +565,14 @@ def register_websocket_handlers(sio: AsyncServer) -> None:
                     existing = _disconnect_tasks.pop(task_key, None)
                     if existing:
                         existing.cancel()
+                    roles_snap = dict(snap.get("roles", {}))
                     _disconnect_tasks[task_key] = asyncio.create_task(
-                        _forfeit_timer(sio, room_name, removed.user_id, removed.username, dict(snap.get("roles", {})))
+                        _forfeit_timer(sio, room_name, removed.user_id, removed.username, roles_snap)
                     )
                 else:
+                    # Partie déjà finie / sauvegardée : pas de grace period,
+                    # on nettoie juste l'état match résiduel.
+                    await _redis_clear_match(removed.user_id)
                     room_members = await manager.get_room_members(room_name)
                     await manager.broadcast_to_room(
                         sio,
@@ -422,6 +622,15 @@ def register_websocket_handlers(sio: AsyncServer) -> None:
                 existing_roles = {}
             existing_roles["p1" if role == "player1" else "p2"] = session.user_id
             await manager.set_room_data(room_name, "game_roles", existing_roles)
+
+        # État match → "playing". C'est ICI que la source de vérité est créée :
+        # tant que ce socket vit, le joueur est dans la partie. Au moindre
+        # disconnect, le handler bascule cet état en "disconnected".
+        await _redis_set_match_playing(
+            session.user_id, public_room_id(room_name),
+            role if role in ("player1", "player2") else "player1",
+        )
+
         room_members = await manager.get_room_members(room_name)
         last_state = await manager.get_room_data(room_name, "last_game_state")
 
@@ -486,6 +695,9 @@ def register_websocket_handlers(sio: AsyncServer) -> None:
         # If forfeit already fired, send the result directly to this player.
         forfeit_result = _forfeit_results.get(room_name)
         if forfeit_result:
+            # La partie est perdue : on s'assure qu'aucun état "à rejoindre"
+            # ne traîne en Redis.
+            await _redis_clear_match(session.user_id)
             await sio.emit(
                 "game.forfeit",
                 {"game_room_id": public_room_id(room_name), **forfeit_result},
@@ -501,6 +713,12 @@ def register_websocket_handlers(sio: AsyncServer) -> None:
                 existing_roles = {}
             existing_roles["p1" if role == "player1" else "p2"] = session.user_id
             await manager.set_room_data(room_name, "game_roles", existing_roles)
+
+        # Reconnexion réussie dans le grace period → l'état repasse à "playing".
+        await _redis_set_match_playing(
+            session.user_id, public_room_id(room_name),
+            role if role in ("player1", "player2") else "player1",
+        )
 
         await join_socket_room(sio, sid, room_name)
 
@@ -535,6 +753,15 @@ def register_websocket_handlers(sio: AsyncServer) -> None:
 
     @sio.on("game.leave")
     async def game_leave(sid: str, data: dict[str, Any] | None) -> None:
+        """
+        Sortie volontaire d'une partie (l'utilisateur quitte la page de jeu).
+
+        Avec le socket partagé, quitter `/online-gameplay` ne coupe plus le
+        socket : c'est `game.leave` qui prévient le backend. Si la partie
+        n'est PAS terminée, on traite ça exactement comme une déconnexion
+        accidentelle → grace period de 20 s + popup de reconnexion. Le joueur
+        peut donc revenir, ou déclarer forfait depuis la popup.
+        """
         session = await manager.get_session(sid)
         if session is None:
             return
@@ -546,7 +773,43 @@ def register_websocket_handlers(sio: AsyncServer) -> None:
         for room_name in room_names:
             if room_name not in await manager.get_session_rooms(sid, "game:"):
                 continue
+
+            # Snapshot AVANT leave (rooms_data peut être wipé si last member).
+            last_state = await manager.get_room_data(room_name, "last_game_state") or {}
+            game_finished = last_state.get("status") == "finished" if last_state else False
+            match_saved = bool(await manager.get_room_data(room_name, "match_saved"))
+            roles_snap = dict(await manager.get_room_data(room_name, "game_roles") or {})
+            already_forfeit = room_name in _forfeit_results
+
             await leave_socket_room(sio, sid, room_name)
+
+            if not game_finished and not match_saved and not already_forfeit:
+                # Partie active : on démarre le grace period, comme un disconnect.
+                started = await _redis_set_match_disconnected(session.user_id)
+                if started:
+                    await manager.broadcast_to_room(
+                        sio,
+                        room_name,
+                        "game.opponent_disconnected",
+                        {
+                            "game_room_id": public_room_id(room_name),
+                            "user_id": session.user_id,
+                            "username": session.username,
+                            "timeout_seconds": FORFEIT_TIMEOUT_S,
+                            "timestamp": utc_now(),
+                        },
+                    )
+                    task_key = f"{room_name}:{session.user_id}"
+                    existing = _disconnect_tasks.pop(task_key, None)
+                    if existing:
+                        existing.cancel()
+                    _disconnect_tasks[task_key] = asyncio.create_task(
+                        _forfeit_timer(sio, room_name, session.user_id, session.username, roles_snap)
+                    )
+                    continue
+
+            # Partie déjà finie : sortie nette, on nettoie l'état match.
+            await _redis_clear_match(session.user_id)
             room_members = await manager.get_room_members(room_name)
             await manager.broadcast_to_room(
                 sio,
@@ -593,6 +856,9 @@ def register_websocket_handlers(sio: AsyncServer) -> None:
             await _do_forfeit(sio, room_name, session.user_id, session.username, dict(roles))
             return
 
+        # Touche le TTL "playing" : tant que le joueur agit, son match reste actif.
+        await _redis_touch_match(session.user_id)
+
         await manager.broadcast_to_room(
             sio,
             room_name,
@@ -619,6 +885,17 @@ def register_websocket_handlers(sio: AsyncServer) -> None:
         room_name = game_rooms[0]
         await manager.set_room_data(room_name, "last_game_state", data)
         await _persist_match_result(session=session, room_name=room_name, state=data)
+
+        if str(data.get("status") or "") == "finished":
+            # Partie terminée normalement : on efface l'état "match actif" des
+            # deux joueurs pour qu'aucune popup de reconnexion ne ressorte.
+            roles = await manager.get_room_data(room_name, "game_roles") or {}
+            for uid in (roles.get("p1"), roles.get("p2")):
+                if isinstance(uid, int):
+                    await _redis_clear_match(uid)
+        else:
+            await _redis_touch_match(session.user_id)
+
         await manager.broadcast_to_room(
             sio,
             room_name,

@@ -103,6 +103,32 @@ PROFILE_SERVICE_URL = os.getenv("PROFILE_SERVICE_URL", "https://profile-service:
 def health():
     return {"status": "ok", "service": "api-gateway"}
 
+@app.get("/ws/active-match")
+async def ws_active_match(payload: dict = Depends(require_user)):
+    """Return active match info if this user has a pending forfeit countdown (Redis-backed)."""
+    from .websocket_handlers import get_active_match_for_user
+    user_id = int(payload.get("sub", 0))
+    result = await get_active_match_for_user(user_id)
+    if result is None:
+        return {"active": False}
+    return {"active": True, **result}
+
+@app.get("/ws/forfeit-notification")
+async def ws_forfeit_notification(payload: dict = Depends(require_user)):
+    """Return pending forfeit notification for this user (key persists until DELETE ack)."""
+    from .websocket_handlers import get_forfeit_notification_for_user
+    user_id = int(payload.get("sub", 0))
+    forfeited = await get_forfeit_notification_for_user(user_id)
+    return {"forfeited": bool(forfeited)}
+
+@app.delete("/ws/forfeit-notification")
+async def ws_forfeit_notification_ack(payload: dict = Depends(require_user)):
+    """Acknowledge (dismiss) the forfeit notification — deletes the Redis key."""
+    from .websocket_handlers import ack_forfeit_notification_for_user
+    user_id = int(payload.get("sub", 0))
+    await ack_forfeit_notification_for_user(user_id)
+    return {"acknowledged": True}
+
 @app.get("/ws/health")
 async def websocket_health():
     """WebSocket server health check"""

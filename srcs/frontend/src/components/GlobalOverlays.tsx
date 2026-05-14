@@ -1,73 +1,151 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { io } from 'socket.io-client'
-import { getPendingMatch, clearPendingMatch } from '../utils/pendingMatch'
+import { getSocket } from '../hooks/socketSingleton'
+import { clearPendingMatch } from '../utils/pendingMatch'
 import { getPendingInvite, clearPendingInvite } from '../utils/pendingInvite'
 import { pollPendingInviteResult } from '../Gameplay/api/matchmaking'
 import { onToast, onRemoveToast, type Toast } from '../utils/toastBus'
 import { markInviteResolved } from '../utils/resolvedInvites'
 
+/**
+ * Émet un forfait via le SOCKET PARTAGÉ : on rejoint la room puis on envoie
+ * l'action `forfeit`. Pas de socket éphémère — un seul socket par user, sinon
+ * le backend voit deux connexions et le tracking de match devient ambigu.
+ */
+function emitForfeit(gameRoomId: string, role: string): void {
+  const sock = getSocket()
+  if (!sock) return
+  const fire = () => {
+    sock.emit('game.join', { game_room_id: gameRoomId, role })
+    setTimeout(() => sock.emit('game.action', { type: 'forfeit' }), 300)
+  }
+  if (sock.connected) fire()
+  else sock.once('connect', fire)
+}
+
 const ARCADE_BTN = '0px 4px rgb(255,255,255), 0px -4px rgb(255,255,255), 4px 0px rgb(255,255,255), -4px 0px rgb(255,255,255), 0px 4px rgba(0,0,0,0.22), 4px 4px rgba(0,0,0,0.22), -4px 4px rgba(0,0,0,0.22), inset 0px 4px rgba(255,255,255,0.21)'
 
 // ── Rejoin Overlay ────────────────────────────────────────────────────────────
+
+interface ServerActiveMatch { game_room_id: string; role: string; time_remaining: number }
+
+async function fetchActiveMatch(): Promise<ServerActiveMatch | null> {
+  const token = localStorage.getItem('access_token')
+  if (!token) return null
+  try {
+    const res = await fetch('/api/ws/active-match', { headers: { Authorization: `Bearer ${token}` } })
+    if (!res.ok) return null
+    const data = await res.json()
+    if (!data?.active) return null
+    return data as ServerActiveMatch
+  } catch { return null }
+}
+
+async function fetchForfeitNotification(): Promise<boolean> {
+  const token = localStorage.getItem('access_token')
+  if (!token) return false
+  try {
+    const res = await fetch('/api/ws/forfeit-notification', { headers: { Authorization: `Bearer ${token}` } })
+    if (!res.ok) return false
+    const data = await res.json()
+    return Boolean(data?.forfeited)
+  } catch { return false }
+}
+
+async function ackForfeitNotification(): Promise<void> {
+  const token = localStorage.getItem('access_token')
+  if (!token) return
+  try {
+    await fetch('/api/ws/forfeit-notification', { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+  } catch { /* best-effort */ }
+}
 
 function RejoinOverlay() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
-  const [pending, setPending] = useState(() => getPendingMatch())
+  const [serverMatch, setServerMatch] = useState<ServerActiveMatch | null>(null)
+  const [secsLeft, setSecsLeft] = useState(0)
+  const [forfeitNotif, setForfeitNotif] = useState(false)
   const forfeitingRef = useRef(false)
 
-  useEffect(() => {
-    if (location.pathname === '/online-gameplay') {
-      setPending(null)
-      return
-    }
-    setPending(getPendingMatch())
-    const id = window.setInterval(() => setPending(getPendingMatch()), 2000)
-    return () => clearInterval(id)
-  }, [location.pathname])
+  const onGamePage = location.pathname === '/online-gameplay'
+  const onLoginPage = location.pathname === '/login'
+  const hidden = onGamePage || onLoginPage
 
-  if (!pending || location.pathname === '/online-gameplay') return null
+  // Poll forfeit notification every 2s regardless of page (key persists in Redis until ack'd).
+  // This ensures users who return after the forfeit timer expired still see the popup.
+  useEffect(() => {
+    if (onLoginPage) return
+    if (!localStorage.getItem('access_token')) return
+    let active = true
+    const pollForfeit = async () => {
+      if (!active || forfeitNotif) return
+      if (!localStorage.getItem('access_token')) return
+      const forfeited = await fetchForfeitNotification()
+      if (!active) return
+      if (forfeited) setForfeitNotif(true)
+    }
+    pollForfeit()
+    const id = window.setInterval(pollForfeit, 2000)
+    return () => { active = false; clearInterval(id) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onLoginPage, forfeitNotif])
+
+  // Poll active match every 1s (only outside the game page — no rejoin popup while playing).
+  useEffect(() => {
+    if (hidden) { setServerMatch(null); return }
+    if (!localStorage.getItem('access_token')) return
+    let active = true
+    const poll = async () => {
+      if (!active) return
+      if (!localStorage.getItem('access_token')) return
+      const match = await fetchActiveMatch()
+      if (!active) return
+      setServerMatch(match)
+    }
+    poll()
+    const id = window.setInterval(poll, 1000)
+    return () => { active = false; clearInterval(id) }
+  }, [hidden])
+
+  // Countdown: reset when server gives us a fresh time_remaining
+  useEffect(() => {
+    if (!serverMatch) { setSecsLeft(0); return }
+    setSecsLeft(Math.ceil(serverMatch.time_remaining))
+    const id = window.setInterval(() => setSecsLeft(s => Math.max(0, s - 1)), 1000)
+    return () => clearInterval(id)
+  }, [serverMatch])
+
+  if (hidden) return null
+
+  if (forfeitNotif) return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9000, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ background: '#0a0f1a', border: '2px solid rgba(239,68,68,0.6)', borderRadius: 16, padding: '40px 48px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, maxWidth: 400, textAlign: 'center' }}>
+        <div className="font-arcade text-red-400 text-2xl" style={{ letterSpacing: 2 }}>{t('forfeit.loss_title', 'MATCH FORFEITED')}</div>
+        <div className="font-arcade text-white text-base">{t('forfeit.loss_desc', 'You did not reconnect in time. The match was forfeited.')}</div>
+        <button className="font-arcade" onClick={() => { ackForfeitNotification(); setForfeitNotif(false) }}
+          style={{ padding: '12px 28px', fontSize: 14, cursor: 'pointer', border: 'none', borderRadius: 0, background: '#4b5563', color: '#fff', letterSpacing: 2, boxShadow: ARCADE_BTN }}>
+          {t('OK', 'OK')}
+        </button>
+      </div>
+    </div>
+  )
+
+  if (!serverMatch) return null
 
   const handleResume = () => {
-    clearPendingMatch()
-    setPending(null)
-    navigate('/online-gameplay', { state: { ...pending.info, isRejoin: true } })
+    setServerMatch(null)
+    navigate('/online-gameplay', { state: { game_room_id: serverMatch.game_room_id, role: serverMatch.role, isRejoin: true } })
   }
 
-  const handleForfeit = async () => {
+  const handleForfeit = () => {
     if (forfeitingRef.current) return
     forfeitingRef.current = true
-    const info = pending.info
-    clearPendingMatch()
-    setPending(null)
-    try {
-      const token = localStorage.getItem('access_token') || ''
-      const wsUrl = (import.meta.env.VITE_WS_URL as string | undefined) || window.location.origin
-      const baseUrl = wsUrl.replace(/\/ws\/socket\.io\/?$/, '').replace(/\/ws\/?$/, '')
-        .replace(/^wss?:\/\//, s => s.startsWith('wss') ? 'https://' : 'http://')
-      const sock = io(baseUrl, {
-        path: '/ws/socket.io',
-        auth: { token, user_id: localStorage.getItem('user_id'), username: localStorage.getItem('username') },
-        transports: ['websocket'],
-        reconnection: false,
-      })
-      sock.once('connect', () => {
-        sock.emit('game.join', { game_room_id: info.game_room_id, role: info.role })
-        setTimeout(() => {
-          sock.emit('game.action', { type: 'forfeit' })
-          setTimeout(() => sock.disconnect(), 500)
-        }, 300)
-      })
-      sock.once('connect_error', () => sock.disconnect())
-    } catch {
-      // best-effort
-    }
+    emitForfeit(serverMatch.game_room_id, serverMatch.role)
+    setServerMatch(null)
   }
-
-  const secsLeft = Math.max(0, Math.ceil((pending.expiresAt - Date.now()) / 1000))
 
   return (
     <div style={{
@@ -83,7 +161,7 @@ function RejoinOverlay() {
           {t('rejoin.title', 'GAME IN PROGRESS')}
         </div>
         <div className="font-arcade text-white text-base">
-          {t('rejoin.body', 'You left a match. Resume or forfeit?')}
+          {t('rejoin.desc', 'You left a match. Resume or forfeit?')}
         </div>
         <div className="font-arcade text-gray-400 text-sm">{secsLeft}s {t('remaining', 'remaining')}</div>
         <div style={{ display: 'flex', gap: 16 }}>
@@ -92,14 +170,14 @@ function RejoinOverlay() {
             onClick={handleResume}
             style={{ padding: '12px 28px', fontSize: 14, cursor: 'pointer', border: 'none', borderRadius: 0, background: '#16a34a', color: '#fff', letterSpacing: 2, boxShadow: ARCADE_BTN }}
           >
-            {t('Resume', 'RESUME')}
+            {t('rejoin.button', 'RESUME')}
           </button>
           <button
             className="font-arcade"
             onClick={handleForfeit}
             style={{ padding: '12px 28px', fontSize: 14, cursor: 'pointer', border: 'none', borderRadius: 0, background: '#dc2626', color: '#fff', letterSpacing: 2, boxShadow: ARCADE_BTN }}
           >
-            {t('Forfeit', 'FORFEIT')}
+            {t('rejoin.dismiss', 'FORFEIT')}
           </button>
         </div>
       </div>
@@ -154,7 +232,7 @@ function InviteReadyOverlay() {
     const info = ready.info!
     markInviteResolved(info.match_id)
     setReady(null)
-    navigate('/online-gameplay', { state: { ...info, myNation: info.myNation } })
+    navigate('/online-gameplay', { state: { ...info, myNation: info.myNation, themeId: info.themeId } })
   }
 
   const handleDecline = () => {
@@ -162,28 +240,9 @@ function InviteReadyOverlay() {
     markInviteResolved(info.match_id)
     clearPendingInvite()
     setReady(null)
-    // Forfeit so the opponent isn't left waiting indefinitely
+    // Forfait pour ne pas laisser l'adversaire attendre indéfiniment.
     if (!info.match_id || !info.game_room_id) return
-    try {
-      const token = localStorage.getItem('access_token') || ''
-      const wsUrl = (import.meta.env.VITE_WS_URL as string | undefined) || window.location.origin
-      const baseUrl = wsUrl.replace(/\/ws\/socket\.io\/?$/, '').replace(/\/ws\/?$/, '')
-        .replace(/^wss?:\/\//, s => s.startsWith('wss') ? 'https://' : 'http://')
-      const sock = io(baseUrl, {
-        path: '/ws/socket.io',
-        auth: { token, user_id: localStorage.getItem('user_id'), username: localStorage.getItem('username') },
-        transports: ['websocket'],
-        reconnection: false,
-      })
-      sock.once('connect', () => {
-        sock.emit('game.join', { game_room_id: info.game_room_id, role: info.role ?? 'player1' })
-        setTimeout(() => {
-          sock.emit('game.action', { type: 'forfeit' })
-          setTimeout(() => sock.disconnect(), 500)
-        }, 300)
-      })
-      sock.once('connect_error', () => sock.disconnect())
-    } catch { /* best-effort */ }
+    emitForfeit(info.game_room_id, info.role ?? 'player1')
   }
 
   return (
@@ -249,7 +308,7 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: () => void }) 
         boxShadow: '0 4px 20px rgba(0,0,0,0.5)', cursor: toast.action ? 'pointer' : 'default',
         border: '1px solid rgba(255,255,255,0.1)', animation: 'slideIn 0.2s ease',
       }}
-      onClick={toast.action}
+      onClick={() => { toast.action?.(); onRemove() }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <span style={{ fontSize: 18 }}>{icon}</span>
@@ -267,7 +326,7 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: () => void }) 
           {toast.action && toast.actionLabel && (
             <button
               className="font-arcade"
-              onClick={e => { e.stopPropagation(); toast.action!() }}
+              onClick={e => { e.stopPropagation(); toast.action!(); onRemove() }}
               style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', padding: '4px 12px', fontSize: 10, cursor: 'pointer', borderRadius: 4, letterSpacing: 1 }}
             >
               {toast.actionLabel}

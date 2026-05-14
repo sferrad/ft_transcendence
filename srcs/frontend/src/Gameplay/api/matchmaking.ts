@@ -22,6 +22,7 @@ export async function joinMatchmaking(opts: {
   playerNation: string
   winningScore?: number | null
   duration?: number | null
+  ranked?: boolean
 }): Promise<MatchmakingResult> {
   const res = await fetch('/api/game/me/matchmaking/join', {
     method: 'POST',
@@ -31,6 +32,7 @@ export async function joinMatchmaking(opts: {
       player_nation: opts.playerNation,
       winning_score: opts.winningScore ?? 3,
       duration: opts.duration ?? null,
+      ranked: opts.ranked ?? true,
     }),
   })
   if (!res.ok) throw new Error(`Matchmaking join failed: ${res.status}`)

@@ -1,11 +1,14 @@
 import { faceSrc, flagSrc } from '../../characters'
 import { VERSUS_SCREEN_DURATION_MS } from '../engine/constants'
+import { useTranslation } from 'react-i18next'
 
 interface VersusScreenProps {
   player1Name: string
   player2Name: string
   player1Nation: string
   player2Nation: string
+  themeId?: string
+  themeNameKey?: string
 }
 
 const DUR = `${VERSUS_SCREEN_DURATION_MS / 1000}s`
@@ -59,6 +62,14 @@ const KEYFRAMES = `
   0%, 100% { opacity: 0.45; transform: scale(1); }
   50%      { opacity: 0.8;  transform: scale(1.1); }
 }
+@keyframes vs-map {
+  0%, 30% { opacity: 0; transform: translateY(14px) scale(0.85); }
+  45%     { opacity: 1; transform: translateY(0) scale(1.05); }
+  55%     { transform: scale(1); }
+  82%     { opacity: 1; }
+  96%     { opacity: 0; transform: translateY(-10px); }
+  100%    { opacity: 0; }
+}
 `
 
 const LINES = Array.from({ length: 9 }, (_, i) => ({
@@ -70,7 +81,8 @@ const LINES = Array.from({ length: 9 }, (_, i) => ({
 }))
 
 
-export function VersusScreen({ player1Name, player2Name, player1Nation, player2Nation }: VersusScreenProps) {
+export function VersusScreen({ player1Name, player2Name, player1Nation, player2Nation, themeId, themeNameKey }: VersusScreenProps) {
+  const { t } = useTranslation()
   return (
     <>
       <style>{KEYFRAMES}</style>
@@ -198,11 +210,11 @@ export function VersusScreen({ player1Name, player2Name, player1Nation, player2N
           </div>
         </div>
 
-        {/* VS — par-dessus les deux rideaux */}
+        {/* VS + badge terrain — par-dessus les deux rideaux */}
         <div style={{
           position: 'absolute', inset: 0,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 3,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          gap: 16, zIndex: 3,
         }}>
           <img
             src="/assets/perso/VS.png"
@@ -214,6 +226,35 @@ export function VersusScreen({ player1Name, player2Name, player1Nation, player2N
               imageRendering: 'pixelated',
             }}
           />
+          {themeNameKey && (
+            <div
+              className="font-arcade"
+              style={{
+                animation: `vs-map ${DUR} ease both`,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+              }}
+            >
+              <span style={{
+                fontSize: 'clamp(9px, 1.1vw, 13px)', color: '#facc15',
+                letterSpacing: 4, textTransform: 'uppercase', opacity: 0.8,
+              }}>
+                {t('vs.map_label', 'MAP')}
+              </span>
+              <span style={{
+                fontSize: 'clamp(14px, 2vw, 24px)', color: '#fff',
+                letterSpacing: 3, textTransform: 'uppercase',
+                textShadow: themeId === 'neon'
+                  ? '0 0 12px #00ffe0, 0 0 28px #00ffe066'
+                  : '0 0 12px #facc15aa, 0 3px 8px rgba(0,0,0,0.8)',
+                padding: '4px 16px',
+                background: themeId === 'neon' ? 'rgba(0,255,224,0.08)' : 'rgba(250,204,21,0.08)',
+                border: `1px solid ${themeId === 'neon' ? '#00ffe044' : '#facc1544'}`,
+                borderRadius: 2,
+              }}>
+                {t(themeNameKey)}
+              </span>
+            </div>
+          )}
         </div>
 
       </div>

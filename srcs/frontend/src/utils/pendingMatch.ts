@@ -1,6 +1,6 @@
 import type { MatchmakingResult } from '../Gameplay/api/matchmaking'
 
-export type PendingMatchInfo = MatchmakingResult & { myNation?: string }
+export type PendingMatchInfo = MatchmakingResult & { myNation?: string; themeId?: string }
 
 const KEY_INFO = 'pending_match_info'
 const KEY_EXPIRY = 'pending_match_expiry'

@@ -279,6 +279,38 @@
     "toast.group_invite": "{{name}} vous a invité dans un groupe",
     "toast.channel_message": "{{name}} a envoyé un message",
     "Decline": "REFUSER",
-    "invite.declined": "INVITATION REFUSÉE"
+    "invite.declined": "INVITATION REFUSÉE",
+    "OK": "OK",
+    "remaining": "restant",
+    "View": "VOIR",
+    "Someone": "Quelqu'un",
+    "invite.ready_title": "ADVERSAIRE PRÊT !",
+    "invite.ready_body": "Votre adversaire a rejoint. Commencer le match ?",
+
+    "Ranked": "Classé",
+    "Friendly": "Amical",
+    "ranked.info": "Règles standard · 5 buts · 2 min · Rapporte des LP",
+    "friendly.info": "Détendu · 5 buts · 2 min · Sans LP",
+    "Profile menu": "Menu profil",
+    "Find Match": "Trouver une partie",
+    "Searching": "Recherche",
+    "vs.map_label": "TERRAIN",
+
+    "Home": "Accueil",
+    "Profile Picture": "Photo de profil",
+    "Loading...": "Chargement...",
+    "Success!": "Succès!",
+
+    "forfeit.win_abandon_title": "Victoire par abandon !",
+    "forfeit.win_abandon_desc": "{{name}} a abandonné la partie.",
+    "forfeit.abandon_title": "Partie abandonnée",
+    "forfeit.abandon_desc": "Vous avez abandonné la partie.",
+
+    "Pause": "Pause",
+    "Resume": "Reprendre",
+    "Restart": "Recommencer",
+    "Abandon": "Abandonner",
+    "abandon.confirm_title": "Abandonner la partie ?",
+    "abandon.confirm_desc": "Vous perdrez la partie et des LP."
 }
 

@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useEffect, useRef, useCallback, useState } from 'react'
+
 import { useGameLoop } from './useGameLoop'
 import { Ball } from '../components/Ball'
 import { Character } from '../components/Character'
@@ -25,22 +26,27 @@ interface MatchViewProps {
   duration?: number | null
   winningScore?: number | null
   theme?: ThemeConfig
+  restartTrigger?: number
+  onFinish?: () => void
 }
 
 const PLAYER1_COLOR = '#3b82f6'
 const PLAYER2_COLOR = '#ef4444'
 
 export function MatchView({
-  mode, player1Name, player2Name, player1Nation, player2Nation, backRoute, paused = false, duration = null, winningScore = 3, theme = THEMES[0],
+  mode, player1Name, player2Name, player1Nation, player2Nation, backRoute, paused = false, duration = null, winningScore = 3, theme = THEMES[0], restartTrigger, onFinish,
 }: MatchViewProps) {
   const navigate = useNavigate()
   const { gameState, goalFlash, restart, timeLeft } = useGameLoop(player1Name, player2Name, mode === 'solo', paused, duration, winningScore)
   const matchSavedRef = useRef(false)
   const [afterStats, setAfterStats] = useState<UserStats | null>(null)
+  const onFinishRef = useRef(onFinish)
+  useEffect(() => { onFinishRef.current = onFinish }, [onFinish])
 
   useEffect(() => {
     if (gameState.status === 'finished' && !matchSavedRef.current) {
       matchSavedRef.current = true
+      onFinishRef.current?.()
       saveMatchResult({
         score_player1: gameState.player1.score,
         score_player2: gameState.player2.score,
@@ -52,6 +58,15 @@ export function MatchView({
         .catch(() => { /* silently ignore if not logged in */ })
     }
   }, [gameState.status, gameState.winner, gameState.player1.score, gameState.player2.score])
+
+  const prevTriggerRef = useRef(0)
+  useEffect(() => {
+    if (restartTrigger !== undefined && restartTrigger > prevTriggerRef.current) {
+      prevTriggerRef.current = restartTrigger
+      matchSavedRef.current = false
+      restart()
+    }
+  }, [restartTrigger, restart])
 
   const handleRestart = useCallback(() => {
     matchSavedRef.current = false
