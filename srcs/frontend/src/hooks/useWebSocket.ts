@@ -45,6 +45,10 @@ export interface ChatMemberEvent {
 }
 
 const normalizeSocketUrl = (rawUrl: string) => {
+  // Harmonise une URL Socket.IO/Ws pour qu'elle puisse etre utilisee par le client
+  // Socket.IO du navigateur. On retire d'abord les chemins techniques /ws/... puis
+  // on convertit ws/wss vers http/https, car la bibliotheque Socket.IO attend une
+  // URL de base HTTP(S) et non une URL WebSocket brute.
   const withoutSocketPath = rawUrl.replace(/\/ws\/socket\.io\/?$/, '').replace(/\/ws\/?$/, '');
   if (withoutSocketPath.startsWith('ws://')) {
     return `http://${withoutSocketPath.slice('ws://'.length)}`;
@@ -56,9 +60,31 @@ const normalizeSocketUrl = (rawUrl: string) => {
 };
 
 const defaultSocketUrl = () => {
+  // 1. Priorite absolue: si une URL WebSocket explicite est fournie via
+  //    VITE_WS_URL, on l'utilise telle quelle apres normalisation.
   const envUrl = import.meta.env.VITE_WS_URL as string | undefined;
   if (envUrl) return normalizeSocketUrl(envUrl);
-  return typeof window === 'undefined' ? '' : window.location.origin;
+
+  // 2. Si le code s'execute dans le navigateur, on reconstruit une base coherente
+  //    a partir de l'origine courante pour rester compatible avec l'environnement
+  //    HTTP local comme avec le HTTPS expose par le WAF.
+  if (typeof window === 'undefined') return '';
+
+  const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+  const hostname = window.location.hostname;
+  const port = window.location.port;
+
+  // 3. En developpement local, lorsque l'application est servie par Vite sur le
+  //    port 3000, on conserve la base locale afin que le proxy Vite redirige bien
+  //    les appels /ws vers l'API gateway.
+  if (port === '3000' && protocol === 'http:') {
+    return `http://${hostname}:3000`;
+  }
+
+  // 4. En production ou en preproduction, on reutilise l'origine actuelle.
+  //    Cela permet de passer par le WAF expose en HTTPS sur 8443 sans hardcoder
+  //    une adresse differente selon l'environnement.
+  return `${protocol}//${hostname}${port ? `:${port}` : ''}`;
 };
 
 const numberList = (value: unknown): number[] => {
