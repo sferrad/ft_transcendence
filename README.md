@@ -98,13 +98,13 @@ friends relationships, avatar uploads, exports, and deletion flows.
 
 ## Setup
 
-The project is designed to start with a single compose command from `srcs/`:
+The project is designed to start with a single compose command from the root directory:
 
 ```bash
-docker compose up --build
+make
 ```
 
-For Podman, use the equivalent `podman compose` / `podman-compose` command in the same folder.
+Note: Depending on the execution environment, the make command may use either Docker or Podman.
 
 ## Development Endpoints
 
