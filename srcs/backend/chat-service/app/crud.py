@@ -21,8 +21,20 @@ def create_room(db: Session, *, name: str, is_private: bool, owner_user_id: int)
         db.rollback()
         raise
 
-def list_rooms(db: Session, *, skip: int = 0, limit: int = 50) -> list[models.Room]:
-    return db.query(models.Room).order_by(models.Room.created_at.desc()).offset(skip).limit(limit).all()
+def list_rooms(db: Session, *, user_id: int, skip: int = 0, limit: int = 50) -> list[models.Room]:
+    # Public rooms are visible to everyone; private rooms only to members.
+    return (
+        db.query(models.Room)
+        .outerjoin(models.RoomMember, (models.RoomMember.room_id == models.Room.id) & (models.RoomMember.user_id == user_id))
+        .filter(
+            (models.Room.is_private == False) |  # noqa: E712
+            (models.RoomMember.user_id != None)  # noqa: E711
+        )
+        .order_by(models.Room.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 def get_room(db: Session, *, room_id: int) -> models.Room | None:
     return db.query(models.Room).filter(models.Room.id == room_id).first()

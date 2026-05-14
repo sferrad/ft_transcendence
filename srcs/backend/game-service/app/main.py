@@ -430,6 +430,23 @@ def accept_invite(
 	if not match or match.player2_id != user_id:
 		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Match not found")
 
+	# Mark match as started so the inviter can detect acceptance by polling.
+	crud.update_match(db, match_id, schemas.MatchUpdate(status="started"))
+
+	# Store the result so the inviter can fetch it.
+	with _mq_lock:
+		_mq_results[invite["from_user_id"]] = {
+			"status": "matched",
+			"match_id": match_id,
+			"game_room_id": str(match_id),
+			"role": "player1",
+			"seed": invite["seed"],
+			"opponent_name": payload.player_name,
+			"opponent_nation": payload.player_nation,
+			"winning_score": invite["winning_score"],
+			"duration": invite["duration"],
+		}
+
 	return {
 		"status": "matched",
 		"match_id": match_id,
@@ -443,13 +460,29 @@ def accept_invite(
 	}
 
 
+@app.get("/me/invites/pending", response_model=schemas.MatchmakingResult)
+def get_pending_invite_result(user_id: int = Depends(_current_user_id)):
+	"""Inviter polls this to learn when their invite was accepted."""
+	with _mq_lock:
+		result = _mq_results.pop(user_id, None)
+	if result:
+		return result
+	return {"status": "waiting"}
+
+
 @app.delete("/me/invites/{match_id}", status_code=204)
 def cancel_invite(match_id: int, user_id: int = Depends(_current_user_id)):
 	"""Inviter or invitee can cancel a pending invite."""
 	with _invites_lock:
 		invite = _invites.get(match_id)
-		if invite and (invite["from_user_id"] == user_id or invite["to_user_id"] == user_id):
-			_invites.pop(match_id, None)
+		if not invite or (invite["from_user_id"] != user_id and invite["to_user_id"] != user_id):
+			return
+		inviter_id = invite["from_user_id"]
+		is_invitee_declining = user_id == invite["to_user_id"]
+		_invites.pop(match_id, None)
+	if is_invitee_declining:
+		with _mq_lock:
+			_mq_results[inviter_id] = {"status": "declined", "match_id": None}
 
 
 @app.post("/internal/user/cleanup")

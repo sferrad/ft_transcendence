@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from "react-i18next";
 import { useLogout } from '../log/useAuth';
@@ -10,7 +10,6 @@ function Profil() {
     const navigate = useNavigate();
     const [isOpen, setIsOpen] = useState(false);
     const [avatarSrc, setAvatarSrc] = useState<string | null | undefined>(undefined);
-    const avatarBlobRef = useRef<string | null>(null);
     const { t } = useTranslation();
     const { disconnect } = useLogout();
     const { hasUnread } = useChatNotifications({ enabled: Boolean(localStorage.getItem("access_token")) });
@@ -20,14 +19,8 @@ function Profil() {
         if (!token) return
         fetchMyProfile(token)
             .then(p => loadAvatarSrc(token, p.avatar_url ?? null))
-            .then(src => {
-                if (src?.startsWith('blob:')) avatarBlobRef.current = src
-                setAvatarSrc(src ?? null)
-            })
+            .then(src => setAvatarSrc(src ?? null))
             .catch(() => setAvatarSrc(null))
-        return () => {
-            if (avatarBlobRef.current) URL.revokeObjectURL(avatarBlobRef.current)
-        }
     }, []);
     
     useEffect(()  => {

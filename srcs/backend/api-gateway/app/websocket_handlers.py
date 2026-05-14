@@ -33,6 +33,7 @@ ALLOWED_GAME_ACTIONS = {
     "resume",
     "input",
     "sync",
+    "forfeit",
 }
 
 FORFEIT_TIMEOUT_S = 20
@@ -82,18 +83,14 @@ def _parse_match_id(room_name: str) -> int | None:
     return match_id if match_id > 0 else None
 
 
-async def _forfeit_timer(
+async def _do_forfeit(
     sio: AsyncServer,
     room_name: str,
-    disconnected_user_id: int,
-    disconnected_username: str,
+    forfeit_user_id: int,
+    forfeit_username: str,
     roles: dict[str, Any],
 ) -> None:
-    await asyncio.sleep(FORFEIT_TIMEOUT_S)
-
-    task_key = f"{room_name}:{disconnected_user_id}"
-    _disconnect_tasks.pop(task_key, None)
-
+    """Persist forfeit result to DB and broadcast game.forfeit immediately."""
     manager = get_manager()
 
     match_saved = await manager.get_room_data(room_name, "match_saved")
@@ -102,16 +99,15 @@ async def _forfeit_timer(
 
     winner_role: str | None = None
     winner_id: int | None = None
-    if roles.get("p1") == disconnected_user_id:
+    if roles.get("p1") == forfeit_user_id:
         winner_role = "player2"
         winner_id = roles.get("p2")
-    elif roles.get("p2") == disconnected_user_id:
+    elif roles.get("p2") == forfeit_user_id:
         winner_role = "player1"
         winner_id = roles.get("p1")
 
     match_id = _parse_match_id(room_name)
     if match_id and winner_id:
-        # Forfeit gives the remaining player a 3-0 win.
         score_p1 = 3 if winner_role == "player1" else 0
         score_p2 = 3 if winner_role == "player2" else 0
         payload = {
@@ -133,8 +129,8 @@ async def _forfeit_timer(
             logger.warning("Failed to persist forfeit for match_id=%s: %s", match_id, exc)
 
     forfeit_result: dict[str, Any] = {
-        "forfeit_user_id": disconnected_user_id,
-        "forfeit_username": disconnected_username,
+        "forfeit_user_id": forfeit_user_id,
+        "forfeit_username": forfeit_username,
         "winner_role": winner_role,
         "timestamp": utc_now(),
     }
@@ -146,6 +142,21 @@ async def _forfeit_timer(
         "game.forfeit",
         {"game_room_id": public_room_id(room_name), **forfeit_result},
     )
+
+
+async def _forfeit_timer(
+    sio: AsyncServer,
+    room_name: str,
+    disconnected_user_id: int,
+    disconnected_username: str,
+    roles: dict[str, Any],
+) -> None:
+    await asyncio.sleep(FORFEIT_TIMEOUT_S)
+
+    task_key = f"{room_name}:{disconnected_user_id}"
+    _disconnect_tasks.pop(task_key, None)
+
+    await _do_forfeit(sio, room_name, disconnected_user_id, disconnected_username, roles)
 
 
 async def _persist_match_result(
@@ -571,6 +582,17 @@ def register_websocket_handlers(sio: AsyncServer) -> None:
             return
 
         room_name = game_rooms[0]
+
+        if action_type == "forfeit":
+            # Cancel any pending disconnect timer for this player (they chose to forfeit).
+            task_key = f"{room_name}:{session.user_id}"
+            task = _disconnect_tasks.pop(task_key, None)
+            if task:
+                task.cancel()
+            roles = await manager.get_room_data(room_name, "game_roles") or {}
+            await _do_forfeit(sio, room_name, session.user_id, session.username, dict(roles))
+            return
+
         await manager.broadcast_to_room(
             sio,
             room_name,
@@ -907,6 +929,7 @@ def register_websocket_handlers(sio: AsyncServer) -> None:
             "id": body.get("id"),
             "sender_user_id": body.get("sender_user_id", session.user_id),
             "receiver_user_id": body.get("receiver_user_id", target_user_id),
+            "username": session.username,
             "content": body.get("content", content),
             "created_at": body.get("created_at"),
             "timestamp": utc_now(),
@@ -1005,6 +1028,72 @@ def register_websocket_handlers(sio: AsyncServer) -> None:
         room_members = await manager.get_room_members(room_name)
         if target_user_id not in room_members:
             await manager.send_to_user(sio, target_user_id, "dm.read", payload)
+
+    @sio.on("chat.invite_member")
+    async def chat_invite_member(sid: str, data: dict[str, Any] | None) -> None:
+        """Invite a user to a private group room. Adds them as member + pushes a notification."""
+        session = await manager.get_session(sid)
+        if session is None:
+            await emit_error(sio, sid, "Session not found", "not_authenticated")
+            return
+
+        if not isinstance(data, dict):
+            await emit_error(sio, sid, "Invalid payload")
+            return
+
+        try:
+            room_id = int(data.get("room_id"))
+            target_user_id = int(data.get("user_id"))
+        except (TypeError, ValueError):
+            await emit_error(sio, sid, "Invalid room_id or user_id")
+            return
+
+        if target_user_id <= 0 or target_user_id == session.user_id:
+            await emit_error(sio, sid, "Invalid user_id")
+            return
+
+        room_name = chat_room_name(room_id)
+
+        # Add to room via chat-service
+        status_code, body = await chat_service_request(
+            "POST",
+            f"/rooms/{room_id}/invite",
+            user_id=session.user_id,
+            json_body={"user_id": target_user_id},
+        )
+        if status_code >= 400:
+            await emit_error(sio, sid, str(body.get("detail", "Invite failed")), "invite_failed")
+            return
+
+        # Notify the invitee via their personal channel
+        room_name_str = room_name
+        await manager.send_to_user(
+            sio,
+            target_user_id,
+            "chat.group_invite",
+            {
+                "room_id": room_id,
+                "room_name": data.get("room_name", ""),
+                "invited_by_user_id": session.user_id,
+                "invited_by_username": session.username,
+                "timestamp": utc_now(),
+            },
+        )
+
+        # Also broadcast to existing room members so their member list refreshes
+        await manager.broadcast_to_room(
+            sio,
+            room_name_str,
+            "chat.user_joined",
+            {
+                "room_id": room_id,
+                "user_id": target_user_id,
+                "username": data.get("target_username", ""),
+                "timestamp": utc_now(),
+            },
+        )
+
+        await sio.emit("chat.invite_sent", {"ok": True, "room_id": room_id, "user_id": target_user_id}, to=sid)
 
     @sio.on("ping")
     async def ping(sid: str) -> None:

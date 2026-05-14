@@ -22,7 +22,9 @@ import ChatPage from './chat/ChatPage';
 import SaveData from './setting/Acc/Savedata';
 import PrivacyPolicy from './Legal/PrivacyPolicy';
 import TermsOfService from './Legal/TermsOfService';
-import ResultsPage from './Gameplay/components/ResultsPage';
+import ResultsPage from './Gameplay/components/ResultsPage'
+import GlobalOverlays from './components/GlobalOverlays'
+import GlobalNotifications from './components/GlobalNotifications';
 
 const App = () => {
   const { t } = useTranslation();
@@ -66,6 +68,8 @@ const App = () => {
         <Route path="/results" element={<ResultsPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      <GlobalOverlays />
+      <GlobalNotifications />
       <footer className="fixed bottom-0 left-0 right-0 z-50 border-t border-black/10 bg-white/90 px-4 py-2 text-center text-xs text-[#1f2937] backdrop-blur-sm">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-3">
           <a className="font-semibold underline underline-offset-4" href="/privacy-policy">{t('privacy.label')}</a>

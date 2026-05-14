@@ -52,7 +52,7 @@ def create_room(payload: schemas.RoomCreate, user_id: int = Depends(_current_use
 	
 @app.get("/rooms", response_model=list[schemas.RoomOut])
 def get_rooms(skip: int = 0, limit: int = 100, user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
-	return crud.list_rooms(db, skip=skip, limit=limit)
+	return crud.list_rooms(db, user_id=user_id, skip=skip, limit=limit)
 
 @app.post("/rooms/{room_id}/join", response_model=schemas.JoinRoomOut)
 def join_room(room_id: int, user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
@@ -117,6 +117,20 @@ def get_room_members(room_id: int, user_id: int = Depends(_current_user_id), db:
 	if not crud.is_member(db, room_id=room_id, user_id=user_id):
 		raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a member")
 	return crud.list_room_member_ids(db, room_id=room_id)
+
+@app.post("/rooms/{room_id}/invite", response_model=schemas.InviteMemberOut, status_code=200)
+def invite_member(room_id: int, payload: schemas.InviteMemberPayload, user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
+	room = crud.get_room(db, room_id=room_id)
+	if not room:
+		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Room does not exist")
+	if not crud.is_member(db, room_id=room_id, user_id=user_id):
+		raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a member")
+	if not room.is_private:
+		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Use join for public rooms")
+	if crud.is_member(db, room_id=room_id, user_id=payload.user_id):
+		return schemas.InviteMemberOut(ok=True, room_id=room_id, user_id=payload.user_id)
+	crud.join_room(db, room_id=room_id, user_id=payload.user_id)
+	return schemas.InviteMemberOut(ok=True, room_id=room_id, user_id=payload.user_id)
 
 @app.post("/internal/user/cleanup")
 def internal_cleanup_user(payload: dict, db: Session = Depends(get_db)):

@@ -184,7 +184,7 @@ async def put_me(payload: schemas.ProfileUpdate, user_id: int = Depends(_current
 async def get_profile(user_id: int, db: Session = Depends(get_db)):
 	profile = crud.get_profile_by_user_id(db, user_id)
 	if not profile:
-		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
+		profile = crud.create_profile(db, user_id, schemas.ProfileCreate(display_name=f"User {user_id}"))
 	return profile
 
 @app.get("/me/settings", response_model = schemas.UserSettingOut)

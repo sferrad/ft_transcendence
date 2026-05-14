@@ -1,5 +1,5 @@
 export interface MatchmakingResult {
-  status: 'waiting' | 'matched' | 'idle'
+  status: 'waiting' | 'matched' | 'idle' | 'declined'
   match_id?: number
   game_room_id?: string
   role?: 'player1' | 'player2'
@@ -86,6 +86,12 @@ export async function acceptInvite(opts: {
     }),
   })
   if (!res.ok) throw new Error(`Accept failed: ${res.status}`)
+  return res.json()
+}
+
+export async function pollPendingInviteResult(): Promise<MatchmakingResult> {
+  const res = await fetch('/api/game/me/invites/pending', { headers: authHeaders() })
+  if (!res.ok) throw new Error(`Poll invite failed: ${res.status}`)
   return res.json()
 }
 

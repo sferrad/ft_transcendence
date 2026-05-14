@@ -119,6 +119,19 @@ export async function getRoomMembers(token: string, roomId: number): Promise<num
     return data;
 }
 
+export async function inviteToRoom(token: string, roomId: number, userId: number): Promise<{ ok: boolean; room_id: number; user_id: number }> {
+    const response = await fetch(`/api/chat/rooms/${encodeURIComponent(String(roomId))}/invite`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ user_id: userId }),
+    });
+    if (!response.ok) {
+        const detail = await parseErrorDetail(response);
+        throw new Error(detail || "Failed to invite member");
+    }
+    return response.json();
+}
+
 export async function getPrivateMessages(token: string, userId: number): Promise<PrivateMessageOut[]> {
     const response = await fetch(`/api/chat/${encodeURIComponent(String(userId))}/messages`, {
         method: "GET",

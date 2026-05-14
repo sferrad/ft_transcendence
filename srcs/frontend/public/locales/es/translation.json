@@ -126,6 +126,9 @@
     "Creating...": "Creando...",
     "Create": "Crear",
     "Channels": "Canales",
+    "New conversation": "Nueva conversación",
+    "Start a conversation": "Iniciar una conversación",
+    "All friends already have a conversation.": "Todos tus amigos ya tienen una conversación.",
     "No rooms yet.": "Aun no hay salas.",
     "Direct message": "Mensaje directo",
     "Private": "Privado",
@@ -256,5 +259,13 @@
     "Failed to send invite": "Error al enviar la invitación",
     "Invite expired": "Invitación expirada",
     "is typing...": "está escribiendo...",
-    "Seen": "Visto"
+    "Seen": "Visto",
+    "toast.message": "{{name}} te envió un mensaje",
+    "toast.invite": "{{name}} te invita a una partida",
+    "toast.invite_sub": "Clic para aceptar",
+    "toast.friend_request": "{{name}} te envió una solicitud de amistad",
+    "toast.group_invite": "{{name}} te invitó a un grupo",
+    "toast.channel_message": "{{name}} envió un mensaje",
+    "Decline": "RECHAZAR",
+    "invite.declined": "INVITACIÓN RECHAZADA"
 }
