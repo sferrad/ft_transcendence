@@ -5,7 +5,6 @@ from typing import Optional, List
 import enum
 from pydantic import BaseModel, EmailStr, ConfigDict
 
-from .models import languageEnum
 
 class ProfileCreate(BaseModel):
 	display_name: str

@@ -22,11 +22,6 @@ class Profile(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-class languageEnum(str, enum.Enum):
-    en = "en"
-    fr = "fr"
-    es = "es"
-
 class UserSetting(Base):
     __tablename__ = "user_settings"
     id = Column(Integer, primary_key=True, index=True)
