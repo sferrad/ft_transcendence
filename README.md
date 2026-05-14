@@ -57,24 +57,36 @@ These pages are implemented in the frontend and are reachable from the global fo
 They describe the data handled by the project, including account data, profile data, chat data,
 friends relationships, avatar uploads, exports, and deletion flows.
 
-## Module Selection
+## Module Selection and Scoring
 
-Conservative module count used by this project:
+### Validated Modules (22 points)
 
-- Frontend framework: 1 point
-- Backend framework: 1 point
-- WebSockets / realtime: 2 points
-- User interaction: 2 points
-- User management: 2 points
-- ORM: 1 point
-- Internationalization: 1 point
-- Advanced chat features: 1 point
-- GDPR / data export / deletion: 1 point
-- Cybersecurity: WAF + Vault: 2 points
-- DevOps: Monitoring with Prometheus + Grafana: 2 points
-- DevOps: Microservices architecture: 2 points
+| # | Module | Type | Points | Status | Proof Location |
+|---|--------|------|--------|--------|----------------|
+| 1 | Framework (frontend: React + TypeScript, backend: FastAPI) | Major | 2 | ✅ Validé | [srcs/frontend/](srcs/frontend/), [srcs/backend/api-gateway/](srcs/backend/api-gateway/) |
+| 2 | Real-time features (WebSockets via Socket.IO) | Major | 2 | ✅ Validé | [srcs/backend/api-gateway/app/websocket.py](srcs/backend/api-gateway/app/websocket.py), [srcs/frontend/src/chat/](srcs/frontend/src/chat/) |
+| 3 | User interaction (chat, friends, profiles, presence) | Major | 2 | ✅ Validé | [srcs/backend/chat-service/](srcs/backend/chat-service/), [srcs/backend/friends-service/](srcs/backend/friends-service/), [srcs/backend/profile-service/](srcs/backend/profile-service/) |
+| 4 | Standard user management & authentication | Major | 2 | ✅ Validé | [srcs/backend/user-service/](srcs/backend/user-service/), password hashing + JWT tokens |
+| 5 | ORM (SQLAlchemy) | Minor | 1 | ✅ Validé | [srcs/backend/*/app/models.py](srcs/backend/), ORM layer for all services |
+| 6 | Internationalization (3 languages: EN, FR, ES) | Minor | 1 | ✅ Validé | [srcs/frontend/public/locales/](srcs/frontend/public/locales/), i18next configuration |
+| 7 | AI Opponent (game engine with AI logic) | Major | 2 | ✅ Validé | [srcs/frontend/src/Gameplay/engine/](srcs/frontend/src/Gameplay/engine/), ai.ts behavioral logic |
+| 8 | WAF + Vault (ModSecurity + HashiCorp Vault) | Major | 2 | ✅ Validé | [srcs/waf/](srcs/waf/), [srcs/vault/](srcs/vault/) |
+| 9 | Monitoring (Prometheus + Grafana) | Major | 2 | ✅ Validé | [srcs/monitoring/](srcs/monitoring/), metrics exposure on all services |
+| 10 | Microservices architecture | Major | 2 | ✅ Validé | [srcs/backend/](srcs/backend/) - user, chat, friends, game, profile, api-gateway |
+| 11 | GDPR compliance (data export + account deletion) | Minor | 1 | ✅ Validé | [srcs/backend/profile-service/app/main.py](srcs/backend/profile-service/app/main.py) delete endpoint |
+| 12 | Game customization options | Minor | 1 | ✅ Validé | [srcs/frontend/src/Gameplay/GameSettings.tsx](srcs/frontend/src/Gameplay/), theme/duration/score settings |
+| 13 | Complete web-based game (solo + local multiplayer) | Major | 2 | ✅ Validé | [srcs/frontend/src/Gameplay/](srcs/frontend/src/Gameplay/), full game engine with engine, physics, AI |
 
-Total conservative score: 18 points.
+**Conservative Total: 22 points** (minimum threshold is 14 points)
+
+### In Progress Modules (Not Counted)
+
+| # | Module | Type | Points | Status | Notes |
+|---|--------|------|--------|--------|-------|
+| 14 | Remote players (real-time multiplayer sync) | Major | 0 | 🔄 En cours | Network sync foundation exists but not fully implemented |
+| 15 | Game statistics & match history | Minor | 0 | 🔄 En cours | Backend data collection present, UI/stats module incomplete |
+
+**Important**: These modules are NOT counted in the final score because they are incomplete or partially implemented. Per evaluation criteria, only fully functional modules count.
 
 ## Security and Architecture Notes
 
