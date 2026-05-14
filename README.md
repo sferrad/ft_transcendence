@@ -112,41 +112,28 @@ Models are defined in SQLAlchemy and serve as the single source of truth.
 
 | Table | Key fields |
 |---|---|
-| `profiles` | `user_id` (FK → users.id), `avatar_url`, `bio`, `language`, `country`, `updated_at` |
+| `profiles` | `id`, `user_id` , `display_name`, `avatar_url`, `bio`, `language`, `country`, `updated_at` |
 
 **Friends service** (`srcs/backend/friends-service/app/models.py`)
 
 | Table | Key fields |
 |---|---|
-| `friendships` | `id`, `requester_id`, `addressee_id`, `status` (pending/accepted/blocked), `created_at` |
+| `friendsrequest` | `id`, `from_user_id`, `to_user_id`, `status` (pending/accepted/blocked), `created_at` |
 
 **Chat service** (`srcs/backend/chat-service/app/models.py`)
 
 | Table | Key fields |
 |---|---|
 | `rooms` | `id`, `name`, `is_private`, `owner_user_id`, `created_at` |
-| `room_members` | `room_id` (FK), `user_id`, `joined_at` |
-| `messages` | `id`, `room_id` (FK), `sender_user_id` (0 = anonymous), `content`, `created_at` |
-| `private_messages` | `id`, `room_id` (FK), `sender_user_id`, `recipient_user_id`, `content`, `created_at` |
 
 **Game service** (`srcs/backend/game-service/app/models.py`)
 
 | Table | Key fields |
 |---|---|
-| `games` | `id`, `player1_id`, `player2_id`, `score_p1`, `score_p2`, `mode`, `ended_at` |
+| `matches` | `id`, `player1_id`, `player2_id`, `winner_id` `score_player1`, `score_player2`, `status`, `started_at`, `finished_at`, `created_at` |
 
-**Key relationships:**
 
-```
-users (user-service)
-  └─ profiles (1:1, profile-service)
-  └─ friendships (N:M via friends-service)
-  └─ room_members (N:M via chat-service)
-  └─ messages.sender_user_id (chat-service, 0 if deleted)
-  └─ games.player1_id / player2_id (game-service)
-```
-
-> Note: Because services are independent, foreign keys across service boundaries are not enforced at the DB level. Referential integrity is maintained at the application layer in the API gateway.
+> Note: Because services are independent, foreign keys across service boundaries are not enforced at the DB level. Referential integrity is maintained at the application layer in the API gateway. Only primary tables are displayed, see the files at `srcs/backend/<service>/app/models.py` for more details.
 
 ---
 
