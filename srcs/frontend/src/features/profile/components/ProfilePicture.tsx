@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { DEFAULT_AVATAR } from "../../../utils/defaultAvatar";
 
 interface ProfilePictureProps {
     profilePicture: string | null;
@@ -30,8 +31,8 @@ function ProfilePicture({ profilePicture, isLoading, onImageUpload, presenceOnli
                 <img
                     src={
                         imageError
-                            ? "/assets/default-profile.jpg"
-                            : (resolvedProfileSrc || "/assets/default-profile.jpg")
+                            ? DEFAULT_AVATAR
+                            : (resolvedProfileSrc || DEFAULT_AVATAR)
                     }
                     alt={t("Profile Picture")}
                     onError={handleImageError}

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { closeSocket } from "../hooks/socketSingleton";
+import { closeSocket } from "../../hooks/socketSingleton";
 
 type TFunction = (key: string) => string;
 

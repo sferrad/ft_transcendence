@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from "react-i18next";
-import Trad from '../features/settings/LanguageButton';
-import Settingacc from '../features/settings/SettingsAccount';
+import Trad from './LanguageButton';
+import Settingacc from './SettingsAccount';
 
 const Settingpage = () => {
     const { t } = useTranslation();

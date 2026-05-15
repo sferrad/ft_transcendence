@@ -2,27 +2,27 @@ import Handlelog from './pages/LoginPage'
 import Home from './pages/HomePage'
 import Handleregister from './pages/RegisterPage'
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Profile from './pages/ProfilePage';
-import Charselectsolo from './pages/SoloCharSelectPage';
-import LocalCharselect from './pages/LocalCharSelectPage';
-import SoloMode from './features/game/modes/SoloMode';
-import LocalMode from './features/game/modes/LocalMode';
-import OnlineMode from './features/game/modes/OnlineMode';
-import LobbyPage from './pages/LobbyPage';
+import Profile from './features/profile/ProfilePage';
+import Charselectsolo from './features/game/modes/solo/SoloCharSelectPage';
+import LocalCharselect from './features/game/modes/local/LocalCharSelectPage';
+import SoloMode from './features/game/modes/solo/SoloMode';
+import LocalMode from './features/game/modes/local/LocalMode';
+import OnlineMode from './features/game/modes/online/OnlineMode';
+import LobbyPage from './features/game/modes/online/LobbyPage';
 import NotFound from './pages/NotFoundPage';
-import Settingpage from './pages/SettingsPage';
-import ChangePass from './pages/ChangePasswordPage';
-import ChangeMail from './pages/ChangeEmailPage';
-import DeleteAcc from './pages/DeleteAccountPage';
+import Settingpage from './features/settings/SettingsPage';
+import ChangePass from './features/settings/ChangePasswordPage';
+import ChangeMail from './features/settings/ChangeEmailPage';
+import DeleteAcc from './features/settings/DeleteAccountPage';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import './i18n/index.ts';
 import { pingPresence } from './features/profile/api/friends';
 import ChatPage from './pages/ChatPage';
-import SaveData from './pages/SaveDataPage';
+import SaveData from './features/settings/SaveDataPage';
 import PrivacyPolicy from './pages/PrivacyPolicyPage';
 import TermsOfService from './pages/TermsOfServicePage';
-import ResultsPage from './pages/ResultsPage'
+import ResultsPage from './features/game/ResultsPage'
 import GlobalOverlays from './components/GlobalOverlays'
 import GlobalNotifications from './components/GlobalNotifications';
 

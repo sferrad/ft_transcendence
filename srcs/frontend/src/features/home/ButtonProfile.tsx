@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { DEFAULT_AVATAR } from '../../utils/defaultAvatar';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from "react-i18next";
 import { useLogout } from '../auth/useAuth';
@@ -45,7 +46,7 @@ function Profil() {
                 {avatarSrc === undefined
                     ? <span className="w-12 h-12 min-[481px]:w-16 min-[481px]:h-16 rounded-full bg-white/40" />
                     : <img
-                        src={avatarSrc ?? '/assets/default-profile.jpg'}
+                        src={avatarSrc ?? DEFAULT_AVATAR}
                         alt="avatar"
                         className="w-12 h-12 min-[481px]:w-16 min-[481px]:h-16 rounded-full object-cover border-2 border-white shadow-md"
                     />

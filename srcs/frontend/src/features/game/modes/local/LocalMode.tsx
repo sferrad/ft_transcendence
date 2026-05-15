@@ -1,35 +1,33 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { MatchView } from '../match/MatchView'
-import { VersusScreen } from '../components/VersusScreen'
-import { PauseMenu } from '../components/PauseMenu'
-import { getCurrentUser } from '../../../utils/auth'
-import { VERSUS_SCREEN_DURATION_MS, SCORE_DEFAULT } from '../engine/constants'
-import { THEMES } from '../themes'
+import { MatchView } from '../../match/MatchView'
+import { VersusScreen } from '../../components/VersusScreen'
+import { PauseMenu } from '../../components/PauseMenu'
+import { VERSUS_SCREEN_DURATION_MS, SCORE_DEFAULT } from '../../engine/constants'
+import { THEMES } from '../../themes'
 
-interface SoloModeState {
-  playerName?: string
-  aiName?: string
-  playerNation?: string
-  aiNation?: string
+interface LocalModeState {
+  player1Name?: string
+  player2Name?: string
+  player1Nation?: string
+  player2Nation?: string
   duration?: number | null
   winningScore?: number | null
   themeId?: string
 }
 
-const SoloMode = () => {
+const LocalMode = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams] = useSearchParams()
-  const state = (location.state as SoloModeState | null) ?? null
+  const state = (location.state as LocalModeState | null) ?? null
 
-  const user = getCurrentUser()
-  const playerName = state?.playerName || user?.username || searchParams.get('playerName') || t('Player')
-  const aiName = state?.aiName || searchParams.get('player2') || searchParams.get('ai') || 'CPU'
-  const playerNation = state?.playerNation || searchParams.get('player') || 'Algeria'
-  const aiNation = state?.aiNation || searchParams.get('ai') || 'Algeria'
+  const player1Name = state?.player1Name || searchParams.get('player1') || t('Player 1')
+  const player2Name = state?.player2Name || searchParams.get('player2') || t('Player 2')
+  const player1Nation = state?.player1Nation || searchParams.get('p1Nation') || 'Algeria'
+  const player2Nation = state?.player2Nation || searchParams.get('p2Nation') || 'Algeria'
   const duration = state?.duration !== undefined ? state.duration : null
   const winningScore = state?.winningScore !== undefined ? state.winningScore : SCORE_DEFAULT
   const theme = THEMES.find(th => th.id === state?.themeId) ?? THEMES[0]
@@ -53,12 +51,12 @@ const SoloMode = () => {
   return (
     <>
       <MatchView
-        mode="solo"
-        player1Name={playerName}
-        player2Name={aiName}
-        player1Nation={playerNation}
-        player2Nation={aiNation}
-        backRoute="/solo-select"
+        mode="local"
+        player1Name={player1Name}
+        player2Name={player2Name}
+        player1Nation={player1Nation}
+        player2Nation={player2Nation}
+        backRoute="/local-select"
         paused={showVersus || isPaused}
         duration={duration}
         winningScore={winningScore}
@@ -72,20 +70,20 @@ const SoloMode = () => {
           onOpen={() => setIsPaused(true)}
           onClose={() => setIsPaused(false)}
           onRestart={handlePauseRestart}
-          onLeave={() => navigate('/solo-select')}
-          backLabel={t('Solo')}
+          onLeave={() => navigate('/local-select')}
+          backLabel={t('Local')}
         />
       )}
       {showVersus && (
         <VersusScreen
-          player1Name={playerName}
-          player2Name={aiName}
-          player1Nation={playerNation}
-          player2Nation={aiNation}
+          player1Name={player1Name}
+          player2Name={player2Name}
+          player1Nation={player1Nation}
+          player2Nation={player2Nation}
         />
       )}
     </>
   )
 }
 
-export default SoloMode
+export default LocalMode

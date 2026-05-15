@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { MessageOut, ProfileOut, RoomOut } from "../../profile/types";
+import { DEFAULT_AVATAR } from "../../../utils/defaultAvatar";
 import { getRooms } from "../api";
 import { useChatWebSocket } from "../../../hooks/useWebSocket";
 import { useChatNotifications } from "../../../hooks/useChatNotifications";
@@ -300,7 +301,7 @@ export function useChatProviderValue({ initialRoomId = null, initialDmUserId = n
     };
 
     const handleAvatarError = (event: React.SyntheticEvent<HTMLImageElement>) => {
-        event.currentTarget.src = "/assets/default-profile.jpg";
+        event.currentTarget.src = DEFAULT_AVATAR;
     };
 
     const openProfile = (userId: number) => {
@@ -310,7 +311,7 @@ export function useChatProviderValue({ initialRoomId = null, initialDmUserId = n
     const renderAvatar = (userId: number) => {
         const profile = profiles[userId];
         const resolvedAvatarUrl = resolveAvatarUrl(profile?.avatar_url ?? null);
-        return avatarBlobs[userId] || (resolvedAvatarUrl && !resolvedAvatarUrl.startsWith("/api/") ? resolvedAvatarUrl : "/assets/default-profile.jpg");
+        return avatarBlobs[userId] || (resolvedAvatarUrl && !resolvedAvatarUrl.startsWith("/api/") ? resolvedAvatarUrl : DEFAULT_AVATAR);
     };
 
     const groupedMessages = useMemo(() => {

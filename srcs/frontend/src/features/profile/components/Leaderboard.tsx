@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { DEFAULT_AVATAR } from '../../../utils/defaultAvatar'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { fetchLeaderboard, type LeaderboardEntry } from '../../game/api/matches'
@@ -84,7 +85,7 @@ export function Leaderboard({ myUserId }: { myUserId: number }) {
                   {medal ?? `#${e.rank}`}
                 </span>
                 <span className="flex items-center justify-center">
-                  <img src={e.avatarSrc ?? '/assets/default-profile.jpg'} alt="" className="w-7 h-7 rounded-full object-cover border border-[#2b2b2b]" />
+                  <img src={e.avatarSrc ?? DEFAULT_AVATAR} alt="" className="w-7 h-7 rounded-full object-cover border border-[#2b2b2b]" />
                 </span>
                 <span className="truncate text-lg text-left min-w-0">
                   {e.displayName}{isMe && <span className="ml-1 text-base text-blue-600">({t('You')})</span>}

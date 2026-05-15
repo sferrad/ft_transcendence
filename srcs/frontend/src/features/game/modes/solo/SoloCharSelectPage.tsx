@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import "../i18n/index.ts";
-import { Carouselplayer1 } from "../features/game/components/CarouselPlayer1";
-import { Carouselplayer2 } from "../features/game/components/CarouselPlayer2";
+import "../../../../i18n/index.ts";
+import { Carouselplayer1 } from "../../components/CarouselPlayer1";
+import { Carouselplayer2 } from "../../components/CarouselPlayer2";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from 'react-router-dom';
-import { getCurrentUser } from "../utils/auth";
-import { TIMER_OPTIONS, TIMER_DEFAULT, SCORE_OPTIONS, SCORE_DEFAULT } from '../features/game/engine/constants';
-import { THEMES, THEME_DEFAULT } from '../features/game/themes';
+import { getCurrentUser } from "../../../../utils/auth";
+import { TIMER_OPTIONS, TIMER_DEFAULT, SCORE_OPTIONS, SCORE_DEFAULT } from '../../engine/constants';
+import { THEMES, THEME_DEFAULT } from '../../themes';
 
 const Charselectsolo = () => {
     const { t } = useTranslation();
@@ -25,14 +25,16 @@ const Charselectsolo = () => {
         `${arcadeButtonBase} normal-case tracking-normal whitespace-nowrap h-11 min-[481px]:h-12 min-[769px]:h-14 px-3 min-[481px]:px-4 min-[769px]:px-5 text-base min-[481px]:text-lg min-[769px]:text-2xl`;
 
     return (
-        <div className="relative min-h-[100dvh] w-full bg-[url('/assets/bgSoloselect.jpg')] bg-cover bg-center bg-no-repeat overflow-auto">
-            <button
+        <div className="min-h-[100dvh] w-full bg-[url('/assets/bgSoloselect.jpg')] bg-cover bg-center bg-no-repeat overflow-auto flex flex-col">
+            <div className="flex items-center px-3 min-[481px]:px-6 pt-3 min-[481px]:pt-6 pb-2">
+                <button
                     onClick={() => navigate('/')}
-                    className={`absolute top-3 left-3 min-[481px]:top-6 min-[481px]:left-6 ${arcadeBackButton} text-white bg-blue-600 hover:bg-blue-700`}
+                    className={`${arcadeBackButton} text-white bg-blue-600 hover:bg-blue-700`}
                 >
                     {t("Back")}
                 </button>
-            <div className="min-h-[100dvh] w-full px-4 py-4 flex flex-col items-center justify-center gap-4 hb-landscape-compact">
+            </div>
+            <div className="flex-1 w-full px-4 py-4 flex flex-col items-center justify-center gap-4 hb-landscape-compact">
                 <div className="grid grid-cols-1 min-[769px]:grid-cols-3 items-center gap-10 min-[769px]:gap-6 w-full max-w-5xl hb-landscape-grid-compact">
                     <div className="flex flex-col items-center justify-center gap-4">
                         <div className="font-arcade text-white text-2xl min-[481px]:text-3xl min-[769px]:text-4xl drop-shadow-[0_3px_0_rgba(0,0,0,0.7)]">
