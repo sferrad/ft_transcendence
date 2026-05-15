@@ -196,6 +196,28 @@ async def auth_logout(request: Request, payload: dict = Depends(require_user), a
         await blacklist_jwt(token, payload)
     except Exception:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Redis unavailable")
+    # Force-disconnect any active WebSocket sessions for this user so that
+    # the blacklisted token cannot be used via an existing socket connection.
+    try:
+        from .websocket_manager import get_manager
+
+        manager = get_manager()
+        # payload['sub'] is the user id as string
+        try:
+            user_id = int(payload.get("sub"))
+        except Exception:
+            user_id = None
+        if user_id is not None:
+            info = await manager.get_connection_info()
+            sids = info.get("users", {}).get(str(user_id), [])
+            for sid in list(sids):
+                try:
+                    await sio.disconnect(sid)
+                except Exception:
+                    logger.warning("Failed to disconnect sid=%s for user_id=%s", sid, user_id)
+    except Exception:
+        # Non-fatal: logout already succeeded; just warn in logs.
+        logger.exception("Failed to cleanup websocket sessions after logout")
     return {"ok": True}
 
 

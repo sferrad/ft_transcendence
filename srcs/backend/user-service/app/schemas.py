@@ -1,17 +1,17 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 
 
 class RegisterRequest(BaseModel):
-    email: str
-    password: str
-    username: str
+    email: str = Field(..., min_length=5, max_length=50)
+    password: str = Field(..., min_length=6, max_length=255)
+    username: str = Field(..., min_length=3, max_length=15)
 
 
 class LoginRequest(BaseModel):
-    identifier: str  # email or username
-    password: str
-    
+    identifier: str = Field(..., min_length=3, max_length=50)  # email or username
+    password: str = Field(..., min_length=6, max_length=255)
+
 class OutputLogin(BaseModel):
     id: int
     email: str
@@ -27,15 +27,15 @@ class UserLookupOut(BaseModel):
 
 class UpdateUserRequest(BaseModel):
     user_id: int
-    email: Optional[str]
-    password: Optional[str]
-    username: Optional[str]
+    email: Optional[str] = Field(None, min_length=5, max_length=50)
+    password: Optional[str] = Field(None, min_length=6, max_length=255)
+    username: Optional[str] = Field(None, min_length=3, max_length=15)
 
 class InternalUserUpdate(BaseModel):
     user_id: int
-    email: Optional[str] = None
-    nickname: Optional[str] = None
-    password: Optional[str] = None
+    email: Optional[str] = Field(None, min_length=5, max_length=50)
+    nickname: Optional[str] = Field(None, min_length=3, max_length=15)
+    password: Optional[str] = Field(None, min_length=6, max_length=255)
 
 class InternalUserDelete(BaseModel):
     user_id: int

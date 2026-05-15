@@ -47,7 +47,7 @@ def _current_user_id(x_user_id: str | None = Header(default=None, alias="X-User-
 _DM_RE = _re.compile(r"^dm-(\d+)-(\d+)$")
 
 @app.post("/rooms", response_model=schemas.RoomOut, status_code=201)
-def create_room(payload: schemas.RoomCreate, user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
+async def create_room(payload: schemas.RoomCreate, user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
 	try:
 		room = crud.create_room(db, name=payload.name, is_private=payload.is_private, owner_user_id=user_id)
 	except IntegrityError:
@@ -65,7 +65,7 @@ def get_rooms(skip: int = 0, limit: int = 100, user_id: int = Depends(_current_u
 	return crud.list_rooms(db, user_id=user_id, skip=skip, limit=limit)
 
 @app.post("/rooms/{room_id}/join", response_model=schemas.JoinRoomOut)
-def join_room(room_id: int, user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
+async def join_room(room_id: int, user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
 	room = crud.get_room(db, room_id=room_id)
 	if not room:
 		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Room does not exist")
@@ -111,7 +111,7 @@ def get_messages(room_id: int, limit: int = 50, user_id: int = Depends(_current_
 
 
 @app.post("/rooms/{room_id}/messages", response_model=schemas.MessageOut, status_code=201)
-def send_message(room_id: int, payload: schemas.MessageCreate, user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
+async def send_message(room_id: int, payload: schemas.MessageCreate, user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
 	room = crud.get_room(db, room_id=room_id)
 	if not room:
 		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Room does not exist")

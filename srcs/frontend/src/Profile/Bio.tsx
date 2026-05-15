@@ -2,28 +2,34 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 
+const normalizeBio = (value: string) => value.replace(/\r\n/g, "\n");
+
 const HandleBio = () => {
     const { t } = useTranslation();
     const [bio, setBio] = useState("");
     const [isEditing, setIsEditing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(localStorage.getItem("access_token")));
 
     useEffect(() => {
-        getCurrentBio();
+        const token = localStorage.getItem("access_token");
+        setIsAuthenticated(Boolean(token));
+        if (!token) {
+            setError(null);
+            return;
+        }
+
+        getCurrentBio(token);
     }, []);
 
-    const getCurrentBio = async () => {
+    const getCurrentBio = async (token: string) => {
         try {
-            const token = localStorage.getItem("access_token");
-            if (!token) {
-                throw new Error("User not authenticated");
-            }
             const response = await fetch("/api/profile/me", {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await response.json();
-            setBio(data.bio || "");
+            setBio(normalizeBio(data.bio || ""));
             setError(null);
         } catch (error) {
             console.error("Error fetching bio:", error);
@@ -37,7 +43,8 @@ const HandleBio = () => {
             setError(null);
             const token = localStorage.getItem("access_token");
             if (!token) {
-                throw new Error("User not authenticated");
+                setError(t("You must be logged in to save your bio."));
+                return;
             }
             const response = await fetch("/api/profile/me", {
                 method: "PUT",
@@ -45,16 +52,24 @@ const HandleBio = () => {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify({ bio }),
+                body: JSON.stringify({ bio: normalizeBio(bio) }),
             });
             
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || "Erreur lors de la sauvegarde");
+                let errorData: any = {};
+                try {
+                    errorData = await response.json();
+                } catch (parseErr) {
+                    const text = await response.text();
+                    console.error("Failed to parse response JSON:", text);
+                    errorData = { detail: `HTTP ${response.status}: ${text || "No response body"}` };
+                }
+                console.error("Profile API error:", response.status, errorData);
+                throw new Error(errorData.detail || `HTTP ${response.status}: Erreur lors de la sauvegarde`);
             }
             
             setIsEditing(false);
-            await getCurrentBio();
+            await getCurrentBio(token);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "Erreur lors de la sauvegarde";
             console.error("Error saving bio:", error);
@@ -75,12 +90,16 @@ const HandleBio = () => {
                     {error}
                 </div>
             )}
-            {isEditing ? (
+            {!isAuthenticated ? (
+                <div className="text-sm min-[481px]:text-base text-[#1f2937]">
+                    {t("You must be logged in to edit your bio.")}
+                </div>
+            ) : isEditing ? (
                 <div className="flex flex-col gap-4">
                     <textarea
                         value={bio}
                         onChange={(e) => setBio(e.target.value)}
-                        className="w-full px-3 py-2 border-2 border-[#2b2b2b] bg-white/90 text-[#1f2937] rounded-lg focus:outline-none focus:ring-2 focus:ring-black/20"
+                        className="w-full min-h-[8rem] px-3 py-2 border-2 border-[#2b2b2b] bg-white/90 text-[#1f2937] rounded-lg whitespace-pre-wrap leading-relaxed focus:outline-none focus:ring-2 focus:ring-black/20"
                         rows={4}
                         disabled={isLoading}
                     />
@@ -103,7 +122,7 @@ const HandleBio = () => {
                 </div>
             ) : (
                 <div className="flex items-start justify-between gap-4">
-                    <p className="text-sm min-[481px]:text-base whitespace-pre-wrap break-words flex-1">{bio || t("No bio set yet.")}</p>
+                    <pre className="text-sm min-[481px]:text-base whitespace-pre-wrap break-words flex-1 font-sans m-0">{bio || t("No bio set yet.")}</pre>
                     <button
                         onClick={() => setIsEditing(true)}
                         className={`${arcadeSmallButton} text-sm min-[481px]:text-lg text-white bg-blue-600 hover:bg-blue-700 flex-shrink-0`}

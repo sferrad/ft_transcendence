@@ -134,6 +134,17 @@ export function ChatButton({ initialRoomId = null, initialDmUserId = null }: Cha
         return partner?.display_name?.trim() || "Direct message";
     };
 
+    const getUserDisplayName = (userId: number) => {
+        if (userId <= 0) return t("Anonymous");
+        const profile = profiles[userId];
+        return profile?.display_name?.trim() || `User ${userId}`;
+    };
+
+    const getUserAvatarUrl = (userId: number) => {
+        if (userId <= 0) return "/assets/default-profile.jpg";
+        return renderAvatar(userId);
+    };
+
     const visibleRooms = useMemo(() => {
         return rooms.filter((room) => {
             if (!room.is_private) return true;
@@ -1354,7 +1365,6 @@ export function ChatButton({ initialRoomId = null, initialDmUserId = null }: Cha
                                             isLastMine && isSelectedRoomDm && partnerLastReadAt && message.created_at &&
                                             Date.parse(partnerLastReadAt) >= Date.parse(message.created_at)
                                         );
-                                        // Consecutive sender collapsing: show avatar only on last msg of a consecutive run
                                         const nextItem = group.messages[posInGroup + 1];
                                         const isLastInRun = !nextItem || nextItem.msg.sender_user_id !== message.sender_user_id;
                                         const showAvatar = isLastInRun;

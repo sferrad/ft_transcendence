@@ -45,6 +45,8 @@ export interface ChatMemberEvent {
   timestamp?: string;
 }
 
+
+
 const numberList = (value: unknown): number[] => {
   return Array.isArray(value)
     ? value.map((item) => Number(item)).filter((item) => Number.isFinite(item))

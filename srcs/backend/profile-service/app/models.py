@@ -13,7 +13,7 @@ class Profile(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, index=True, nullable=False)
 
-    display_name = Column(String(100), nullable=False)
+    display_name = Column(String(20), nullable=False)
     avatar_url = Column(String(512), nullable=True)
     bio = Column(Text, nullable=True)
     country = Column(String(50), nullable=True)
@@ -21,11 +21,6 @@ class Profile(Base):
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-
-class languageEnum(str, enum.Enum):
-    en = "en"
-    fr = "fr"
-    es = "es"
 
 class UserSetting(Base):
     __tablename__ = "user_settings"
