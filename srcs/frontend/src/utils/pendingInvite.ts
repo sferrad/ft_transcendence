@@ -1,4 +1,4 @@
-import type { MatchmakingResult } from '../Gameplay/api/matchmaking'
+import type { MatchmakingResult } from '../features/game/api/matchmaking'
 
 export type PendingInviteInfo = MatchmakingResult & { myNation?: string; themeId?: string }
 

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { getSocket } from '../hooks/socketSingleton'
 import { clearPendingMatch } from '../utils/pendingMatch'
 import { getPendingInvite, clearPendingInvite } from '../utils/pendingInvite'
-import { pollPendingInviteResult } from '../Gameplay/api/matchmaking'
+import { pollPendingInviteResult } from '../features/game/api/matchmaking'
 import { onToast, onRemoveToast, type Toast } from '../utils/toastBus'
 import { markInviteResolved } from '../utils/resolvedInvites'
 

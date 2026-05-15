@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { MessageOut, PrivateMessageOut, RoomOut } from "../Profile/types";
-import { getMessages, getPrivateMessages, getRoomMembers, getRooms } from "../Profile/api/chat";
+import type { MessageOut, PrivateMessageOut, RoomOut } from "../features/profile/types";
+import { getMessages, getPrivateMessages, getRoomMembers, getRooms } from "../features/chat/api";
 import { getSocket } from "./socketSingleton";
 
 type UseChatNotificationsOptions = {

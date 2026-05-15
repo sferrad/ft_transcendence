@@ -4,9 +4,9 @@ import { useTranslation } from 'react-i18next'
 import type { Socket } from 'socket.io-client'
 import { getSocket } from '../hooks/socketSingleton'
 import { addToast, removeToast } from '../utils/toastBus'
-import { cancelInvite } from '../Gameplay/api/matchmaking'
+import { cancelInvite } from '../features/game/api/matchmaking'
 import { markInviteResolved } from '../utils/resolvedInvites'
-import { getBlockedIds } from '../Profile/api/friends'
+import { getBlockedIds } from '../features/profile/api/friends'
 
 const MAX_MSG_PREVIEW = 60
 

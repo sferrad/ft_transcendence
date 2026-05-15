@@ -1,28 +1,28 @@
-import Handlelog from './log/Handlelog'
-import Home from './Home/Home'
-import Handleregister from './log/Handleregister'
+import Handlelog from './pages/LoginPage'
+import Home from './pages/HomePage'
+import Handleregister from './pages/RegisterPage'
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Profile from './Profile/Profile';
-import Charselectsolo from './Solo/Charselect';
-import LocalCharselect from './Local/Charselect';
-import SoloMode from './Gameplay/modes/SoloMode';
-import LocalMode from './Gameplay/modes/LocalMode';
-import OnlineMode from './Gameplay/modes/OnlineMode';
-import LobbyPage from './Online/LobbyPage';
-import NotFound from './error/404';
-import Settingpage from './setting/Settingpage';
-import ChangePass from './setting/Acc/Changepass';
-import ChangeMail from './setting/Acc/Changemail';
-import DeleteAcc from './setting/Acc/Deleteacc';
+import Profile from './pages/ProfilePage';
+import Charselectsolo from './pages/SoloCharSelectPage';
+import LocalCharselect from './pages/LocalCharSelectPage';
+import SoloMode from './features/game/modes/SoloMode';
+import LocalMode from './features/game/modes/LocalMode';
+import OnlineMode from './features/game/modes/OnlineMode';
+import LobbyPage from './pages/LobbyPage';
+import NotFound from './pages/NotFoundPage';
+import Settingpage from './pages/SettingsPage';
+import ChangePass from './pages/ChangePasswordPage';
+import ChangeMail from './pages/ChangeEmailPage';
+import DeleteAcc from './pages/DeleteAccountPage';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import './i18n/index.ts';
-import { pingPresence } from './Profile/api/friends';
-import ChatPage from './chat/ChatPage';
-import SaveData from './setting/Acc/Savedata';
-import PrivacyPolicy from './Legal/PrivacyPolicy';
-import TermsOfService from './Legal/TermsOfService';
-import ResultsPage from './Gameplay/components/ResultsPage'
+import { pingPresence } from './features/profile/api/friends';
+import ChatPage from './pages/ChatPage';
+import SaveData from './pages/SaveDataPage';
+import PrivacyPolicy from './pages/PrivacyPolicyPage';
+import TermsOfService from './pages/TermsOfServicePage';
+import ResultsPage from './features/game/components/ResultsPage'
 import GlobalOverlays from './components/GlobalOverlays'
 import GlobalNotifications from './components/GlobalNotifications';
 
