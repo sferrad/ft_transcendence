@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Carousel from '../features/home/Carousel';
+import Carousel from '../features/home/ModeCarousel';
 import Profil from '../features/home/ButtonProfile';
 import { useTranslation } from "react-i18next";
 import { FaBars, FaTimes } from 'react-icons/fa';

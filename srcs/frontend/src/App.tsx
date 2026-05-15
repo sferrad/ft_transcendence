@@ -22,7 +22,7 @@ import ChatPage from './pages/ChatPage';
 import SaveData from './pages/SaveDataPage';
 import PrivacyPolicy from './pages/PrivacyPolicyPage';
 import TermsOfService from './pages/TermsOfServicePage';
-import ResultsPage from './features/game/components/ResultsPage'
+import ResultsPage from './pages/ResultsPage'
 import GlobalOverlays from './components/GlobalOverlays'
 import GlobalNotifications from './components/GlobalNotifications';
 
