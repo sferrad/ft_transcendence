@@ -82,6 +82,14 @@ export async function resolveRequesterNames(
     return map;
 }
 
+export async function getBlockedIds(token: string): Promise<number[]> {
+    const response = await fetch("/api/friends/block", {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) return [];
+    return response.json();
+}
+
 export async function blockFriend(token: string, blockedUserId: number): Promise<void> {
     const response = await fetch("/api/friends/block", {
         method: "POST",

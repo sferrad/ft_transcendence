@@ -5,11 +5,12 @@ import { createRoom, deleteRoom, getMessages, getPrivateMessages, getRoomMembers
 import { fetchProfileByUserId } from "../Profile/api/profile";
 import { useTranslation } from "react-i18next";
 import { useChatWebSocket } from "../hooks/useWebSocket";
+import { getSocket } from "../hooks/socketSingleton";
 import { setRoomLastSeen, useChatNotifications } from "../hooks/useChatNotifications";
 import { acceptInvite, cancelInvite, createDmInvite } from "../Gameplay/api/matchmaking";
 import { savePendingInvite } from "../utils/pendingInvite";
 import { markInviteResolved, getResolvedIds, onResolvedUpdated } from "../utils/resolvedInvites";
-import { getFriendsWithStatus } from "../Profile/api/friends";
+import { getFriendsWithStatus, getBlockedIds } from "../Profile/api/friends";
 import { CHARACTERS } from "../characters";
 import { SCORE_OPTIONS, TIMER_OPTIONS, SCORE_DEFAULT, TIMER_DEFAULT } from "../Gameplay/engine/constants";
 import { THEMES, THEME_DEFAULT } from "../Gameplay/themes";
@@ -62,6 +63,7 @@ export function ChatButton({ initialRoomId = null, initialDmUserId = null }: Cha
     const [profiles, setProfiles] = useState<Record<number, ProfileOut>>({});
     const [avatarBlobs, setAvatarBlobs] = useState<Record<number, string>>({});
     const [memberIds, setMemberIds] = useState<number[]>([]);
+    const [blockedIds, setBlockedIds] = useState<Set<number>>(new Set());
     const [roomMemberIds, setRoomMemberIds] = useState<number[]>([]);
     const [systemEvents, setSystemEvents] = useState<Array<{ id: string; text: string }>>([]);
     const [isCreatingRoom, setIsCreatingRoom] = useState(false);
@@ -181,7 +183,6 @@ export function ChatButton({ initialRoomId = null, initialDmUserId = null }: Cha
     const { unreadRoomIds, hasUnread, lastMessageByRoomId } = useChatNotifications({
         enabled: Boolean(token),
         rooms: visibleRooms,
-        pollIntervalMs: 10000,
     });
 
     const [onlineIds, setOnlineIds] = useState<Set<number>>(new Set());
@@ -295,11 +296,19 @@ export function ChatButton({ initialRoomId = null, initialDmUserId = null }: Cha
         }
 
         refreshRooms().catch((error) => setStatus(error instanceof Error ? error.message : "Failed to fetch rooms"));
-        const intervalId = window.setInterval(() => {
-            refreshRooms().catch(() => undefined);
-        }, 8000);
+        getBlockedIds(token).then(ids => setBlockedIds(new Set(ids))).catch(() => undefined);
 
-        return () => window.clearInterval(intervalId);
+        // Rafraîchir la liste des rooms uniquement quand on rejoint/quitte une room.
+        const sock = getSocket();
+        if (!sock) return;
+        const onJoined = () => refreshRooms().catch(() => undefined);
+        const onLeft = () => refreshRooms().catch(() => undefined);
+        sock.on('chat.joined', onJoined);
+        sock.on('chat.left', onLeft);
+        return () => {
+            sock.off('chat.joined', onJoined);
+            sock.off('chat.left', onLeft);
+        };
     }, [token]);
 
     useEffect(() => {
@@ -875,6 +884,7 @@ export function ChatButton({ initialRoomId = null, initialDmUserId = null }: Cha
     const groupedMessages = useMemo(() => {
         const groups: { dateKey: string; dateLabel: string; messages: Array<{ msg: MessageOut; idx: number }> }[] = [];
         messages.forEach((msg, idx) => {
+            if (blockedIds.has(msg.sender_user_id)) return;
             const dateLabel = formatDateSep(msg.created_at ?? null);
             const dateKey = msg.created_at ? new Date(msg.created_at).toDateString() : `idx-${idx}`;
             const lastGroup = groups[groups.length - 1];
@@ -885,7 +895,7 @@ export function ChatButton({ initialRoomId = null, initialDmUserId = null }: Cha
             }
         });
         return groups;
-    }, [messages]);
+    }, [messages, blockedIds]);
 
     return (
         <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[1.25rem] border-4 border-[#1f2937] bg-[#f5efe2] shadow-[10px_10px_0_#1f2937] min-[481px]:rounded-[1.5rem]">
