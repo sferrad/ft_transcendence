@@ -24,7 +24,7 @@ function NationPicker({ value, onChange }: { value: string; onChange: (v: string
       <button onClick={prev} className={`${arcadeBase} px-3 py-1 text-white bg-green-600 hover:bg-green-500 text-xl`}>◀</button>
       <div className="flex flex-col items-center gap-1 w-28">
         <img src={`/assets/perso/faces/${value.toLowerCase()}-face.png`} alt={value} className="w-16 h-16 object-contain" />
-        <span className="font-arcade text-white text-sm">{value}</span>
+        <span className="font-arcade text-white text-base">{value}</span>
       </div>
       <button onClick={next} className={`${arcadeBase} px-3 py-1 text-white bg-green-600 hover:bg-green-500 text-xl`}>▶</button>
     </div>
@@ -86,7 +86,8 @@ export default function LobbyPage() {
           setErrorMsg('Connection error')
         }
       }, 2000)
-    } catch {
+    } catch (err) {
+      console.error('[Matchmaking] joinMatchmaking error:', err)
       setPhase('error')
       setErrorMsg('Failed to reach server')
     }
@@ -134,12 +135,12 @@ export default function LobbyPage() {
             </div>
 
             {/* Règles fixes du mode sélectionné */}
-            <p className="font-arcade text-white/60 text-sm">
+            <p className={`${arcadeBase} px-4 py-2 text-base bg-black text-white ${gameMode === 'ranked' ? 'outline outline-2 outline-yellow-400' : 'outline outline-2 outline-green-400'}`}>
               {gameMode === 'ranked' ? t('ranked.info') : t('friendly.info')}
             </p>
 
             {/* Player info */}
-            <div className="flex flex-col items-center gap-4 bg-black/40 rounded-xl p-6 border-2 border-white/30">
+            <div className={`${arcadeBase} flex flex-col items-center gap-4 bg-black p-6`}>
               <span className="font-arcade text-yellow-300 text-2xl">{playerName}</span>
               <NationPicker value={nation} onChange={setNation} />
             </div>
@@ -150,7 +151,7 @@ export default function LobbyPage() {
 
             <button
               onClick={handleFindMatch}
-              className={`${arcadeBase} px-10 py-4 text-2xl bg-yellow-400 text-black hover:bg-yellow-300`}
+              className={`${arcadeBase} px-10 py-4 text-2xl text-black ${gameMode === 'ranked' ? 'bg-yellow-400 hover:bg-yellow-300' : 'bg-green-400 hover:bg-green-300'}`}
             >
               {t('Find Match')}
             </button>
