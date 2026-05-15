@@ -11,7 +11,7 @@ interface PauseMenuProps {
   backLabel: string
 }
 
-export function PauseMenu({ isPaused, onOpen, onClose, onRestart, onLeave, backLabel }: PauseMenuProps) {
+export function PauseMenu({ isPaused, onOpen, onClose, onRestart, onLeave, backLabel: _backLabel }: PauseMenuProps) {
   const { t } = useTranslation()
 
   return (

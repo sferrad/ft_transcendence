@@ -1,64 +1,36 @@
 import { useTranslation } from "react-i18next";
-import type { RoomOut, ProfileOut } from "../../profile/types";
+import { useChatContext } from "../ChatContext.tsx";
 
-interface Props {
-    isChannelsOpen: boolean;
-    setIsChannelsOpen: (v: boolean) => void;
-    isCreateFormOpen: boolean;
-    setIsCreateFormOpen: (fn: (v: boolean) => boolean) => void;
-    isCreateGroupOpen: boolean;
-    setIsCreateGroupOpen: (fn: (v: boolean) => boolean) => void;
-    roomName: string;
-    setRoomName: (v: string) => void;
-    isCreatingRoom: boolean;
-    handleCreateRoom: () => void;
-    publicChannels: RoomOut[];
-    privateGroups: RoomOut[];
-    selectedRoomId: number | null;
-    setSelectedRoomId: (id: number) => void;
-    unreadRoomIds: number[];
-    lastMessageByRoomId: Record<number, number>;
-    allFriendIds: number[];
-    profiles: Record<number, ProfileOut>;
-    groupName: string;
-    setGroupName: (v: string) => void;
-    groupSelectedFriends: Set<number>;
-    setGroupSelectedFriends: (fn: (prev: Set<number>) => Set<number>) => void;
-    isCreatingGroup: boolean;
-    handleCreateGroup: () => void;
-    renderAvatar: (userId: number) => string;
-    handleAvatarError: (event: React.SyntheticEvent<HTMLImageElement>) => void;
-}
-
-export function ChannelsSidebar({
-    isChannelsOpen,
-    setIsChannelsOpen,
-    isCreateFormOpen,
-    setIsCreateFormOpen,
-    isCreateGroupOpen,
-    setIsCreateGroupOpen,
-    roomName,
-    setRoomName,
-    isCreatingRoom,
-    handleCreateRoom,
-    publicChannels,
-    privateGroups,
-    selectedRoomId,
-    setSelectedRoomId,
-    unreadRoomIds,
-    lastMessageByRoomId,
-    allFriendIds,
-    profiles,
-    groupName,
-    setGroupName,
-    groupSelectedFriends,
-    setGroupSelectedFriends,
-    isCreatingGroup,
-    handleCreateGroup,
-    renderAvatar,
-    handleAvatarError,
-}: Props) {
+export function ChannelsSidebar() {
     const { t } = useTranslation();
+    const {
+        isChannelsOpen,
+        setIsChannelsOpen,
+        isCreateFormOpen,
+        setIsCreateFormOpen,
+        isCreateGroupOpen,
+        setIsCreateGroupOpen,
+        roomName,
+        setRoomName,
+        isCreatingRoom,
+        handleCreateRoom,
+        publicChannels,
+        privateGroups,
+        selectedRoomId,
+        setSelectedRoomId,
+        unreadRoomIds,
+        lastMessageByRoomId,
+        allFriendIds,
+        profiles,
+        groupName,
+        setGroupName,
+        groupSelectedFriends,
+        setGroupSelectedFriends,
+        isCreatingGroup,
+        handleCreateGroup,
+        renderAvatar,
+        handleAvatarError,
+    } = useChatContext();
 
     return (
         <aside className={`fixed inset-y-0 left-0 z-40 flex w-[min(86vw,19rem)] flex-col border-r-4 border-[#1f2937] bg-[#ece3d0] shadow-[10px_0_0_#1f2937] transition-transform duration-200 lg:static lg:z-auto lg:w-auto lg:translate-x-0 lg:shadow-none ${isChannelsOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
@@ -90,6 +62,7 @@ export function ChannelsSidebar({
                             <input
                                 type="text"
                                 placeholder={t("Channel name")}
+                                maxLength={15}
                                 value={roomName}
                                 onChange={(e) => setRoomName(e.target.value)}
                                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCreateRoom(); } }}

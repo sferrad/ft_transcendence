@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useTranslation } from "react-i18next";
 import type { ProfileOut } from "../../profile/types";
 import { acceptInvite, cancelInvite, createDmInvite } from "../../game/api/matchmaking";
 import { savePendingInvite } from "../../../utils/pendingInvite";
@@ -8,7 +7,8 @@ import { markInviteResolved, getResolvedIds, onResolvedUpdated } from "../../../
 import { CHARACTERS } from "../../../utils/characters";
 import { SCORE_DEFAULT, TIMER_DEFAULT } from "../../game/engine/constants";
 import { THEME_DEFAULT } from "../../game/themes";
-import { INVITE_PREFIX, ParsedInvite } from "../types";
+import { INVITE_PREFIX } from "../types";
+import type { ParsedInvite } from "../types";
 import { useEffect } from "react";
 
 interface UseChatInviteParams {
@@ -29,7 +29,6 @@ export function useChatInvite({
     sendWsMessage,
 }: UseChatInviteParams) {
     const navigate = useNavigate();
-    const { t } = useTranslation();
 
     const [isInviting, setIsInviting] = useState(false);
     const [busyInviteId, setBusyInviteId] = useState<number | null>(null);

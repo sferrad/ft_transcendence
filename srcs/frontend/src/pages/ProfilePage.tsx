@@ -16,6 +16,7 @@ import {
     resolveRequesterNames,
     unblockFriend,
     blockFriend,
+    getBlockedIds,
     getFriendsWithStatus,
     removeFriend,
 } from "../features/profile/api/friends";
@@ -134,9 +135,32 @@ function Profile() {
     }, [isMe, profile?.user_id]);
 
     useEffect(() => {
-        if (isMe || !profile?.user_id) return;
-        const key = `blocked:${profile.user_id}`;
-        setIsBlocking(localStorage.getItem(key) === "1");
+        if (isMe || !profile?.user_id) {
+            setIsBlocking(false);
+            return;
+        }
+
+        const token = localStorage.getItem("access_token");
+        if (!token) {
+            setIsBlocking(false);
+            return;
+        }
+
+        let cancelled = false;
+
+        getBlockedIds(token)
+            .then((ids) => {
+                if (cancelled) return;
+                setIsBlocking(ids.includes(profile.user_id));
+            })
+            .catch(() => {
+                if (cancelled) return;
+                setIsBlocking(false);
+            });
+
+        return () => {
+            cancelled = true;
+        };
     }, [isMe, profile?.user_id]);
 
     useEffect(() => {
@@ -701,7 +725,6 @@ function Profile() {
                                             }
 
                                             const targetUserId = profile.user_id;
-                                            const key = `blocked:${targetUserId}`;
 
                                             const action = isBlocking
                                                 ? unblockFriend(token, targetUserId)
@@ -711,8 +734,6 @@ function Profile() {
                                                 .then(() => {
                                                     const next = !isBlocking;
                                                     setIsBlocking(next);
-                                                    if (next) localStorage.setItem(key, "1");
-                                                    else localStorage.removeItem(key);
                                                     setSuccess(true);
                                                     setMessageVisible(true);
                                                 })

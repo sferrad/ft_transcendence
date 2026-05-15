@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSearchParams } from "react-router-dom";
-import { ChatButton } from "../features/chat/ChatButton";
+import { ChatPanel } from "../features/chat/ChatPanel";
 import { useTranslation } from "react-i18next";
 import { useChatNotifications } from "../hooks/useChatNotifications";
 
@@ -47,7 +47,7 @@ function ChatPage() {
                 </div>
 
                 <div className="min-h-0 flex-1 overflow-hidden rounded-[1.5rem] border-4 border-[#1f2937] bg-white/90 shadow-[10px_10px_0_#1f2937]">
-                    <ChatButton
+                    <ChatPanel
                         initialRoomId={Number.isFinite(initialRoomId) && (initialRoomId ?? 0) > 0 ? initialRoomId : null}
                         initialDmUserId={Number.isFinite(initialDmUserId) && (initialDmUserId ?? 0) > 0 ? initialDmUserId : null}
                     />

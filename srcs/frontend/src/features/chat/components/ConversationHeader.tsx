@@ -1,58 +1,32 @@
 import { useTranslation } from "react-i18next";
-import type { RoomOut, ProfileOut } from "../../profile/types";
+import { useChatContext } from "../ChatContext";
 
-interface Props {
-    selectedRoom: RoomOut | null;
-    isSelectedRoomDm: boolean;
-    selectedDmUserId: number | null;
-    onlineIds: Set<number>;
-    memberIds: number[];
-    roomMemberIds: number[];
-    allFriendIds: number[];
-    profiles: Record<number, ProfileOut>;
-    isMember: boolean;
-    isOwner: boolean;
-    isInviting: boolean;
-    isInviteMemberOpen: boolean;
-    setIsInviteMemberOpen: (fn: (v: boolean) => boolean) => void;
-    isInvitingMember: boolean;
-    getRoomDisplayName: (room: RoomOut) => string;
-    renderAvatar: (userId: number) => string;
-    handleAvatarError: (event: React.SyntheticEvent<HTMLImageElement>) => void;
-    handleSendInvite: () => void;
-    handleJoinRoom: () => void;
-    handleLeaveRoom: () => void;
-    handleDeleteRoom: () => void;
-    handleInviteMember: (friendId: number) => void;
-    setSelectedRoomId: (id: number | null) => void;
-}
-
-export function ConversationHeader({
-    selectedRoom,
-    isSelectedRoomDm,
-    selectedDmUserId,
-    onlineIds,
-    memberIds,
-    roomMemberIds,
-    allFriendIds,
-    profiles,
-    isMember,
-    isOwner,
-    isInviting,
-    isInviteMemberOpen,
-    setIsInviteMemberOpen,
-    isInvitingMember,
-    getRoomDisplayName,
-    renderAvatar,
-    handleAvatarError,
-    handleSendInvite,
-    handleJoinRoom,
-    handleLeaveRoom,
-    handleDeleteRoom,
-    handleInviteMember,
-    setSelectedRoomId,
-}: Props) {
+export function ConversationHeader() {
     const { t } = useTranslation();
+    const {
+        selectedRoom,
+        isSelectedRoomDm,
+        selectedDmUserId,
+        onlineIds,
+        memberIds,
+        roomMemberIds,
+        allFriendIds,
+        profiles,
+        isMember,
+        isOwner,
+        isInviteMemberOpen,
+        setIsInviteMemberOpen,
+        isInvitingMember,
+        getRoomDisplayName,
+        renderAvatar,
+        handleAvatarError,
+        handleJoinRoom,
+        handleLeaveRoom,
+        handleDeleteRoom,
+        handleInviteMember,
+        setSelectedRoomId,
+        invite,
+    } = useChatContext();
 
     return (
         <div className={`border-b-4 border-[#1f2937] bg-white/70 px-3 py-3 backdrop-blur-sm min-[481px]:px-4 ${!selectedRoom ? "hidden" : ""}`}>
@@ -102,7 +76,7 @@ export function ConversationHeader({
                     </div>
 
                     <div className="flex items-center gap-1.5 shrink-0">
-                        {/* Invite member button — private groups only (any member can invite) */}
+                        {/* Invite member button — private groups only */}
                         {selectedRoom?.is_private && !isSelectedRoomDm && isMember && (
                             <div className="relative">
                                 <button
@@ -140,9 +114,9 @@ export function ConversationHeader({
                         {isSelectedRoomDm && (
                             <button
                                 type="button"
-                                onClick={handleSendInvite}
-                                disabled={isInviting}
-                                title={isInviting ? t("Sending...") : t("Invite to game")}
+                                onClick={invite.handleSendInvite}
+                                disabled={invite.isInviting}
+                                title={invite.isInviting ? t("Sending...") : t("Invite to game")}
                                 className="rounded-xl border-2 border-[#1f2937] bg-[#facc15] px-2.5 py-2 text-base font-semibold text-[#1f2937] shadow-[2px_2px_0_#1f2937] transition hover:translate-x-[1px] hover:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-60"
                             >
                                 🎮

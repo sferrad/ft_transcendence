@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import type { UserStats } from '../api/matches'
+import type { UserStats } from '../features/game/api/matches'
 
 interface ResultsState {
   stats: UserStats

@@ -1,40 +1,24 @@
 import { useTranslation } from "react-i18next";
-import type { RoomOut, ProfileOut } from "../../profile/types";
+import { useChatContext } from "../ChatContext";
 
-interface Props {
-    isNewDmOpen: boolean;
-    setIsNewDmOpen: (fn: (v: boolean) => boolean) => void;
-    friendsWithoutDm: number[];
-    profiles: Record<number, ProfileOut>;
-    onlineIds: Set<number>;
-    handleStartDm: (friendId: number) => void;
-    dmRooms: RoomOut[];
-    getDmOtherUserId: (room: RoomOut) => number | null;
-    getRoomDisplayName: (room: RoomOut) => string;
-    unreadRoomIds: number[];
-    lastMessageByRoomId: Record<number, number>;
-    setSelectedRoomId: (id: number) => void;
-    renderAvatar: (userId: number) => string;
-    handleAvatarError: (event: React.SyntheticEvent<HTMLImageElement>) => void;
-}
-
-export function DmList({
-    isNewDmOpen,
-    setIsNewDmOpen,
-    friendsWithoutDm,
-    profiles,
-    onlineIds,
-    handleStartDm,
-    dmRooms,
-    getDmOtherUserId,
-    getRoomDisplayName,
-    unreadRoomIds,
-    lastMessageByRoomId,
-    setSelectedRoomId,
-    renderAvatar,
-    handleAvatarError,
-}: Props) {
+export function DmList() {
     const { t } = useTranslation();
+    const {
+        isNewDmOpen,
+        setIsNewDmOpen,
+        friendsWithoutDm,
+        profiles,
+        onlineIds,
+        handleStartDm,
+        dmRooms,
+        getDmOtherUserId,
+        getRoomDisplayName,
+        unreadRoomIds,
+        lastMessageByRoomId,
+        setSelectedRoomId,
+        renderAvatar,
+        handleAvatarError,
+    } = useChatContext();
 
     return (
         <div className="flex min-h-0 flex-col flex-1">
@@ -42,12 +26,11 @@ export function DmList({
                 <span className="text-xs font-bold uppercase tracking-[0.18em] text-[#374151]">{t("Direct Messages")}</span>
                 <button
                     type="button"
-                    onClick={() => { setIsNewDmOpen(v => !v); }}
+                    onClick={() => setIsNewDmOpen(v => !v)}
                     title={t("New conversation")}
                     className="rounded-full border-2 border-[#1f2937] bg-[#4AD95A] w-7 h-7 flex items-center justify-center text-sm font-bold text-[#1f2937] shadow-[2px_2px_0_#1f2937] transition hover:translate-x-[1px] hover:translate-y-[1px]"
                 >+</button>
             </div>
-            {/* New DM friend picker */}
             {isNewDmOpen && (
                 <div className="border-b-2 border-[#1f2937]/15 bg-[#ece3d0] px-3 py-3">
                     <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#374151] mb-2">{t("Start a conversation")}</div>
