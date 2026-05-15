@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { faceSrc } from '../../../characters'
+import { faceSrc } from '../../../utils/characters'
 
 interface GameOverProps {
   isDraw: boolean

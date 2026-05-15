@@ -11,7 +11,7 @@ import { acceptInvite, cancelInvite, createDmInvite } from "../game/api/matchmak
 import { savePendingInvite } from "../../utils/pendingInvite";
 import { markInviteResolved, getResolvedIds, onResolvedUpdated } from "../../utils/resolvedInvites";
 import { getFriendsWithStatus, getBlockedIds } from "../profile/api/friends";
-import { CHARACTERS } from "../../characters";
+import { CHARACTERS } from "../../utils/characters";
 import { SCORE_OPTIONS, TIMER_OPTIONS, SCORE_DEFAULT, TIMER_DEFAULT } from "../game/engine/constants";
 import { THEMES, THEME_DEFAULT } from "../game/themes";
 

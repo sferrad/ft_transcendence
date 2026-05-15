@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { getCurrentUser } from '../utils/auth'
-import { CHARACTERS } from '../characters'
+import { CHARACTERS } from '../utils/characters'
 import { joinMatchmaking, getMatchmakingStatus, leaveMatchmaking, type MatchmakingResult } from '../features/game/api/matchmaking'
 
 type Phase = 'idle' | 'searching' | 'error'

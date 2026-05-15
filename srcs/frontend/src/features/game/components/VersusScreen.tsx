@@ -1,4 +1,4 @@
-import { faceSrc, flagSrc } from '../../../characters'
+import { faceSrc, flagSrc } from '../../../utils/characters'
 import { VERSUS_SCREEN_DURATION_MS } from '../engine/constants'
 import { useTranslation } from 'react-i18next'
 
