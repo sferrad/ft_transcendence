@@ -301,7 +301,28 @@ async def proxy_friends(path: str, request: Request, user: dict = Depends(requir
     if path.startswith("internal/") or path.startswith("/internal/"):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
     extra = {"X-User-Id": str(user.get("sub", ""))}
-    return await _proxy(request, FRIENDS_SERVICE_URL, path, extra_headers=extra)
+    response = await _proxy(request, FRIENDS_SERVICE_URL, path, extra_headers=extra)
+    # Notifier le destinataire via WebSocket pour éviter le polling HTTP.
+    if request.method == "POST" and path == "requests" and response.status_code == 200:
+        try:
+            import json as _json
+            raw = response.body if hasattr(response, "body") else getattr(response, "content", b"")
+            data = _json.loads(raw) if raw else {}
+            to_user_id = data.get("to_user_id")
+            from_username = user.get("username", "")
+            if to_user_id:
+                from .websocket_handlers import get_manager
+                manager = get_manager()
+                info = await manager.get_connection_info()
+                sids = info.get("users", {}).get(str(to_user_id), [])
+                for target_sid in sids:
+                    await sio.emit("ws.friend_request", {
+                        "from_user_id": int(user.get("sub", 0)),
+                        "from_username": from_username,
+                    }, to=target_sid)
+        except Exception:
+            pass
+    return response
 
 
 # Proxy vers profile-service avec un cache Redis léger sur les GET.

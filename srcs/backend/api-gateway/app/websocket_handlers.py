@@ -336,6 +336,16 @@ async def _forfeit_timer(
     await _redis_clear_match(disconnected_user_id)
     await _redis_save_forfeit_notif(disconnected_user_id)
 
+    # Push la notification directement si le user est déjà reconnecté.
+    try:
+        manager = get_manager()
+        info = await manager.get_connection_info()
+        sids = info.get("users", {}).get(str(disconnected_user_id), [])
+        for target_sid in sids:
+            await sio.emit("ws.forfeit_notification", {"forfeited": True}, to=target_sid)
+    except Exception:
+        pass
+
     await _do_forfeit(sio, room_name, disconnected_user_id, disconnected_username, roles)
 
 
@@ -496,6 +506,22 @@ def register_websocket_handlers(sio: AsyncServer) -> None:
             {"user_id": user_id, "username": username, "timestamp": utc_now()},
             to=sid,
         )
+        # Push active match + forfeit notification on connect so the frontend
+        # doesn't need to poll these endpoints at all.
+        try:
+            active = await get_active_match_for_user(user_id)
+            if active:
+                await sio.emit("ws.active_match", {**active, "active": True}, to=sid)
+            else:
+                await sio.emit("ws.active_match", {"active": False}, to=sid)
+        except Exception:
+            pass
+        try:
+            forfeited = await get_forfeit_notification_for_user(user_id)
+            if forfeited:
+                await sio.emit("ws.forfeit_notification", {"forfeited": True}, to=sid)
+        except Exception:
+            pass
 
     @sio.event
     async def disconnect(sid: str) -> None:
