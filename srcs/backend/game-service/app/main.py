@@ -28,6 +28,8 @@
 import threading
 import time
 import random as _random
+import os
+import httpx
 
 from fastapi import Depends, FastAPI, Header, HTTPException, status
 
@@ -49,6 +51,20 @@ from . import schemas, crud
 from .database import get_db, init_db, init_engine
 
 app = FastAPI(title="game-service")
+
+FRIENDS_SERVICE_URL = os.getenv("FRIENDS_SERVICE_URL", "https://friends-service:8004")
+INTERNAL_CA_CERT = os.getenv("INTERNAL_CA_CERT", "/certs/ca.crt")
+
+def _are_blocked(user_a: int, user_b: int) -> bool:
+    try:
+        with httpx.Client(verify=INTERNAL_CA_CERT, timeout=1.0) as client:
+            res = client.get(
+                f"{FRIENDS_SERVICE_URL}/internal/block/check",
+                params={"user_a": user_a, "user_b": user_b},
+            )
+            return res.status_code == 200 and res.json().get("blocked", False)
+    except Exception:
+        return False
 
 # ─── Matchmaking in-memory state ───────────────────────────────────────────────
 _mq_lock = threading.Lock()
@@ -285,9 +301,9 @@ def matchmaking_join(
 		for entry in _mq_queue:
 			if entry["user_id"] == user_id:
 				return {"status": "waiting"}
-		# Try to match with the first person in the same mode queue (must be a different user).
+		# Try to match with the first eligible person in the same mode queue.
 		for i, other in enumerate(_mq_queue):
-			if other["user_id"] != user_id and other.get("ranked", True) == payload.ranked:
+			if other["user_id"] != user_id and other.get("ranked", True) == payload.ranked and not _are_blocked(user_id, other["user_id"]):
 				_mq_queue.pop(i)
 				seed = _random.randint(1, 2**31 - 1)
 				# other is player1, current user is player2 — same mode guaranteed by the filter above

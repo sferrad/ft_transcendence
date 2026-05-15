@@ -320,6 +320,7 @@ services:
       - .env
     environment:
       - GAME_SERVICE_URL=https://game-service:8005
+      - FRIENDS_SERVICE_URL=https://friends-service:8004
       - VAULT_ADDR=${VAULT_ADDR}
       - VAULT_TOKEN_FILE=/vault/data/api-game.token
       - VAULT_CA_CERT=/certs/ca.crt
