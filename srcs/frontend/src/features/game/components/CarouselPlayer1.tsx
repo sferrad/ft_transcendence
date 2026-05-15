@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { FaPlay } from "react-icons/fa";
-import { CHARACTERS, faceSrc, flagSrc } from '../../utils/characters';
+import { CHARACTERS, faceSrc, flagSrc } from '../../../utils/characters';
 
 export const Carouselplayer1 = ({ onChange }: { onChange?: (char: string) => void }) => {
     const [activeIndex, setActiveIndex] = useState<number>(0);
