@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import "../i18n/index.ts";
-import { Carouselplayer1 } from "../features/local-solo/CarouselSoloPlayer1";
-import { Carouselplayer2 } from "../features/local-solo/CarouselSoloPlayer2";
+import { Carouselplayer1 } from "../features/game/components/CarouselPlayer1";
+import { Carouselplayer2 } from "../features/game/components/CarouselPlayer2";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser } from "../utils/auth";
