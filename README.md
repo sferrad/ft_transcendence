@@ -11,11 +11,16 @@
 Key features:
 
 - Secure authentication with hashed and salted passwords
-- User profiles with avatar upload, bio, and language preference
-- Friends system: add, accept, block users
-- Real-time chat: public rooms and private direct messages (DM)
-- Browser-based game: solo vs AI and local 2-player mode
-- Account deletion with GDPR-compliant data anonymisation
+- User profiles with avatar upload, bio, country, and language preference
+- Friends system: add, accept, block/unblock users, online status
+- Real-time chat: public channels, groups, and private direct messages (DM)
+- Advanced chat: typing indicators, read receipts, game invites from chat, profile access from chat, block from chat
+- Browser-based game: solo vs AI, local 2-player, and online matchmaking
+- Online mode: ranked and friendly, real-time synchronisation, reconnection and forfeit handling
+- Gamification: 6 achievements, XP/level system, tier ranking (Iron → Diamond), leaderboard
+- Game statistics: win/loss/draw history, win rate, match history with opponent details
+- Game customisation: themes, score limit, timer
+- Account deletion with GDPR-compliant data anonymisation and JSON data export
 - Internationalisation: English, French, Spanish
 - Monitoring with Prometheus and Grafana
 - Secrets management with HashiCorp Vault
@@ -30,9 +35,9 @@ Key features:
 |---|---|---|
 | ankammer | Technical Lead / Architect | Microservices architecture, API gateway, WAF configuration, TLS orchestration |
 | sferrad | Product Owner | Functional scope, evaluation criteria, documentation |
-| ilkaddou | Developer — Frontend & Gameplay | React UI, WebSocket client, game engine, i18n |
-| itaharbo | Project Manager / DevOps | Docker/Podman orchestration, deployment scripts, CI local |
-| moel-hal | Developer — Backend & Persistence | Chat, messages, GDPR deletion/anonymisation, DB integrity |
+| ilkaddou | Developer — Frontend & Gameplay | React UI, WebSocket client, game engine, AI, i18n, online mode |
+| itaharbo | Project Manager / DevOps | Docker/Podman orchestration, deployment scripts, Prometheus/Grafana |
+| moel-hal | Developer — Backend & Persistence | Chat, messages, GDPR deletion/anonymisation, game stats, DB integrity |
 
 ---
 
@@ -42,11 +47,11 @@ Key features:
 Tasks were broken down into service-level issues on GitHub Issues and assigned at the start of each week. Each microservice was owned by one developer to limit merge conflicts while shared components (auth, API gateway) were reviewed by at least two members before merging.
 
 **Meetings:**
-Weekly sync every Monday to review progress, unblock issues, and adjust priorities. Quick async standups on Whattsap throughout the week.
+Weekly sync every Monday to review progress, unblock issues, and adjust priorities. Quick async standups on WhatsApp throughout the week.
 
 **Tools:**
 - GitHub Issues for task tracking
-- Whattsap for daily communication
+- WhatsApp for daily communication
 - Git branches per feature/service, PR review before merge to `dev`
 
 **Code reviews:**
@@ -57,10 +62,12 @@ All changes to the API gateway and WAF configuration were reviewed by the Techni
 ## Technical stack
 
 **Frontend:**
-- React 18 + TypeScript
+- React 19 + TypeScript
 - Vite (dev server and build tool)
 - Tailwind CSS (styling)
 - Socket.IO client (real-time)
+- react-i18next (internationalisation)
+- React Router v6 (client-side routing)
 
 **Backend:**
 - FastAPI (Python) — one instance per microservice
@@ -112,7 +119,7 @@ Models are defined in SQLAlchemy and serve as the single source of truth.
 
 | Table | Key fields |
 |---|---|
-| `profiles` | `id`, `user_id` , `display_name`, `avatar_url`, `bio`, `language`, `country`, `updated_at` |
+| `profiles` | `id`, `user_id`, `display_name`, `avatar_url`, `bio`, `language`, `country`, `updated_at` |
 
 **Friends service** (`srcs/backend/friends-service/app/models.py`)
 
@@ -125,15 +132,15 @@ Models are defined in SQLAlchemy and serve as the single source of truth.
 | Table | Key fields |
 |---|---|
 | `rooms` | `id`, `name`, `is_private`, `owner_user_id`, `created_at` |
+| `messages` | `id`, `room_id`, `sender_user_id`, `content`, `created_at` |
 
 **Game service** (`srcs/backend/game-service/app/models.py`)
 
 | Table | Key fields |
 |---|---|
-| `matches` | `id`, `player1_id`, `player2_id`, `winner_id` `score_player1`, `score_player2`, `status`, `started_at`, `finished_at`, `created_at` |
+| `matches` | `id`, `player1_id`, `player2_id`, `winner_id`, `score_player1`, `score_player2`, `status`, `game_mode`, `started_at`, `finished_at` |
 
-
-> Note: Because services are independent, foreign keys across service boundaries are not enforced at the DB level. Referential integrity is maintained at the application layer in the API gateway. Only primary tables are displayed, see the files at `srcs/backend/<service>/app/models.py` for more details.
+> Note: Because services are independent, foreign keys across service boundaries are not enforced at the DB level. Referential integrity is maintained at the application layer in the API gateway. Only primary tables are displayed — see `srcs/backend/<service>/app/models.py` for the full schema.
 
 ---
 
@@ -144,19 +151,27 @@ Models are defined in SQLAlchemy and serve as the single source of truth.
 | Register / login | Email + password, bcrypt hash, JWT issued by API gateway | ankammer |
 | JWT auth & revocation | JWT secret from Vault, Redis blacklist on logout/deletion | ankammer |
 | User profile | Avatar upload, bio, language, country, display name | sferrad |
-| Friends system | Send/accept/decline/block requests, online status | sferrad |
-| Public chat rooms | Create rooms, send/receive messages in real time | sferrad, ilkaddou |
+| Friends system | Send/accept/decline/block/unblock, online status | sferrad |
+| Public chat rooms | Create, join, leave rooms; send/receive messages in real time | sferrad, ilkaddou |
 | Private messages (DM) | Find-or-create DM room, bilateral message deletion on account removal | sferrad, ilkaddou |
-| Real-time (WebSocket) | Socket.IO via API gateway, room events broadcast | itaharbo, sferrad |
-| Browser game (solo) | Headball-style game vs AI opponent | ilkaddou, moel-hal |
-| Browser game (local) | Two players on the same screen | ilkaddou, moel-hal |
-| AI opponent | Rule-based AI with adjustable difficulty | ilkaddou, moel-hal |
-| GDPR account deletion | Public messages anonymised (`sender_user_id=0`), DMs deleted, JWT blacklisted | ankammer |
-| Data export | User can download their data as JSON | ankammer |
-| Internationalisation | EN / FR / ES with language switcher | sferrad |
-| WAF | Nginx + ModSecurity OWASP CRS, rate limiting, TLS termination | ankammer, ilkaddou |
+| Advanced chat | Typing indicators, read receipts, game invites from chat, profile access from chat, block from chat | ilkaddou |
+| Real-time (WebSocket) | Socket.IO via API gateway, room events broadcast, presence | itaharbo, sferrad |
+| Browser game — solo | Headball-style game vs AI opponent | ilkaddou, moel-hal |
+| Browser game — local | Two players on the same screen | ilkaddou, moel-hal |
+| Browser game — online | Matchmaking (ranked/friendly), P1-authoritative sync, reconnection, forfeit | ilkaddou |
+| AI opponent | Rule-based AI with probabilistic shooting, defend/attack modes, happenings awareness | ilkaddou |
+| Game customisation | Theme, score limit, timer — respected by AI and all game modes | ilkaddou |
+| Happenings (power-ups) | 6 types (freeze, speed boost, mega kick, slow ball, shrink/grow goal), deterministic via seeded PRNG | ilkaddou |
+| Game statistics | Wins, losses, draws, win rate, level, XP bar, tier (Iron→Diamond), LP | moel-hal, ilkaddou |
+| Match history | Per-match results with opponent name, score, date, game mode | moel-hal |
+| Achievements | 6 unlockable achievements stored in DB (first win, 5 wins, 10 games, 25 wins, clean sheet, level 5) | moel-hal |
+| Leaderboard | Ranked top players with tier colour coding, click to view profile | ilkaddou |
+| GDPR data export | User can download all their personal data as JSON | ankammer |
+| GDPR account deletion | Messages anonymised, DMs deleted, JWT blacklisted, socket closed | ankammer, moel-hal |
+| Internationalisation | EN / FR / ES with language switcher | ilkaddou, sferrad |
+| WAF | Nginx + ModSecurity OWASP CRS, rate limiting, TLS termination | ankammer |
 | Secrets management | HashiCorp Vault for JWT secret, DB credentials | ankammer |
-| Monitoring | Prometheus metrics on all services, Grafana dashboards | itaharbo |
+| Monitoring | Prometheus metrics on all services, Grafana dashboards, Alertmanager | itaharbo |
 | Privacy Policy & ToS | Accessible from footer, real content | ankammer |
 | Containerisation | docker-compose / podman-compose, single `make` command | itaharbo |
 
@@ -164,71 +179,86 @@ Models are defined in SQLAlchemy and serve as the single source of truth.
 
 ## Modules
 
-### Validated modules — 22 points
+### Validated modules — 27 points
 
 > The minimum threshold is 14 points. Only fully functional and demonstrated modules are counted.
 
-| # | Module | Category | Type | Points | Status | Proof |
-|---|---|---|---|---|---|---|
-| 1 | Framework — React + TypeScript (frontend) + FastAPI (backend) | Web | Major | 2 | ✅ Validated | `srcs/frontend/`, `srcs/backend/api-gateway/` |
-| 2 | Real-time features — WebSockets via Socket.IO | Web | Major | 2 | ✅ Validated | `srcs/backend/api-gateway/app/websocket.py`, `srcs/frontend/src/chat/` |
-| 3 | User interaction — chat, friends, profiles, presence | Web | Major | 2 | ✅ Validated | `srcs/backend/chat-service/`, `srcs/backend/friends-service/`, `srcs/backend/profile-service/` |
-| 4 | Standard user management & authentication | User Management | Major | 2 | ✅ Validated | `srcs/backend/user-service/` — bcrypt hashing + JWT tokens |
-| 5 | ORM — SQLAlchemy across all services | Web | Minor | 1 | ✅ Validated | `srcs/backend/*/app/models.py` |
-| 6 | Internationalisation — EN / FR / ES | Accessibility & i18n | Minor | 1 | ✅ Validated | `srcs/frontend/public/locales/`, i18next configuration |
-| 7 | AI opponent — game engine with AI logic | Artificial Intelligence | Major | 2 | ✅ Validated | `srcs/frontend/src/Gameplay/engine/`, `ai.ts` behavioural logic |
-| 8 | WAF + Vault — ModSecurity + HashiCorp Vault | Cybersecurity | Major | 2 | ✅ Validated | `srcs/waf/`, `srcs/vault/` |
-| 9 | Monitoring — Prometheus + Grafana | DevOps | Major | 2 | ✅ Validated | `srcs/monitoring/`, metrics exposed on all services |
-| 10 | Backend as microservices | DevOps | Major | 2 | ✅ Validated | `srcs/backend/` — user, chat, friends, game, profile, api-gateway |
-| 11 | GDPR compliance — data export + account deletion | Data & Analytics | Minor | 1 | ✅ Validated | `srcs/backend/profile-service/app/main.py` delete endpoint |
-| 12 | Game customisation options | Gaming & UX | Minor | 1 | ✅ Validated | `srcs/frontend/src/Gameplay/GameSettings.tsx` — theme / duration / score settings |
-| 13 | Complete web-based game — solo + local multiplayer | Gaming & UX | Major | 2 | ✅ Validated | `srcs/frontend/src/Gameplay/` — full game engine with physics and AI |
-
-**Conservative total: 22 points** (8 Major × 2 + 5 Minor × 1 = 21 — see note below)
-
-> Point breakdown: 9 Major modules (×2 = 18 pts) + 5 Minor modules (×1 = 5 pts) = **22 pts**.
-> The project comfortably exceeds the 14-point mandatory threshold.
-
----
-
-### Modules in progress — not counted
-
-> The following modules have partial implementations but do not yet meet the full evaluation criteria. They are listed for transparency and are **not** included in the score.
-
-| # | Module | Type | Points | Status | Notes |
+| # | Module | Category | Type | Points | Proof |
 |---|---|---|---|---|---|
-| 14 | Remote players — real-time multiplayer sync | Major | 0 | 🔄 In progress | Network sync foundation exists; not fully implemented |
-| 15 | Game statistics & match history | Minor | 0 | 🔄 In progress | Backend data collection present; UI/stats module incomplete |
+| 1 | **Framework** — React 19 + TypeScript (frontend) + FastAPI (backend) | Web | Major | 2 | `srcs/frontend/`, `srcs/backend/*/app/main.py` |
+| 2 | **Real-time WebSockets** — Socket.IO with room broadcast, presence, graceful disconnect | Web | Major | 2 | `srcs/backend/api-gateway/app/websocket.py`, `srcs/frontend/src/hooks/useWebSocket.ts` |
+| 3 | **User interaction** — chat system, profile system, friends system | Web | Major | 2 | `srcs/backend/chat-service/`, `srcs/backend/friends-service/`, `srcs/backend/profile-service/` |
+| 4 | **ORM** — SQLAlchemy across all services, no raw SQL | Web | Minor | 1 | `srcs/backend/*/app/models.py` |
+| 5 | **Standard user management** — profile update, avatar upload, friends + online status, profile page | User Management | Major | 2 | `srcs/backend/user-service/`, `srcs/backend/profile-service/` |
+| 6 | **Game statistics & match history** — wins/losses/draws, win rate, match log, achievements, leaderboard | User Management | Minor | 1 | `srcs/backend/game-service/app/crud.py`, `srcs/frontend/src/features/profile/components/MatchHistory.tsx` |
+| 7 | **AI opponent** — rule-based AI with defend/attack modes, probabilistic shooting, happenings awareness | Artificial Intelligence | Major | 2 | `srcs/frontend/src/features/game/engine/ai.ts` |
+| 8 | **WAF + HashiCorp Vault** — ModSecurity OWASP CRS + Vault secrets management | Cybersecurity | Major | 2 | `srcs/waf/`, `srcs/vault/` |
+| 9 | **Prometheus + Grafana** — metrics on all services, dashboards, alerting rules | DevOps | Major | 2 | `srcs/monitoring/` |
+| 10 | **Backend as microservices** — user, profile, friends, chat, game, api-gateway — each with own DB | DevOps | Major | 2 | `srcs/backend/` |
+| 11 | **GDPR compliance** — data export (JSON), account deletion with anonymisation, confirmation email | Data & Analytics | Minor | 1 | `srcs/backend/profile-service/app/main.py` (export + delete endpoints) |
+| 12 | **Complete web-based game** — Headball physics engine, 2D canvas, rules, win/loss conditions | Gaming & UX | Major | 2 | `srcs/frontend/src/features/game/engine/` |
+| 13 | **Remote players** — online matchmaking, P1-authoritative real-time sync, reconnection logic, forfeit handling | Gaming & UX | Major | 2 | `srcs/frontend/src/features/game/modes/online/`, `srcs/backend/game-service/app/main.py` |
+| 14 | **Game customisation** — themes, score limit, timer; defaults always available; AI respects settings | Gaming & UX | Minor | 1 | `srcs/frontend/src/features/game/engine/constants.ts`, `srcs/frontend/src/features/game/themes.ts` |
+| 15 | **Advanced chat features** — block from chat, game invites, typing indicators, read receipts, history persistence, profile access | Gaming & UX | Minor | 1 | `srcs/frontend/src/features/chat/` |
+| 16 | **Gamification** — 6 achievements, XP/level system, tier leaderboard (Iron→Diamond), visual progress bar | Gaming & UX | Minor | 1 | `srcs/backend/game-service/app/crud.py`, `srcs/frontend/src/features/profile/components/MatchHistory.tsx` |
+| 17 | **Internationalisation** — EN / FR / ES, i18n system, language switcher, all UI text translatable | Accessibility & i18n | Minor | 1 | `srcs/frontend/public/locales/`, `srcs/frontend/src/i18n/` |
+
+**Total: 10 Major × 2 pts + 7 Minor × 1 pt = 27 points** (threshold: 14 pts)
 
 ---
 
 ### Module justifications
 
-**Framework (major):** React + TypeScript on the frontend provides a full framework with component lifecycle, routing (React Router), and state management (Context + hooks). FastAPI on each backend service provides structured routing, Pydantic validation, dependency injection, and async support. Both satisfy the subject definition of a framework.
+**1 — Framework (Major/Web):**
+React 19 + TypeScript on the frontend provides a full framework with component lifecycle, React Router v6 for client-side routing, and state management via Context + hooks. FastAPI on each backend service provides structured routing, Pydantic schema validation, dependency injection, and async support. Both clearly satisfy the subject definition of a frontend and backend framework.
 
-**Real-time WebSockets (major):** Socket.IO is managed by the API gateway and handles room join/leave events, message broadcasting, presence updates (online/offline), and game state synchronisation across all connected clients. Connection and disconnection are handled gracefully with room cleanup.
+**2 — Real-time WebSockets (Major/Web):**
+Socket.IO is managed centrally by the API gateway and handles: room join/leave events, message broadcasting, online/offline presence updates (pinged every 30 s), game state synchronisation in online mode, typing indicators, read receipts, and game invite notifications. Connection and disconnection are handled gracefully with room cleanup and reconnection logic in the game session.
 
-**User interaction (major):** All three sub-requirements are met: a basic chat system (public rooms + DM with full persistence), a profile system (avatar, bio, stats, language), and a friends system (request / accept / decline / block, online status).
+**3 — User interaction (Major/Web):**
+All three sub-requirements are met: (a) a chat system with public channels, groups, and private DMs with full message persistence; (b) a profile system with avatar, bio, country, language, and per-user stats; (c) a friends system with request/accept/decline/block/unblock and real-time online status.
 
-**Standard user management (major):** Users can update all profile fields, upload an avatar (stored on Volume `avatar-profile-service` with a default fallback), add friends and see their online status, and access a profile page showing their information.
+**4 — ORM (Minor/Web):**
+SQLAlchemy is used across all five backend services for model definition, relationship mapping, session management, and query building. No raw SQL is written anywhere in the codebase.
 
-**ORM (minor):** SQLAlchemy is used across all backend services for model definition, relationship mapping, and query building. Alembic handles schema migrations. No raw SQL is used.
+**5 — Standard user management (Major/User Management):**
+Users can update all profile fields (display name, bio, country, language, avatar). Avatar upload is stored on a named Docker volume with a default fallback. Users can add friends and see their online status. Each user has a profile page showing their information.
 
-**Internationalisation (minor):** react-i18next with three complete translation JSON files (EN, FR, ES). All user-facing strings are externalised. A language switcher is available in the user settings menu and the choice is persisted in localStorage.
+**6 — Game statistics & match history (Minor/User Management):**
+The game service tracks every match result (score, winner, game mode, timestamps). The profile page displays: wins, losses, draws, win rate, current level and XP bar, tier and LP, a full match history list with opponent details, and 6 unlockable achievements. The leaderboard ranks all players by LP with tier colour coding.
 
-**AI opponent (major):** The AI in `ai.ts` uses a rule-based engine that predicts ball trajectory, adjusts difficulty by introducing deliberate reaction delay, and simulates human-like imprecision. It can win against a passive player. Customisation options (speed, difficulty) are respected by the AI.
+**7 — AI opponent (Major/AI):**
+The AI in `ai.ts` uses a rule-based engine with two speed modes (attack: 4.5 px/tick, defend: 7.5 px/tick), probabilistic shooting (base 20 % chance, boosted by power-ups), awareness of active happenings (targeting beneficial power-ups), and a double-dash repositioning behaviour when stuck. It can win against a passive player and simulates human-like imprecision through probabilistic decisions rather than perfect play. It respects all game customisation settings (theme, duration, score). The implementation can be fully explained during evaluation.
 
-**WAF + Vault (major/cybersecurity):** Nginx with ModSecurity v3 and OWASP CRS 4 at paranoia level 3 is the single public entry point. Anomaly score threshold is set to 10 to balance detection rate and false positives. HashiCorp Vault stores the JWT secret and database credentials; secrets are injected at container startup via Vault AppRole auth — no secrets are stored in plain text on disk or in environment variables in production.
+**8 — WAF + HashiCorp Vault (Major/Cybersecurity):**
+Nginx with ModSecurity v3 and OWASP CRS 4 at paranoia level 3 is the single public entry point — no service is exposed directly. HashiCorp Vault stores the JWT secret and all database credentials; secrets are fetched at container startup via Vault AppRole auth and never stored in plain text on disk or in environment variables in production containers.
 
-**Monitoring (major/DevOps):** Prometheus scrapes `/metrics` on all FastAPI services via `prometheus-fastapi-instrumentator`. Grafana provides dashboards for request rates, error rates, latency histograms, and container health. Alertmanager is configured for critical service-down alerts.
+**9 — Prometheus + Grafana (Major/DevOps):**
+Prometheus scrapes `/metrics` on all FastAPI services via `prometheus-fastapi-instrumentator`. Grafana provides dashboards for request rates, error rates, latency histograms, and container health. Alertmanager is configured with alerting rules for critical service-down events. Access to Grafana is secured.
 
-**Microservices (major/DevOps):** Five independent FastAPI services (user, profile, friends, chat, game) each with their own PostgreSQL schema and no shared database state. The API gateway handles authentication, routing, and inter-service HTTP calls via httpx. Services are loosely coupled and can be rebuilt independently.
+**10 — Microservices (Major/DevOps):**
+Five independent FastAPI services (user, profile, friends, chat, game) each with their own PostgreSQL schema and no shared database state. The API gateway handles authentication, routing, and inter-service HTTP calls via httpx. Services are loosely coupled with clear REST interfaces and can be rebuilt independently.
 
-**GDPR compliance (minor):** Users can download all their personal data as a JSON file and permanently delete their account. The deletion flow anonymises public chat messages (`sender_user_id = 0`), deletes private messages bilaterally, blacklists the JWT, and closes active WebSocket connections.
+**11 — GDPR compliance (Minor/Data & Analytics):**
+Users can request a full JSON export of their personal data (profile, matches, messages) from the settings page. Account deletion triggers an orchestrated flow: public chat messages are anonymised (`sender_user_id = 0`), private messages are deleted bilaterally, the JWT is blacklisted, active WebSocket connections are closed, and a confirmation email is sent via Mailhog.
 
-**Game customisation (minor):** `GameSettings.tsx` exposes controls for theme (colours / background), game duration, and target score. Default values are always available. The AI opponent respects all customisation settings.
+**12 — Complete web-based game (Major/Gaming & UX):**
+A Headball-style browser game with a full physics engine (gravity, bounce, kick impulse, orbital angle calculation, substepping to prevent tunnelling), real-time rendering on HTML5 Canvas, solo mode vs AI, and local 2-player mode on the same screen. Game rules and win/loss conditions are clearly displayed.
 
-**Complete web-based game (major):** A Headball-style browser game with a full physics engine (gravity, bounce, collision), real-time rendering on HTML5 Canvas, solo mode vs AI, and local 2-player mode on the same screen. Win/loss conditions and game rules are clearly displayed.
+**13 — Remote players (Major/Gaming & UX):**
+Two players on separate computers can play in real time via the online matchmaking system. Player 1 is authoritative: it simulates the full game state and broadcasts it via WebSocket every tick; Player 2 sends inputs and receives state. Network latency is handled by a dedicated game room on the Socket.IO gateway. Disconnection is handled gracefully: the opponent sees a countdown, and if reconnection occurs within the window the game resumes; otherwise a forfeit is declared with the correct winner. Both reconnection (rejoin) and voluntary forfeit paths are implemented.
+
+**14 — Game customisation (Minor/Gaming & UX):**
+The character select screen exposes controls for visual theme (Classic / Neon with distinct colours and ball effects), game duration (30 s / 60 s / unlimited), and winning score (3 / 5 / unlimited). Default options are always pre-selected. The AI opponent respects all customisation settings. The happenings (power-up) system adds further in-game variety with 6 types of effects.
+
+**15 — Advanced chat features (Minor/Gaming & UX):**
+Built on top of the validated basic chat module. Implemented features: (a) block users — blocked users cannot send messages; (b) game invites directly from the chat DM panel; (c) game/match notifications via toast overlays; (d) profile access from any conversation header; (e) full chat history persistence in PostgreSQL; (f) typing indicators (WebSocket `chat.typing` event); (g) read receipts (last-seen tracking per user per room).
+
+**16 — Gamification (Minor/Gaming & UX):**
+Implements four of the required gamification features, all persistent in the database: (a) **achievements** — 6 unlockable badges (First Win, 5 Wins, 10 Games, 25 Wins, Clean Sheet, Level 5) with emoji icons and unlock state stored server-side; (b) **XP/level system** — XP earned per match (win: 30 XP, draw: 10 XP, loss: 5 XP), level computed from cumulative XP with a visual progress bar; (c) **leaderboard** — global ranking by LP with tier colour coding; (d) **tier ranking** — Iron / Bronze / Silver / Gold / Platinum / Diamond tiers based on LP. Visual feedback is provided via the profile page stats panel, XP progress bar, and tier badge.
+
+**17 — Internationalisation (Minor/Accessibility & i18n):**
+react-i18next with three complete translation JSON files (English, French, Spanish). All user-facing strings are externalised — no hardcoded UI text. A language switcher is available in the settings menu and the choice is persisted in `localStorage`. Both static UI text and dynamic strings (interpolation, pluralisation) are covered.
 
 ---
 
@@ -247,18 +277,19 @@ Models are defined in SQLAlchemy and serve as the single source of truth.
 - Defined the product scope, feature list, and acceptance criteria for each module
 - Maintained the product backlog and prioritised work at weekly meetings
 - Wrote and validated the Privacy Policy and Terms of Service pages
-- Produced evaluation documentation and the defense plan (README/evaluation_fr.md)
+- Produced evaluation documentation and the defense plan
 - Coordinated between team members to ensure module requirements were fully met
 - *Challenge:* Keeping the scope realistic given the timeline while reaching 14 module points.
 
 **ilkaddou — Developer (Frontend & Gameplay)**
-- Built the React + TypeScript frontend: all pages, routing, component library
-- Implemented the WebSocket client (Socket.IO) for real-time chat and game events
-- Developed the browser game engine: physics, collision detection, rendering
-- Implemented the AI opponent (rule-based, adjustable difficulty)
-- Added internationalisation with react-i18next (EN/FR/ES)
-- Integrated all i18n translations and the language switcher
-- *Challenge:* ModSecurity false positives on Vite dev assets (/@vite/, /src/). Resolved with targeted `modsecurity off` exclusions in nginx.conf.
+- Built the React 19 + TypeScript frontend: all pages, routing, component architecture (feature-based structure)
+- Implemented the WebSocket client (Socket.IO singleton) for real-time chat and game events
+- Developed the full browser game engine: fixed-timestep loop, substepped physics, kick impulse with orbital angle, happenings system
+- Implemented the AI opponent (probabilistic, defend/attack modes, happening awareness)
+- Built the online game mode: matchmaking lobby, P1-authoritative synchronisation, reconnection and forfeit flows, seeded PRNG for deterministic state
+- Added internationalisation with react-i18next (EN/FR/ES) and all translation files
+- Implemented game customisation (themes, score, timer) and gamification UI (stats panel, XP bar, achievements, leaderboard)
+- *Challenge:* Keeping both clients in sync without a server-side simulation. Solved with a seeded Mulberry32 PRNG (same seed from server → same random sequence on both clients) and a P1-authoritative broadcast architecture.
 
 **itaharbo — Project Manager / DevOps**
 - Managed the sprint board, weekly meetings, and delivery deadlines
@@ -276,7 +307,7 @@ Models are defined in SQLAlchemy and serve as the single source of truth.
 - Implemented chat service: rooms, room members, messages, private messages
 - Fixed the `NotNullViolation` bug on `private_messages.room_id` by ensuring find-or-create of the DM room before inserting messages
 - Implemented the GDPR account deletion flow: public message anonymisation (`sender_user_id=0`), bilateral DM deletion, room owner transfer, JWT blacklisting trigger
-- Added game statistics and match history endpoints
+- Added game statistics and match history endpoints with XP, level, tier, and achievement computation
 - *Challenge:* Ensuring data consistency across the GDPR deletion flow without cross-service DB foreign keys. Solved with an orchestrated deletion sequence in the API gateway calling each service in order, with rollback logging on failure.
 
 ---
@@ -334,11 +365,14 @@ docker compose down
 # View logs for a specific service
 docker compose logs -f chat-service
 
+# Rebuild a single service after code changes
+docker compose up -d --build profile-service
+
 # Check WAF logs
 docker logs -f transcendence_waf_1
 
 # Connect to the services database
-docker exec -it <transcendence-DB> -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+docker exec -it <transcendence-DB> psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"
 
 # Test the API health endpoint
 curl -k https://localhost:8443/api/health
@@ -357,7 +391,7 @@ docker exec -it transcendence_redis_1 redis-cli monitor | grep "rate:"
 - [ModSecurity Reference Manual v3](https://github.com/owasp-modsecurity/ModSecurity/wiki/Reference-Manual-(v3.x)) — SecRule syntax, phases, actions
 - [OWASP Core Rule Set documentation](https://coreruleset.org/docs/) — paranoia levels, anomaly scoring, exclusion patterns
 - [FastAPI documentation](https://fastapi.tiangolo.com/) — routing, dependency injection, middleware, WebSocket
-- [SQLAlchemy documentation](https://docs.sqlalchemy.org/) — ORM models, sessions, Alembic migrations
+- [SQLAlchemy documentation](https://docs.sqlalchemy.org/) — ORM models, sessions
 - [HashiCorp Vault documentation](https://developer.hashicorp.com/vault/docs) — AppRole auth, KV secrets engine, agent injection
 - [Prometheus documentation](https://prometheus.io/docs/) — scrape configs, recording rules, alerting
 - [react-i18next documentation](https://react.i18next.com/) — translation files, language detection
@@ -368,9 +402,9 @@ docker exec -it transcendence_redis_1 redis-cli monitor | grep "rate:"
 
 ### How AI was used in this project
 
-AI tools (primarily Chat-gpt) were used for the following tasks:
+AI tools (primarily ChatGPT) were used for the following tasks:
 
-- **Code review assistance:** Identifying the `NotNullViolation` bug in the private message creation flow and proposing the find-and-explain errors and fix.
+- **Code review assistance:** Identifying the `NotNullViolation` bug in the private message creation flow and proposing the fix.
 - **WAF configuration debugging:** Analysing Nginx and ModSecurity logs to identify the root cause of rate limit false positives (rate limit was keyed by IP rather than user ID; two users on the same machine were sharing a counter). AI helped explain the anomaly scoring mechanism and suggested the fix (key by JWT `sub` claim via Redis).
 - **Explaining complex configuration syntax:** Deep-dive explanations of `limit_req_zone`, `location` priority rules, `resolver`/`resolve` DNS behaviour, ModSecurity phase processing, and OWASP CRS paranoia levels — used to build genuine understanding before writing or modifying configuration.
 

@@ -62,6 +62,7 @@ function Profil() {
                         {hasUnread && <span className="h-2 w-2 rounded-full bg-red-500" aria-hidden="true" />}
                     </button>
                     <button onClick={() => navigate("/profile")} className="hb-tap block w-full text-left px-4 py-3 text-base text-gray-700 hover:bg-gray-100">{t("Profile")}</button>
+                    <button onClick={() => navigate("/settings")} className="hb-tap block w-full text-left px-4 py-3 text-base text-gray-700 hover:bg-gray-100">{t("Settings")}</button>
                     <button onClick={disconnect} className="hb-tap block w-full text-left px-4 py-3 text-base text-gray-700 hover:bg-gray-100">{t("Logout")}</button>
                 </div>
             )}
