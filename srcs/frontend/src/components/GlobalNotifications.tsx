@@ -4,9 +4,9 @@ import { useTranslation } from 'react-i18next'
 import type { Socket } from 'socket.io-client'
 import { getSocket } from '../hooks/socketSingleton'
 import { addToast, removeToast } from '../utils/toastBus'
-import { fetchIncomingFriendRequests, resolveRequesterNames } from '../Profile/api/friends'
 import { cancelInvite } from '../Gameplay/api/matchmaking'
 import { markInviteResolved } from '../utils/resolvedInvites'
+import { getBlockedIds } from '../Profile/api/friends'
 
 const MAX_MSG_PREVIEW = 60
 
@@ -19,23 +19,40 @@ export default function GlobalNotifications() {
   // Listeners qu'on a posés sur le socket partagé — à retirer au cleanup.
   const handlersRef = useRef<Array<[string, (...a: unknown[]) => void]>>([])
   const seenFriendReqIds = useRef<Set<number>>(new Set())
-  const initialLoadDone = useRef(false)
-  const pollRef = useRef<number>(0)
+  const blockedIdsRef = useRef<Set<number>>(new Set())
 
   // Branche les notifications sur le SOCKET PARTAGÉ (singleton). On ne crée
   // plus de connexion ici : on s'abonne juste aux events, et on retient nos
   // handlers pour pouvoir les détacher proprement sans tuer le socket.
-  const connectSocket = useCallback((_token: string, myId: number) => {
+  const connectSocket = useCallback((token: string, myId: number) => {
     if (socketRef.current) return  // déjà branché
 
     const sock = getSocket()
     if (!sock) return
     socketRef.current = sock
 
+    getBlockedIds(token).then(ids => { blockedIdsRef.current = new Set(ids) }).catch(() => {})
+
     const bind = (event: string, fn: (...a: unknown[]) => void) => {
       sock.on(event, fn)
       handlersRef.current.push([event, fn])
     }
+
+    bind('ws.friend_request', (payload: unknown) => {
+      const data = payload as { from_user_id?: number; from_username?: string }
+      if (!data?.from_user_id) return
+      if (blockedIdsRef.current.has(data.from_user_id)) return
+      if (seenFriendReqIds.current.has(data.from_user_id)) return
+      seenFriendReqIds.current.add(data.from_user_id)
+      const name = data.from_username || t('Someone', 'Someone')
+      addToast({
+        type: 'friend_request',
+        text: t('toast.friend_request', { name }),
+        action: () => navigate('/profile'),
+        actionLabel: t('View', 'VIEW'),
+        duration: 8000,
+      })
+    })
 
     bind('chat.group_invite', (payload: unknown) => {
       const data = payload as { room_id?: number; room_name?: string; invited_by_username?: string }
@@ -55,6 +72,7 @@ export default function GlobalNotifications() {
     bind('chat.message', (payload: unknown) => {
       const data = payload as { sender_user_id?: number; content?: string; username?: string; room_id?: number }
       if (!data?.content || data.sender_user_id === myId) return
+      if (data.sender_user_id && blockedIdsRef.current.has(data.sender_user_id)) return
       if (data.content.startsWith(INVITE_PREFIX)) return
       const senderName = data.username || t('Someone', 'Someone')
       const preview = data.content.length > MAX_MSG_PREVIEW ? data.content.slice(0, MAX_MSG_PREVIEW) + '…' : data.content
@@ -71,6 +89,7 @@ export default function GlobalNotifications() {
     bind('dm.message', (payload: unknown) => {
       const data = payload as { sender_user_id?: number; content?: string; username?: string; room_id?: number }
       if (!data?.content || data.sender_user_id === myId) return
+      if (data.sender_user_id && blockedIdsRef.current.has(data.sender_user_id)) return
 
       const roomQuery = data.room_id
         ? `?roomId=${data.room_id}`
@@ -131,39 +150,6 @@ export default function GlobalNotifications() {
     socketRef.current = null
   }, [])
 
-  const startPoll = useCallback((token: string) => {
-    if (pollRef.current) return  // already polling
-
-    const poll = async () => {
-      const currentToken = localStorage.getItem('access_token')
-      if (!currentToken) { clearInterval(pollRef.current); pollRef.current = 0; return }
-      try {
-        const requests = await fetchIncomingFriendRequests(currentToken)
-        if (!initialLoadDone.current) {
-          requests.forEach(r => seenFriendReqIds.current.add(r.id))
-          initialLoadDone.current = true
-          return
-        }
-        const newReqs = requests.filter(r => !seenFriendReqIds.current.has(r.id))
-        if (!newReqs.length) return
-        const names = await resolveRequesterNames(currentToken, newReqs)
-        for (const req of newReqs) {
-          seenFriendReqIds.current.add(req.id)
-          const name = names[req.from_user_id] || t('Someone', 'Someone')
-          addToast({
-            type: 'friend_request',
-            text: t('toast.friend_request', { name }),
-            action: () => navigate('/profile'),
-            actionLabel: t('View', 'VIEW'),
-            duration: 8000,
-          })
-        }
-      } catch { /* network */ }
-    }
-
-    poll()
-    pollRef.current = window.setInterval(poll, 2000)
-  }, [navigate, t])
 
   useEffect(() => {
     const tryConnect = () => {
@@ -171,14 +157,11 @@ export default function GlobalNotifications() {
       const myId = parseInt(localStorage.getItem('user_id') || '0', 10)
       if (!token || !myId) return
       connectSocket(token, myId)
-      startPoll(token)
     }
 
     tryConnect()
 
-    // Re-connect when user logs in from another tab or after login navigation
     window.addEventListener('storage', tryConnect)
-    // Also fire when same-tab login sets localStorage (storage event doesn't fire for same tab)
     window.addEventListener('focus', tryConnect)
     window.addEventListener('auth:login', tryConnect)
 
@@ -186,14 +169,10 @@ export default function GlobalNotifications() {
       window.removeEventListener('storage', tryConnect)
       window.removeEventListener('focus', tryConnect)
       window.removeEventListener('auth:login', tryConnect)
-      // On détache nos listeners mais on NE FERME PAS le socket partagé.
       disconnectSocket()
-      clearInterval(pollRef.current)
-      pollRef.current = 0
-      initialLoadDone.current = false
       seenFriendReqIds.current = new Set()
     }
-  }, [connectSocket, startPoll, disconnectSocket])
+  }, [connectSocket, disconnectSocket])
 
   return null
 }

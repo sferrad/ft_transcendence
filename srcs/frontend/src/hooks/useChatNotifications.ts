@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { MessageOut, PrivateMessageOut, RoomOut } from "../Profile/types";
 import { getMessages, getPrivateMessages, getRoomMembers, getRooms } from "../Profile/api/chat";
+import { getSocket } from "./socketSingleton";
 
 type UseChatNotificationsOptions = {
     enabled?: boolean;
-    pollIntervalMs?: number;
     rooms?: RoomOut[];
 };
 
@@ -91,7 +91,7 @@ const findLatestMessage = (messages: MessageLike[]): MessageLike | null => {
 };
 
 export function useChatNotifications(options: UseChatNotificationsOptions = {}): UnreadState {
-    const { enabled = true, pollIntervalMs = 12000, rooms: providedRooms } = options;
+    const { enabled = true, rooms: providedRooms } = options;
     const [unreadRoomIds, setUnreadRoomIds] = useState<number[]>([]);
     const [lastMessageByRoomId, setLastMessageByRoomId] = useState<Record<number, number>>({});
 
@@ -158,27 +158,35 @@ export function useChatNotifications(options: UseChatNotificationsOptions = {}):
     }, [currentUserId, enabled, providedRooms, token]);
 
     useEffect(() => {
+        if (!enabled) return;
         let mounted = true;
 
-        const runRefresh = async () => {
-            if (!mounted) return;
-            try {
-                await refreshUnread();
-            } catch {
-                // ignore refresh errors
+        refreshUnread().catch(() => undefined);
+
+        const sock = getSocket();
+        if (!sock) return;
+
+        // Mettre à jour l'état unread en temps réel sur chaque nouveau message.
+        const onMessage = (payload: unknown) => {
+            const data = payload as { room_id?: number; sender_user_id?: number; created_at?: string };
+            if (!mounted || !data?.room_id || data.sender_user_id === currentUserId) return;
+            const ts = data.created_at ? Date.parse(data.created_at) : Date.now();
+            setLastMessageByRoomId(prev => ({ ...prev, [data.room_id!]: ts }));
+            const lastSeen = readLastSeen(data.room_id);
+            if (ts > lastSeen) {
+                setUnreadRoomIds(prev => prev.includes(data.room_id!) ? prev : [...prev, data.room_id!]);
             }
         };
 
-        runRefresh();
+        sock.on('chat.message', onMessage);
+        sock.on('dm.message', onMessage);
 
-        if (!enabled) return () => undefined;
-
-        const intervalId = window.setInterval(runRefresh, pollIntervalMs);
         return () => {
             mounted = false;
-            window.clearInterval(intervalId);
+            sock.off('chat.message', onMessage);
+            sock.off('dm.message', onMessage);
         };
-    }, [enabled, pollIntervalMs, refreshUnread]);
+    }, [enabled, currentUserId, refreshUnread]);
 
     const unreadCount = unreadRoomIds.length;
     const hasUnread = unreadCount > 0;

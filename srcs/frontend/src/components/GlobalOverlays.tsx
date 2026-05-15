@@ -30,29 +30,6 @@ const ARCADE_BTN = '0px 4px rgb(255,255,255), 0px -4px rgb(255,255,255), 4px 0px
 
 interface ServerActiveMatch { game_room_id: string; role: string; time_remaining: number }
 
-async function fetchActiveMatch(): Promise<ServerActiveMatch | null> {
-  const token = localStorage.getItem('access_token')
-  if (!token) return null
-  try {
-    const res = await fetch('/api/ws/active-match', { headers: { Authorization: `Bearer ${token}` } })
-    if (!res.ok) return null
-    const data = await res.json()
-    if (!data?.active) return null
-    return data as ServerActiveMatch
-  } catch { return null }
-}
-
-async function fetchForfeitNotification(): Promise<boolean> {
-  const token = localStorage.getItem('access_token')
-  if (!token) return false
-  try {
-    const res = await fetch('/api/ws/forfeit-notification', { headers: { Authorization: `Bearer ${token}` } })
-    if (!res.ok) return false
-    const data = await res.json()
-    return Boolean(data?.forfeited)
-  } catch { return false }
-}
-
 async function ackForfeitNotification(): Promise<void> {
   const token = localStorage.getItem('access_token')
   if (!token) return
@@ -74,41 +51,33 @@ function RejoinOverlay() {
   const onLoginPage = location.pathname === '/login'
   const hidden = onGamePage || onLoginPage
 
-  // Poll forfeit notification every 2s regardless of page (key persists in Redis until ack'd).
-  // This ensures users who return after the forfeit timer expired still see the popup.
+  // Écoute les events WebSocket au lieu de poller en HTTP.
   useEffect(() => {
     if (onLoginPage) return
-    if (!localStorage.getItem('access_token')) return
-    let active = true
-    const pollForfeit = async () => {
-      if (!active || forfeitNotif) return
-      if (!localStorage.getItem('access_token')) return
-      const forfeited = await fetchForfeitNotification()
-      if (!active) return
-      if (forfeited) setForfeitNotif(true)
-    }
-    pollForfeit()
-    const id = window.setInterval(pollForfeit, 2000)
-    return () => { active = false; clearInterval(id) }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onLoginPage, forfeitNotif])
+    const sock = getSocket()
+    if (!sock) return
 
-  // Poll active match every 1s (only outside the game page — no rejoin popup while playing).
-  useEffect(() => {
-    if (hidden) { setServerMatch(null); return }
-    if (!localStorage.getItem('access_token')) return
-    let active = true
-    const poll = async () => {
-      if (!active) return
-      if (!localStorage.getItem('access_token')) return
-      const match = await fetchActiveMatch()
-      if (!active) return
-      setServerMatch(match)
+    const onActiveMatch = (data: { active: boolean; game_room_id?: string; role?: string; time_remaining?: number }) => {
+      if (hidden) { setServerMatch(null); return }
+      if (data.active && data.game_room_id && data.role) {
+        setServerMatch({ game_room_id: data.game_room_id, role: data.role, time_remaining: data.time_remaining ?? 0 })
+      } else {
+        setServerMatch(null)
+      }
     }
-    poll()
-    const id = window.setInterval(poll, 1000)
-    return () => { active = false; clearInterval(id) }
-  }, [hidden])
+
+    const onForfeitNotif = (data: { forfeited: boolean }) => {
+      if (data.forfeited) setForfeitNotif(true)
+    }
+
+    sock.on('ws.active_match', onActiveMatch)
+    sock.on('ws.forfeit_notification', onForfeitNotif)
+
+    return () => {
+      sock.off('ws.active_match', onActiveMatch)
+      sock.off('ws.forfeit_notification', onForfeitNotif)
+    }
+  }, [onLoginPage, hidden])
 
   // Countdown: reset when server gives us a fresh time_remaining
   useEffect(() => {
