@@ -471,15 +471,13 @@ services:
       test: ["CMD", "redis-cli", "ping"]
       <<: *hc-fast
 
-  ## MONITORING (optionnel : docker compose --profile monitoring up -d) ####
+  ## MONITORING ####
 
   prometheus:
     build:
       context: ./monitoring/prometheus
       dockerfile: Dockerfile
     image: prometheus
-    profiles:
-      - monitoring
     volumes:
       - prometheus-data:/prometheus
       - ./certs/internal:/certs:ro
@@ -496,8 +494,6 @@ services:
       context: ./monitoring/grafana
       dockerfile: Dockerfile
     image: grafana
-    profiles:
-      - monitoring
     ports:
       - "3001:3000"
     env_file:
@@ -523,8 +519,6 @@ services:
       context: ./monitoring/alertmanager
       dockerfile: Dockerfile
     image: alertmanager
-    profiles:
-      - monitoring
     volumes:
       - alertmanager-data-extra:/alertmanager
       - alertmanager-data:/var/lib/alertmanager

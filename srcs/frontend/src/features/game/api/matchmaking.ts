@@ -30,7 +30,7 @@ export async function joinMatchmaking(opts: {
     body: JSON.stringify({
       player_name: opts.playerName,
       player_nation: opts.playerNation,
-      winning_score: opts.winningScore ?? 3,
+      winning_score: opts.winningScore ?? 5,
       duration: opts.duration ?? null,
       ranked: opts.ranked ?? true,
     }),
