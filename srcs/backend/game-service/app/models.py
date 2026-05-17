@@ -57,6 +57,10 @@ class Match(Base):
     # Postgres mettra "pending".
     status = Column(String(20), nullable=False, server_default="pending")
 
+    # Mode de jeu : 'solo' (vs IA), 'local' (2 joueurs même machine), 'online' (ranked).
+    # Seuls les matchs 'online' comptent pour le leaderboard et les LP.
+    game_mode = Column(String(20), nullable=False, server_default="solo")
+
     # Timestamps de début/fin (optionnels : match pas encore démarré/terminé).
     started_at = Column(DateTime(timezone=True), nullable=True)
     finished_at = Column(DateTime(timezone=True), nullable=True)

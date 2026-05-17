@@ -148,6 +148,17 @@ def block_user(db: Session, user_id: int, blocked_user_id: int) -> models.Block:
 		raise
 
 
+def list_blocked_ids(db: Session, user_id: int) -> list[int]:
+	"""Retourne les IDs de tous les utilisateurs impliqués dans un blocage avec user_id (dans les deux sens)."""
+	rows = db.query(models.Block).filter(
+		or_(models.Block.user_id == user_id, models.Block.blocked_user_id == user_id)
+	).all()
+	ids = set()
+	for row in rows:
+		ids.add(row.blocked_user_id if row.user_id == user_id else row.user_id)
+	return list(ids)
+
+
 def unblock_user(db: Session, user_id: int, blocked_user_id: int) -> bool:
 	deleted = (
 		db.query(models.Block)

@@ -147,6 +147,11 @@ async def list_my_friends(user_id: int = Depends(_current_user_id), db: Session 
 	return friends
 
 # Bloquer un user
+@app.get("/block", response_model=list[int])
+async def list_blocked(user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
+	return crud.list_blocked_ids(db, user_id)
+
+
 @app.post("/block", response_model=schemas.BlockOut)
 async def block(payload: schemas.BlockCreate, user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
 	if payload.blocked_user_id == user_id:
@@ -169,6 +174,11 @@ async def unblock(blocked_user_id: int, user_id: int = Depends(_current_user_id)
 	if not ok:
 		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Block not found")
 	return ok
+
+@app.get("/internal/block/check")
+async def internal_block_check(user_a: int, user_b: int, db: Session = Depends(get_db)):
+	return {"blocked": crud.is_blocked(db, user_a, user_b)}
+
 
 @app.post("/internal/user/cleanup")
 async def internal_cleanup_friends(user_to_clean: schemas.InternalUserCleanup, db: Session = Depends(get_db)):

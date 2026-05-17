@@ -36,10 +36,11 @@
 # """
 
 # Session SQLAlchemy : représente une transaction/unité de travail.
+import math
 from sqlalchemy.orm import Session
 
 # func : fonctions SQL (ex: max, now...).
-from sqlalchemy import func
+from sqlalchemy import func, distinct
 
 # or_ : construit un OR SQL (condition1 OR condition2).
 from sqlalchemy import or_
@@ -69,8 +70,8 @@ class MatchEventSequenceAllocationError(RuntimeError):
 	# - Quand l'utilisateur est authentifié via api-gateway, `player1_id` doit venir du header `X-User-Id`.
 	# - Ça empêche un client malveillant de créer un match "au nom" d'un autre user.
 	# """
-def create_match_for_players(db: Session, *, player1_id: int, player2_id: int) -> models.Match:
-	db_match = models.Match(player1_id=player1_id, player2_id=player2_id)
+def create_match_for_players(db: Session, *, player1_id: int, player2_id: int, game_mode: str = "solo") -> models.Match:
+	db_match = models.Match(player1_id=player1_id, player2_id=player2_id, game_mode=game_mode)
 	db.add(db_match)
 	db.commit()
 	db.refresh(db_match)
@@ -124,15 +125,11 @@ def get_matches(db: Session, skip: int = 0, limit: int = 100) -> List[models.Mat
 	# - Pour une pagination stable, on ajoute un `order_by(created_at desc)`.
 	#   Sinon, la DB peut renvoyer un ordre "non garanti" (surtout quand il y a des insertions).
 	# """
-def get_matches_for_user(db: Session, *, user_id: int, skip: int = 0, limit: int = 100) -> List[models.Match]:
-	return (
-		db.query(models.Match)
-		.filter(or_(models.Match.player1_id == user_id, models.Match.player2_id == user_id))
-		.order_by(models.Match.created_at.desc())
-		.offset(skip)
-		.limit(limit)
-		.all()
-	)
+def get_matches_for_user(db: Session, *, user_id: int, skip: int = 0, limit: int = 100, game_mode: Optional[str] = None) -> List[models.Match]:
+	q = db.query(models.Match).filter(or_(models.Match.player1_id == user_id, models.Match.player2_id == user_id))
+	if game_mode:
+		q = q.filter(models.Match.game_mode == game_mode)
+	return q.order_by(models.Match.created_at.desc()).offset(skip).limit(limit).all()
 
 
 	# """Met à jour un match (update partiel).
@@ -284,6 +281,125 @@ def get_match_events(db: Session, match_id: int) -> List[models.MatchEvent]:
 		.order_by(models.MatchEvent.sequence.asc(), models.MatchEvent.timestamp.asc())
 		.all()
 	)
+
+_ACHIEVEMENTS_DEF = [
+	{"id": "first_blood", "emoji": "⚽"},
+	{"id": "on_fire",     "emoji": "🔥"},
+	{"id": "veteran",     "emoji": "🎮"},
+	{"id": "champion",    "emoji": "🏆"},
+	{"id": "clean_sheet", "emoji": "🛡️"},
+	{"id": "centurion",   "emoji": "💯"},
+]
+
+_LP_WIN  =  20
+_LP_DRAW =   5
+_LP_LOSS = -13
+
+_RANKS = [
+	(750, "Diamond"),
+	(500, "Platinum"),
+	(300, "Gold"),
+	(150, "Silver"),
+	(50,  "Bronze"),
+	(0,   "Iron"),
+]
+
+def _rank_from_lp(lp: int) -> str:
+	for threshold, name in _RANKS:
+		if lp >= threshold:
+			return name
+	return "Iron"
+
+def _xp_to_level(xp: int) -> int:
+	if xp <= 0:
+		return 1
+	return max(1, int((1 + math.sqrt(1 + 4 * xp / 25)) / 2))
+
+def _level_start_xp(level: int) -> int:
+	return 25 * level * (level - 1)
+
+def compute_user_stats(db: Session, user_id: int) -> dict:
+	matches = (
+		db.query(models.Match)
+		.filter(
+			or_(models.Match.player1_id == user_id, models.Match.player2_id == user_id),
+			models.Match.status == "finished",
+		)
+		.order_by(models.Match.created_at.asc())
+		.all()
+	)
+
+	wins = losses = draws = 0
+	has_clean_sheet = False
+	lp = 0
+
+	for m in matches:
+		ranked = getattr(m, "game_mode", "solo") == "online"
+		if m.winner_id is None:
+			draws += 1
+			if ranked:
+				lp += _LP_DRAW
+		elif m.winner_id == user_id:
+			wins += 1
+			if ranked:
+				lp += _LP_WIN
+			if m.player1_id == user_id and m.score_player2 == 0:
+				has_clean_sheet = True
+			elif m.player2_id == user_id and m.score_player1 == 0:
+				has_clean_sheet = True
+		else:
+			losses += 1
+			if ranked:
+				lp = max(0, lp + _LP_LOSS)
+
+	total = wins + losses + draws
+	xp = wins * 30 + draws * 10 + losses * 5
+	level = _xp_to_level(xp)
+	xp_in_level = xp - _level_start_xp(level)
+	xp_to_next = _level_start_xp(level + 1) - xp
+	win_rate = round(wins / total * 100) if total > 0 else 0
+	tier = _rank_from_lp(lp)
+
+	achievements = [
+		{"id": "first_blood", "emoji": "⚽", "unlocked": wins >= 1},
+		{"id": "on_fire",     "emoji": "🔥", "unlocked": wins >= 5},
+		{"id": "veteran",     "emoji": "🎮", "unlocked": total >= 10},
+		{"id": "champion",    "emoji": "🏆", "unlocked": wins >= 25},
+		{"id": "clean_sheet", "emoji": "🛡️", "unlocked": has_clean_sheet},
+		{"id": "centurion",   "emoji": "💯", "unlocked": level >= 5},
+	]
+
+	return {
+		"wins": wins, "losses": losses, "draws": draws, "total": total,
+		"xp": xp, "level": level, "xp_in_level": xp_in_level, "xp_to_next": xp_to_next,
+		"win_rate": win_rate, "lp": lp, "tier": tier, "achievements": achievements,
+	}
+
+def get_leaderboard(db: Session, limit: int = 10) -> list:
+	online_filter = (models.Match.status == "finished", models.Match.game_mode == "online")
+	p1_ids = db.query(distinct(models.Match.player1_id)).filter(*online_filter).all()
+	p2_ids = db.query(distinct(models.Match.player2_id)).filter(*online_filter).all()
+
+	all_ids = (set(r[0] for r in p1_ids) | set(r[0] for r in p2_ids)) - {0}
+
+	entries = []
+	for uid in all_ids:
+		s = compute_user_stats(db, uid)
+		entries.append({"user_id": uid, **s})
+
+	entries.sort(key=lambda x: (x["lp"], x["wins"]), reverse=True)
+
+	return [
+		{
+			"user_id": e["user_id"],
+			"rank": i + 1,
+			"wins": e["wins"], "losses": e["losses"], "draws": e["draws"],
+			"xp": e["xp"], "level": e["level"], "win_rate": e["win_rate"],
+			"lp": e["lp"], "tier": e["tier"],
+		}
+		for i, e in enumerate(entries[:limit])
+	]
+
 
 def cleanup_user_data(db: Session, *, user_id: int) -> dict:
 	if user_id <= 0:

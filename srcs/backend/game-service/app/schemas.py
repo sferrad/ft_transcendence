@@ -39,6 +39,9 @@ class MatchBase(BaseModel):
 	# Valeur par défaut : "pending" si le client n'envoie rien.
 	status: str = "pending"
 
+	# Mode de jeu : 'solo', 'local', 'online'.
+	game_mode: str = "solo"
+
 	# Timestamps optionnels : un match peut ne pas être encore démarré/terminé.
 	started_at: Optional[datetime] = None
 	finished_at: Optional[datetime] = None
@@ -54,6 +57,7 @@ class MatchBase(BaseModel):
 	# """
 class MatchCreateMe(BaseModel):
 	player2_id: int
+	game_mode: str = "solo"
 
 class MatchUpdate(BaseModel):
 	# Update partiel : tout est Optional.
@@ -133,3 +137,57 @@ class MatchEventInDB(MatchEventBase):
 	# Par défaut liste vide (pas None) pour simplifier côté front.
 class MatchWithEvents(MatchInDB):
 	events: List[MatchEventInDB] = Field(default_factory=list)
+
+
+class Achievement(BaseModel):
+	id: str
+	emoji: str
+	unlocked: bool
+
+
+class UserStats(BaseModel):
+	wins: int
+	losses: int
+	draws: int
+	total: int
+	xp: int
+	level: int
+	xp_in_level: int
+	xp_to_next: int
+	win_rate: int
+	lp: int
+	tier: str
+	achievements: List[Achievement]
+
+
+class LeaderboardEntry(BaseModel):
+	user_id: int
+	rank: int
+	wins: int
+	losses: int
+	draws: int
+	xp: int
+	level: int
+	win_rate: int
+	lp: int
+	tier: str
+
+
+class MatchmakingJoin(BaseModel):
+	player_name: str = "Player"
+	player_nation: str = "Algeria"
+	winning_score: Optional[int] = 3
+	duration: Optional[int] = None
+	ranked: bool = True
+
+
+class MatchmakingResult(BaseModel):
+	status: str  # "waiting" | "matched" | "idle"
+	match_id: Optional[int] = None
+	game_room_id: Optional[str] = None
+	role: Optional[str] = None  # "player1" | "player2"
+	seed: Optional[int] = None
+	opponent_name: Optional[str] = None
+	opponent_nation: Optional[str] = None
+	winning_score: Optional[int] = None
+	duration: Optional[int] = None

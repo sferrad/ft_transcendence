@@ -23,8 +23,6 @@ export default defineConfig({
     allowedHosts: true,
     hmr: process.env.VITE_HMR_HOST
       ? {
-          // Si l'environnement fournit une configuration HMR explicite, on la
-          // respecte en priorite pour coller au reseau ou au reverse proxy utilise.
           host: process.env.VITE_HMR_HOST,
           port: parseInt(process.env.VITE_HMR_PORT || '443'),
           clientPort: parseInt(process.env.VITE_HMR_CLIENT_PORT || process.env.VITE_HMR_PORT || '443'),
@@ -32,15 +30,12 @@ export default defineConfig({
         }
       : useWafHmr
         ? {
-          // Lorsque le frontend est derriere le WAF, on publie un client HMR
-          // compatible avec le HTTPS expose sur 8443.
             host: 'localhost',
-          port: 3000,
+            port: 3000,
             clientPort: 8443,
             protocol: 'wss',
           }
         : {
-          // Mode developpement classique: HMR local en ws sans passage par le WAF.
             host: 'localhost',
             port: 3000,
             protocol: 'ws',

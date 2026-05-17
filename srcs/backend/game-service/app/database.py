@@ -55,6 +55,13 @@ def init_db() -> None:
     if engine is None:
         raise RuntimeError("DB engine not initialized. Call init_engine() first.")
     Base.metadata.create_all(bind=engine)
+    # Migration: add game_mode if the column doesn't exist yet (idempotent).
+    from sqlalchemy import text
+    with engine.connect() as conn:
+        conn.execute(text(
+            "ALTER TABLE matches ADD COLUMN IF NOT EXISTS game_mode VARCHAR(20) NOT NULL DEFAULT 'solo'"
+        ))
+        conn.commit()
 # cette fonction est un generator qui yield des Session
 # Generator[YieldType, SendType, ReturnType]
 def get_db() -> Generator[Session, None, None]:

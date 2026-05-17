@@ -103,6 +103,32 @@ PROFILE_SERVICE_URL = os.getenv("PROFILE_SERVICE_URL", "https://profile-service:
 def health():
     return {"status": "ok", "service": "api-gateway"}
 
+@app.get("/ws/active-match")
+async def ws_active_match(payload: dict = Depends(require_user)):
+    """Return active match info if this user has a pending forfeit countdown (Redis-backed)."""
+    from .websocket_handlers import get_active_match_for_user
+    user_id = int(payload.get("sub", 0))
+    result = await get_active_match_for_user(user_id)
+    if result is None:
+        return {"active": False}
+    return {"active": True, **result}
+
+@app.get("/ws/forfeit-notification")
+async def ws_forfeit_notification(payload: dict = Depends(require_user)):
+    """Return pending forfeit notification for this user (key persists until DELETE ack)."""
+    from .websocket_handlers import get_forfeit_notification_for_user
+    user_id = int(payload.get("sub", 0))
+    forfeited = await get_forfeit_notification_for_user(user_id)
+    return {"forfeited": bool(forfeited)}
+
+@app.delete("/ws/forfeit-notification")
+async def ws_forfeit_notification_ack(payload: dict = Depends(require_user)):
+    """Acknowledge (dismiss) the forfeit notification — deletes the Redis key."""
+    from .websocket_handlers import ack_forfeit_notification_for_user
+    user_id = int(payload.get("sub", 0))
+    await ack_forfeit_notification_for_user(user_id)
+    return {"acknowledged": True}
+
 @app.get("/ws/health")
 async def websocket_health():
     """WebSocket server health check"""
@@ -275,7 +301,28 @@ async def proxy_friends(path: str, request: Request, user: dict = Depends(requir
     if path.startswith("internal/") or path.startswith("/internal/"):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
     extra = {"X-User-Id": str(user.get("sub", ""))}
-    return await _proxy(request, FRIENDS_SERVICE_URL, path, extra_headers=extra)
+    response = await _proxy(request, FRIENDS_SERVICE_URL, path, extra_headers=extra)
+    # Notifier le destinataire via WebSocket pour éviter le polling HTTP.
+    if request.method == "POST" and path == "requests" and response.status_code == 200:
+        try:
+            import json as _json
+            raw = response.body if hasattr(response, "body") else getattr(response, "content", b"")
+            data = _json.loads(raw) if raw else {}
+            to_user_id = data.get("to_user_id")
+            from_username = user.get("username", "")
+            if to_user_id:
+                from .websocket_handlers import get_manager
+                manager = get_manager()
+                info = await manager.get_connection_info()
+                sids = info.get("users", {}).get(str(to_user_id), [])
+                for target_sid in sids:
+                    await sio.emit("ws.friend_request", {
+                        "from_user_id": int(user.get("sub", 0)),
+                        "from_username": from_username,
+                    }, to=target_sid)
+        except Exception:
+            pass
+    return response
 
 
 # Proxy vers profile-service avec un cache Redis léger sur les GET.

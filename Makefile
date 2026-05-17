@@ -1,12 +1,21 @@
-DOCK_COMP = docker compose -p transcendence -f srcs/docker-compose.yml
+export DOCKER_BUILDKIT     := 1
+export COMPOSE_DOCKER_CLI_BUILD := 1
 
-all:  up
+DOCK_COMP = docker-compose -p transcendence -f srcs/docker-compose.yml
+
+all: build up
+
+build:
+	$(DOCK_COMP) build --parallel
 
 up:
-	$(DOCK_COMP) up -d --build
+	$(DOCK_COMP) up -d
 
 upfg:
-	$(DOCK_COMP) up --build
+	$(DOCK_COMP) up
+
+rebuild:
+	$(DOCK_COMP) build --parallel --no-cache
 
 down:
 	$(DOCK_COMP) down --remove-orphans
@@ -36,16 +45,7 @@ fclean: clean
 	@docker system prune -af
 	@docker volume prune -f
 
-
-restart:
-	@$(DOCK_COMP) down --remove-orphans
-	@$(DOCK_COMP) up -d --build
-
-
-rebuild:
-	@$(DOCK_COMP) down --remove-orphans
-	@$(DOCK_COMP) up -d --build --force-recreate
-	@docker image prune -f
+restart: down up
 
 re: fclean all
 
@@ -53,4 +53,4 @@ fclean_status: fclean status
 
 re_status: fclean_status all
 
-.PHONY: all up upfg down logs status clean fclean restart rebuild re fclean_status re_status ps
+.PHONY: all build up upfg down logs status clean fclean restart rebuild re fclean_status re_status ps

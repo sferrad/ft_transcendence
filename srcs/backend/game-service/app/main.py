@@ -25,6 +25,12 @@
 # - Depends : injection de dépendances (ex: fournir un `db: Session`).
 # - HTTPException : renvoyer une erreur HTTP propre (status + message).
 # - status : constantes de codes HTTP (200, 404, 500...).
+import threading
+import time
+import random as _random
+import os
+import httpx
+
 from fastapi import Depends, FastAPI, Header, HTTPException, status
 
 # `text()` : permet d'exécuter une requête SQL brute (ici SELECT 1 pour ping).
@@ -45,6 +51,31 @@ from . import schemas, crud
 from .database import get_db, init_db, init_engine
 
 app = FastAPI(title="game-service")
+
+FRIENDS_SERVICE_URL = os.getenv("FRIENDS_SERVICE_URL", "https://friends-service:8004")
+INTERNAL_CA_CERT = os.getenv("INTERNAL_CA_CERT", "/certs/ca.crt")
+
+def _are_blocked(user_a: int, user_b: int) -> bool:
+    try:
+        with httpx.Client(verify=INTERNAL_CA_CERT, timeout=1.0) as client:
+            res = client.get(
+                f"{FRIENDS_SERVICE_URL}/internal/block/check",
+                params={"user_a": user_a, "user_b": user_b},
+            )
+            return res.status_code == 200 and res.json().get("blocked", False)
+    except Exception:
+        return False
+
+# ─── Matchmaking in-memory state ───────────────────────────────────────────────
+_mq_lock = threading.Lock()
+_mq_queue: list[dict] = []        # players waiting for an opponent
+_mq_results: dict[int, dict] = {} # user_id → match result waiting to be fetched
+
+# ─── DM invites in-memory state ────────────────────────────────────────────────
+# match_id → invite payload waiting for the recipient to accept.
+_invites_lock = threading.Lock()
+_invites: dict[int, dict] = {}
+INVITE_TTL_SECONDS = 300  # invites expire after 5 minutes
 
 Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
@@ -138,7 +169,7 @@ async def db_ping(db: Session = Depends(get_db)):
 def create_my_match(payload: schemas.MatchCreateMe, user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
 	if payload.player2_id == user_id:
 		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="player2_id must be different from current user")
-	return crud.create_match_for_players(db, player1_id=user_id, player2_id=payload.player2_id)
+	return crud.create_match_for_players(db, player1_id=user_id, player2_id=payload.player2_id, game_mode=payload.game_mode)
 
 	# """Récupère un match + tous ses events.
 
@@ -172,8 +203,8 @@ def get_match(match_id: int, user_id: int = Depends(_current_user_id), db: Sessi
 	# - On ne prend PAS un `user_id` en query param.
 	# - On utilise l'identité injectée par le gateway (X-User-Id).
 @app.get("/me/matches/", response_model=list[schemas.MatchInDB])
-def get_my_matches(skip: int = 0, limit: int = 100, user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
-	return crud.get_matches_for_user(db, user_id=user_id, skip=skip, limit=limit)
+def get_my_matches(skip: int = 0, limit: int = 100, game_mode: str | None = None, user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
+	return crud.get_matches_for_user(db, user_id=user_id, skip=skip, limit=limit, game_mode=game_mode)
 
 	# """Met à jour un match.
 
@@ -228,6 +259,248 @@ def create_match_event(match_id: int, event: schemas.MatchEventCreate, user_id: 
 def get_match_events(match_id: int, user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
 	_require_match_participant(db=db, match_id=match_id, user_id=user_id)
 	return crud.get_match_events(db, match_id)
+
+@app.get("/me/stats/", response_model=schemas.UserStats)
+def get_my_stats(user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
+	return crud.compute_user_stats(db, user_id)
+
+@app.get("/users/{target_user_id}/stats/", response_model=schemas.UserStats)
+def get_user_stats(target_user_id: int, _user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
+	if target_user_id <= 0:
+		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid user id")
+	return crud.compute_user_stats(db, target_user_id)
+
+@app.get("/users/{target_user_id}/matches/", response_model=list[schemas.MatchInDB])
+def get_user_matches(
+	target_user_id: int,
+	skip: int = 0,
+	limit: int = 50,
+	game_mode: str | None = None,
+	_user_id: int = Depends(_current_user_id),
+	db: Session = Depends(get_db),
+):
+	if target_user_id <= 0:
+		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid user id")
+	return crud.get_matches_for_user(db, user_id=target_user_id, skip=skip, limit=limit, game_mode=game_mode)
+
+@app.get("/leaderboard/", response_model=list[schemas.LeaderboardEntry])
+def get_leaderboard(user_id: int = Depends(_current_user_id), db: Session = Depends(get_db)):
+	return crud.get_leaderboard(db)
+
+@app.post("/me/matchmaking/join", response_model=schemas.MatchmakingResult)
+def matchmaking_join(
+	payload: schemas.MatchmakingJoin,
+	user_id: int = Depends(_current_user_id),
+	db: Session = Depends(get_db),
+):
+	with _mq_lock:
+		# Already has a result waiting to be consumed?
+		if user_id in _mq_results:
+			return _mq_results.pop(user_id)
+		# Already in the queue?
+		for entry in _mq_queue:
+			if entry["user_id"] == user_id:
+				return {"status": "waiting"}
+		# Try to match with the first eligible person in the same mode queue.
+		for i, other in enumerate(_mq_queue):
+			if other["user_id"] != user_id and other.get("ranked", True) == payload.ranked and not _are_blocked(user_id, other["user_id"]):
+				_mq_queue.pop(i)
+				seed = _random.randint(1, 2**31 - 1)
+				# other is player1, current user is player2 — same mode guaranteed by the filter above
+				match = crud.create_match_for_players(
+					db,
+					player1_id=other["user_id"],
+					player2_id=user_id,
+					game_mode="online" if payload.ranked else "friendly",
+				)
+				winning_score = other.get("winning_score", 3)
+				duration = other.get("duration", None)
+				p1_result = {
+					"status": "matched",
+					"match_id": match.id,
+					"game_room_id": str(match.id),
+					"role": "player1",
+					"seed": seed,
+					"opponent_name": payload.player_name,
+					"opponent_nation": payload.player_nation,
+					"winning_score": winning_score,
+					"duration": duration,
+				}
+				p2_result = {
+					"status": "matched",
+					"match_id": match.id,
+					"game_room_id": str(match.id),
+					"role": "player2",
+					"seed": seed,
+					"opponent_name": other["player_name"],
+					"opponent_nation": other["player_nation"],
+					"winning_score": winning_score,
+					"duration": duration,
+				}
+				_mq_results[other["user_id"]] = p1_result
+				return p2_result
+		# No match found: add to queue.
+		_mq_queue.append({
+			"user_id": user_id,
+			"player_name": payload.player_name,
+			"player_nation": payload.player_nation,
+			"winning_score": payload.winning_score,
+			"duration": payload.duration,
+			"ranked": payload.ranked,
+			"joined_at": time.time(),
+		})
+		return {"status": "waiting"}
+
+
+@app.get("/me/matchmaking/status", response_model=schemas.MatchmakingResult)
+def matchmaking_status(user_id: int = Depends(_current_user_id)):
+	with _mq_lock:
+		if user_id in _mq_results:
+			return _mq_results.pop(user_id)
+		for entry in _mq_queue:
+			if entry["user_id"] == user_id:
+				return {"status": "waiting"}
+		return {"status": "idle"}
+
+
+@app.delete("/me/matchmaking/leave", status_code=204)
+def matchmaking_leave(user_id: int = Depends(_current_user_id)):
+	global _mq_queue
+	with _mq_lock:
+		_mq_queue = [e for e in _mq_queue if e["user_id"] != user_id]
+		_mq_results.pop(user_id, None)
+
+
+@app.post("/me/invites/dm/{target_user_id}", response_model=schemas.MatchmakingResult)
+def create_dm_invite(
+	target_user_id: int,
+	payload: schemas.MatchmakingJoin,
+	user_id: int = Depends(_current_user_id),
+	db: Session = Depends(get_db),
+):
+	"""User A invites user B to an online match via DM. Returns A's match details immediately."""
+	if target_user_id <= 0 or target_user_id == user_id:
+		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid target_user_id")
+
+	match = crud.create_match_for_players(
+		db,
+		player1_id=user_id,
+		player2_id=target_user_id,
+		game_mode="friendly",
+	)
+	seed = _random.randint(1, 2**31 - 1)
+	winning_score = payload.winning_score if payload.winning_score is not None else 3
+	duration = payload.duration
+
+	with _invites_lock:
+		# Purge expired invites.
+		now = time.time()
+		expired = [mid for mid, inv in _invites.items() if now - inv["created_at"] > INVITE_TTL_SECONDS]
+		for mid in expired:
+			_invites.pop(mid, None)
+
+		_invites[match.id] = {
+			"from_user_id": user_id,
+			"from_name": payload.player_name,
+			"from_nation": payload.player_nation,
+			"to_user_id": target_user_id,
+			"seed": seed,
+			"winning_score": winning_score,
+			"duration": duration,
+			"created_at": now,
+		}
+
+	return {
+		"status": "matched",
+		"match_id": match.id,
+		"game_room_id": str(match.id),
+		"role": "player1",
+		"seed": seed,
+		"opponent_name": "Opponent",
+		"opponent_nation": "Algeria",
+		"winning_score": winning_score,
+		"duration": duration,
+	}
+
+
+@app.post("/me/invites/{match_id}/accept", response_model=schemas.MatchmakingResult)
+def accept_invite(
+	match_id: int,
+	payload: schemas.MatchmakingJoin,
+	user_id: int = Depends(_current_user_id),
+	db: Session = Depends(get_db),
+):
+	"""User B accepts an invite. Returns B's match details with the inviter's seed."""
+	with _invites_lock:
+		invite = _invites.get(match_id)
+		if invite is None:
+			raise HTTPException(status_code=status.HTTP_410_GONE, detail="Invite expired or not found")
+		if invite["to_user_id"] != user_id:
+			raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This invite is not for you")
+		if time.time() - invite["created_at"] > INVITE_TTL_SECONDS:
+			_invites.pop(match_id, None)
+			raise HTTPException(status_code=status.HTTP_410_GONE, detail="Invite expired")
+		_invites.pop(match_id, None)
+
+	# Verify match still exists and the user is player2.
+	match = crud.get_match(db, match_id)
+	if not match or match.player2_id != user_id:
+		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Match not found")
+
+	# Mark match as started so the inviter can detect acceptance by polling.
+	crud.update_match(db, match_id, schemas.MatchUpdate(status="started"))
+
+	# Store the result so the inviter can fetch it.
+	with _mq_lock:
+		_mq_results[invite["from_user_id"]] = {
+			"status": "matched",
+			"match_id": match_id,
+			"game_room_id": str(match_id),
+			"role": "player1",
+			"seed": invite["seed"],
+			"opponent_name": payload.player_name,
+			"opponent_nation": payload.player_nation,
+			"winning_score": invite["winning_score"],
+			"duration": invite["duration"],
+		}
+
+	return {
+		"status": "matched",
+		"match_id": match_id,
+		"game_room_id": str(match_id),
+		"role": "player2",
+		"seed": invite["seed"],
+		"opponent_name": invite["from_name"],
+		"opponent_nation": invite["from_nation"],
+		"winning_score": invite["winning_score"],
+		"duration": invite["duration"],
+	}
+
+
+@app.get("/me/invites/pending", response_model=schemas.MatchmakingResult)
+def get_pending_invite_result(user_id: int = Depends(_current_user_id)):
+	"""Inviter polls this to learn when their invite was accepted."""
+	with _mq_lock:
+		result = _mq_results.pop(user_id, None)
+	if result:
+		return result
+	return {"status": "waiting"}
+
+
+@app.delete("/me/invites/{match_id}", status_code=204)
+def cancel_invite(match_id: int, user_id: int = Depends(_current_user_id)):
+	"""Inviter or invitee can cancel a pending invite."""
+	with _invites_lock:
+		invite = _invites.get(match_id)
+		if not invite or (invite["from_user_id"] != user_id and invite["to_user_id"] != user_id):
+			return
+		inviter_id = invite["from_user_id"]
+		is_invitee_declining = user_id == invite["to_user_id"]
+		_invites.pop(match_id, None)
+	if is_invitee_declining:
+		with _mq_lock:
+			_mq_results[inviter_id] = {"status": "declined", "match_id": None}
+
 
 @app.post("/internal/user/cleanup")
 def internal_user_cleanup(payload: dict, db: Session = Depends(get_db)) -> dict:
