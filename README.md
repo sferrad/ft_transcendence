@@ -34,7 +34,7 @@ Key features:
 | Login | Role(s) | Responsibilities |
 |---|---|---|
 | ankammer | Technical Lead / Architect | Microservices architecture, API gateway, WAF configuration, TLS orchestration |
-| sferrad | Product Owner | Functional scope, evaluation criteria, documentation |
+| sferrad | Product Owner | Frontend, functional scope, evaluation criteria, documentation |
 | ilkaddou | Developer — Frontend & Gameplay | React UI, WebSocket client, game engine, AI, i18n, online mode |
 | itaharbo | Project Manager / DevOps | Docker/Podman orchestration, deployment scripts, Prometheus/Grafana |
 | moel-hal | Developer — Backend & Persistence | Chat, messages, GDPR deletion/anonymisation, game stats, DB integrity |
