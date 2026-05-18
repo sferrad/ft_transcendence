@@ -35,7 +35,7 @@ export function ChannelsSidebar() {
     return (
         <aside className={`fixed inset-y-0 left-0 z-40 flex w-[min(86vw,19rem)] flex-col border-r-4 border-[#1f2937] bg-[#ece3d0] shadow-[10px_0_0_#1f2937] transition-transform duration-200 lg:static lg:z-auto lg:w-auto lg:translate-x-0 lg:shadow-none ${isChannelsOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
             {/* Sidebar header */}
-            <div className="border-b-2 border-[#1f2937]/15 px-3 py-3 flex items-center justify-between shrink-0">
+            <div className="border-b-2 border-[#1f2937]/15 px-3 py-3 landscape:py-1.5 flex items-center justify-between shrink-0">
                 <span className="text-xs font-bold uppercase tracking-[0.18em] text-[#374151]">{t("Rooms")}</span>
                 <button
                     type="button"
@@ -44,7 +44,7 @@ export function ChannelsSidebar() {
                 >{t("Close")}</button>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-auto px-3 py-3 flex flex-col gap-4">
+            <div className="min-h-0 flex-1 overflow-auto px-3 py-3 landscape:py-2 flex flex-col gap-4 landscape:gap-2">
 
                 {/* ── Public channels ── */}
                 <section>
@@ -95,7 +95,7 @@ export function ChannelsSidebar() {
                                 <button
                                     key={room.id}
                                     onClick={() => { setSelectedRoomId(room.id); setIsChannelsOpen(false); }}
-                                    className={`w-full rounded-2xl border-2 px-3 py-2.5 text-left transition ${isSelected ? "border-[#1f2937] bg-white shadow-[3px_3px_0_#1f2937]" : "border-[#1f2937]/20 bg-white/60 hover:bg-white/85"}`}
+                                    className={`w-full rounded-2xl border-2 px-3 py-2.5 landscape:py-1.5 text-left transition ${isSelected ? "border-[#1f2937] bg-white shadow-[3px_3px_0_#1f2937]" : "border-[#1f2937]/20 bg-white/60 hover:bg-white/85"}`}
                                 >
                                     <div className="flex items-center gap-2">
                                         <div className="shrink-0 h-8 w-8 rounded-full border-2 border-[#1f2937] bg-[#1f2937] flex items-center justify-center text-white text-xs font-bold">#</div>
@@ -188,7 +188,7 @@ export function ChannelsSidebar() {
                                 <button
                                     key={room.id}
                                     onClick={() => { setSelectedRoomId(room.id); setIsChannelsOpen(false); }}
-                                    className={`w-full rounded-2xl border-2 px-3 py-2.5 text-left transition ${isSelected ? "border-[#1f2937] bg-white shadow-[3px_3px_0_#1f2937]" : "border-[#1f2937]/20 bg-white/60 hover:bg-white/85"}`}
+                                    className={`w-full rounded-2xl border-2 px-3 py-2.5 landscape:py-1.5 text-left transition ${isSelected ? "border-[#1f2937] bg-white shadow-[3px_3px_0_#1f2937]" : "border-[#1f2937]/20 bg-white/60 hover:bg-white/85"}`}
                                 >
                                     <div className="flex items-center gap-2">
                                         <div className="shrink-0 h-8 w-8 rounded-full border-2 border-[#818cf8] bg-[#818cf8] flex items-center justify-center text-white text-xs font-bold">👥</div>

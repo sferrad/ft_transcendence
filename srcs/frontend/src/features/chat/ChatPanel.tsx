@@ -11,29 +11,33 @@ import { AcceptInviteModal } from "./components/AcceptInviteModal";
 type ChatPanelProps = {
     initialRoomId?: number | null;
     initialDmUserId?: number | null;
+    onBack?: () => void;
+    hasUnread?: boolean;
 };
 
-export function ChatPanel({ initialRoomId = null, initialDmUserId = null }: ChatPanelProps) {
+export function ChatPanel({ initialRoomId = null, initialDmUserId = null, onBack, hasUnread }: ChatPanelProps) {
     return (
         <ChatProvider initialRoomId={initialRoomId} initialDmUserId={initialDmUserId}>
-            <ChatLayout />
+            <ChatLayout onBack={onBack} externalHasUnread={hasUnread} />
         </ChatProvider>
     );
 }
 
-function ChatLayout() {
+function ChatLayout({ onBack, externalHasUnread }: { onBack?: () => void; externalHasUnread?: boolean }) {
     const { t } = useTranslation();
     const {
         isChannelsOpen,
         setIsChannelsOpen,
         selectedRoom,
         status,
-        hasUnread,
+        hasUnread: internalHasUnread,
     } = useChatContext();
+
+    const hasUnread = externalHasUnread ?? internalHasUnread;
 
     return (
         <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[1.25rem] border-4 border-[#1f2937] bg-[#f5efe2] shadow-[10px_10px_0_#1f2937] min-[481px]:rounded-[1.5rem]">
-            <div className="flex items-center justify-between border-b-4 border-[#1f2937] bg-[#18212f] px-4 py-3 text-white">
+            <div className="flex items-center justify-between border-b-4 border-[#1f2937] bg-[#18212f] px-4 py-3 landscape:py-1.5 text-white">
                 <div className="flex items-center gap-2">
                     <button
                         type="button"
@@ -46,6 +50,15 @@ function ChatLayout() {
                         <span className="inline-flex h-2.5 w-2.5 rounded-full bg-red-500 shadow-[0_0_0_2px_rgba(15,23,42,0.6)]" aria-hidden="true" />
                     )}
                 </div>
+                {onBack && (
+                    <button
+                        type="button"
+                        onClick={onBack}
+                        className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-medium uppercase tracking-wide text-white transition hover:bg-white/20"
+                    >
+                        {t("Back home")}
+                    </button>
+                )}
             </div>
 
             <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[19rem_1fr]">

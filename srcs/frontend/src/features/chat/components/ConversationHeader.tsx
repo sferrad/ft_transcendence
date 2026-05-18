@@ -29,7 +29,7 @@ export function ConversationHeader() {
     } = useChatContext();
 
     return (
-        <div className={`border-b-4 border-[#1f2937] bg-white/70 px-3 py-3 backdrop-blur-sm min-[481px]:px-4 ${!selectedRoom ? "hidden" : ""}`}>
+        <div className={`border-b-4 border-[#1f2937] bg-white/70 px-3 py-3 landscape:py-1.5 backdrop-blur-sm min-[481px]:px-4 ${!selectedRoom ? "hidden" : ""}`}>
             {selectedRoom ? (
                 <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
@@ -46,7 +46,7 @@ export function ConversationHeader() {
                                     src={renderAvatar(selectedDmUserId)}
                                     alt={getRoomDisplayName(selectedRoom)}
                                     onError={handleAvatarError}
-                                    className="h-10 w-10 rounded-full border-2 border-[#1f2937] object-cover"
+                                    className="h-10 w-10 landscape:h-8 landscape:w-8 rounded-full border-2 border-[#1f2937] object-cover"
                                 />
                                 {onlineIds.has(selectedDmUserId) && (
                                     <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-white" />

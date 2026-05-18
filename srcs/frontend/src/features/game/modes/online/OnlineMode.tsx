@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useWebSocket } from '../../../../hooks/useWebSocket'
 import { useOnlineGameLoop } from '../../match/useOnlineGameLoop'
@@ -57,13 +57,15 @@ export default function OnlineMode() {
 
   const { socket, connected } = useWebSocket()
 
+  const [versusActive, setVersusActive] = useState(!isRejoin)
+
   // Initialise the game loop first so restoreState is available for session handlers
   const { gameState, goalFlash, timeLeft, restoreState } = useOnlineGameLoop(
     role as 'player1' | 'player2',
     socket,
     player1Name,
     player2Name,
-    false, // paused flag updated below after session is created — safe because paused only affects tick scheduling
+    versusActive, // paused tant que le versus screen est affiché
     ONLINE_DURATION,
     ONLINE_WINNING_SCORE,
     seed,
@@ -83,6 +85,7 @@ export default function OnlineMode() {
   useEffect(() => {
     if (isRejoin) return
     const id = setTimeout(() => {
+      setVersusActive(false)
       session.setShowVersus(false)
       session.setGameInProgress(true)
     }, VERSUS_SCREEN_DURATION_MS)

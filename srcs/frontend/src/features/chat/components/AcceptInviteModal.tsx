@@ -10,8 +10,8 @@ export function AcceptInviteModal() {
     if (!invite.pendingAccept) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => invite.setPendingAccept(null)}>
-            <div className="w-[min(92vw,22rem)] rounded-3xl border-4 border-[#1f2937] bg-[#f5efe2] p-6 shadow-[8px_8px_0_#1f2937]" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 pt-4 pb-12" onClick={() => invite.setPendingAccept(null)}>
+            <div className="w-full max-w-[22rem] max-h-full overflow-y-auto rounded-3xl border-4 border-[#1f2937] bg-[#f5efe2] p-6 shadow-[8px_8px_0_#1f2937]" onClick={e => e.stopPropagation()}>
                 <div className="mb-4 text-center text-base font-bold uppercase tracking-widest text-[#1f2937]">🎮 {t("Game invite")}</div>
 
                 <div className="mb-3 flex flex-col items-center gap-2">
