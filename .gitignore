@@ -1,5 +1,24 @@
+# Secrets & environnement
 .env
-doc
-.venv
-.node_modules
+*.env
+
+# Certificats générés (créés par make certs)
+srcs/certs/internal/ca.crt
+srcs/certs/internal/ca.key
+srcs/certs/internal/internal.crt
+srcs/certs/internal/internal.key
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Node / frontend
+node_modules/
+.node_modules/
+dist/
+build/
+
+# Système
 .DS_Store
+doc/
