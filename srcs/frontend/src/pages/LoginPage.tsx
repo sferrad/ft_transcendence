@@ -14,7 +14,7 @@ const HandleLog = () => {
   return (
     <div className="relative min-h-[100dvh] w-full bg-[url('/assets/bgLogin.jpg')] bg-cover bg-center bg-no-repeat overflow-auto flex flex-col items-center justify-center px-4 py-8">
                   <button
-                    onClick={() => window.history.back()}
+                    onClick={() => navigate("/")}
                     className={`absolute top-3 left-3 min-[481px]:top-6 min-[481px]:left-6 ${arcadeBackButton} text-white bg-blue-600 hover:bg-blue-700`}
                 >
                     {t("Back")}

@@ -27,7 +27,7 @@ export const useLogin = () => {
         getUserInfo(data.access_token);
         setTimeout(() => navigate("/profile"), 2000);
       } else {
-        setMessage(parseValidationError(data) || "Username or password is incorrect");
+        setMessage("Username or password is incorrect");
       }
     } catch {
       setMessage("An error occurred. Please try again.");
