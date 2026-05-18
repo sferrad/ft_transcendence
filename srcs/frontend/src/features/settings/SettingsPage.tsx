@@ -52,7 +52,7 @@ const Settingpage = () => {
                             </button>
                             {showAccSettings && <Settingacc onClose={() => setShowAccSettings(false)} />}
                         </li>
-                        <li className="w-full">
+                        {/* <li className="w-full">
                             <button
                                 onClick={() => setSoundOff(!soundOff)}
                                 className={`${arcadeSettingsButton} bg-red-600 hover:bg-red-700`}
@@ -69,7 +69,7 @@ const Settingpage = () => {
                                 <span className="text-2xl leading-none">{musicOff ? "🔇" : "🎵"}</span>
                                 <span>{t("Music")}</span>
                             </button>
-                        </li>
+                        </li> */}
                     </ul>
                 </div>
             </div>
