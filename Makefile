@@ -27,6 +27,7 @@ $(CERTS_DIR)/internal.crt $(CERTS_DIR)/internal.key: $(CERTS_DIR)/ca.crt $(CERTS
 		-out $(CERTS_DIR)/internal.crt \
 		-extensions req_ext -extfile $(CERTS_DIR)/openssl-san.cnf
 	@rm -f $(CERTS_DIR)/internal.csr
+	@chmod 644 $(CERTS_DIR)/ca.key $(CERTS_DIR)/internal.key
 
 build:
 	$(DOCK_COMP) build --parallel
