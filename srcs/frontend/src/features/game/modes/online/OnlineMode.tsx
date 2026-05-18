@@ -25,7 +25,7 @@ import { PLAYER1_COLOR, PLAYER2_COLOR } from './constants'
 export default function OnlineMode() {
   const location = useLocation()
   const navigate = useNavigate()
-  const matchInfo = location.state as (MatchmakingResult & { myNation?: string; themeId?: string; isRejoin?: boolean }) | null
+  const matchInfo = location.state as (MatchmakingResult & { myNation?: string; themeId?: string; isRejoin?: boolean; backRoute?: string }) | null
 
   useEffect(() => {
     const valid = matchInfo?.match_id || (matchInfo?.isRejoin && matchInfo?.game_room_id)
@@ -46,6 +46,7 @@ export default function OnlineMode() {
   const ONLINE_WINNING_SCORE = matchInfo.winning_score ?? 5
   const ONLINE_DURATION = matchInfo.duration ?? 120
   const myNation = matchInfo.myNation ?? 'Algeria'
+  const backRoute = matchInfo.backRoute ?? '/lobby'
 
   const player1Name = role === 'player1' ? (localStorage.getItem('username') || 'Me') : opponent_name
   const player2Name = role === 'player2' ? (localStorage.getItem('username') || 'Me') : opponent_name
@@ -114,7 +115,7 @@ export default function OnlineMode() {
         stats: session.afterStats,
         lpDelta: session.forfeit ? forfeitLpDelta : lpDelta,
         xpDelta: session.forfeit ? forfeitXpDelta : xpDelta,
-        backRoute: '/lobby',
+        backRoute,
         gameRoute: '/online-gameplay',
         gameMode: 'online',
       },
@@ -202,8 +203,7 @@ export default function OnlineMode() {
             player2Color={PLAYER2_COLOR}
             score1={gameState.player1.score}
             score2={gameState.player2.score}
-            onReplay={() => navigate('/online-gameplay')}
-            onBack={() => navigate('/lobby')}
+            onBack={() => navigate(backRoute)}
             onShowResults={handleShowResults}
           />
         )}
@@ -241,7 +241,7 @@ export default function OnlineMode() {
           forfeit={session.forfeit}
           myName={myName}
           onShowResults={handleShowResults}
-          onBack={() => navigate('/lobby')}
+          onBack={() => navigate(backRoute)}
         />
       )}
     </>

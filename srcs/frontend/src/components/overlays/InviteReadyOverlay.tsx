@@ -52,7 +52,7 @@ export function InviteReadyOverlay() {
     const info = ready.info!
     markInviteResolved(info.match_id)
     setReady(null)
-    navigate('/online-gameplay', { state: { ...info, myNation: info.myNation, themeId: info.themeId } })
+    navigate('/online-gameplay', { state: { ...info, myNation: info.myNation, themeId: info.themeId, backRoute: '/chat' } })
   }
 
   const handleDecline = () => {

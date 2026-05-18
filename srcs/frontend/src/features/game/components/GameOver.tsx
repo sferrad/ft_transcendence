@@ -13,7 +13,7 @@ interface GameOverProps {
   mirrorWinner?: boolean
   score1: number
   score2: number
-  onReplay: () => void
+  onReplay?: () => void
   onBack: () => void
   onShowResults?: () => void
 }
@@ -138,16 +138,18 @@ export function GameOver({
         </div>
 
         <div style={{ display: 'flex', gap: 16, animation: 'go-btn 0.5s ease 0.6s both', position: 'relative', zIndex: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
-          <button
-            className="font-arcade"
-            onClick={onReplay}
-            onMouseDown={e => { e.currentTarget.style.transform = 'translateY(2px)' }}
-            onMouseUp={e => { e.currentTarget.style.transform = 'translateY(0)' }}
-            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)' }}
-            style={{ padding: '14px 38px', fontSize: 'clamp(12px, 1.6vw, 20px)', cursor: 'pointer', border: 'none', borderRadius: 0, background: '#4AD95A', color: '#000', letterSpacing: 2, textTransform: 'uppercase', boxShadow: ARCADE_BTN, transition: 'transform 0.1s' }}
-          >
-            {t('Replay')}
-          </button>
+          {onReplay && (
+            <button
+              className="font-arcade"
+              onClick={onReplay}
+              onMouseDown={e => { e.currentTarget.style.transform = 'translateY(2px)' }}
+              onMouseUp={e => { e.currentTarget.style.transform = 'translateY(0)' }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)' }}
+              style={{ padding: '14px 38px', fontSize: 'clamp(12px, 1.6vw, 20px)', cursor: 'pointer', border: 'none', borderRadius: 0, background: '#4AD95A', color: '#000', letterSpacing: 2, textTransform: 'uppercase', boxShadow: ARCADE_BTN, transition: 'transform 0.1s' }}
+            >
+              {t('Replay')}
+            </button>
+          )}
           {onShowResults && (
             <button
               className="font-arcade"

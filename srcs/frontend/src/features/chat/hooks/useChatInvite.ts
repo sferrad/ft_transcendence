@@ -102,7 +102,7 @@ export function useChatInvite({
                 return;
             }
             markInviteResolved(invite.matchId);
-            navigate("/online-gameplay", { state: { ...result, myNation: acceptNation, themeId: invite.themeId } });
+            navigate("/online-gameplay", { state: { ...result, myNation: acceptNation, themeId: invite.themeId, backRoute: '/chat' } });
         } catch {
             markInviteResolved(invite.matchId);
         } finally {
