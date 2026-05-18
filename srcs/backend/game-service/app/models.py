@@ -62,7 +62,7 @@ class Match(Base):
     game_mode = Column(String(20), nullable=False, server_default="solo")
 
     # Timestamps de début/fin (optionnels : match pas encore démarré/terminé).
-    started_at = Column(DateTime(timezone=True), nullable=True)
+    started_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     finished_at = Column(DateTime(timezone=True), nullable=True)
 
     # Timestamp de création (auto côté DB).
