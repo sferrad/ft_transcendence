@@ -1,7 +1,7 @@
 export DOCKER_BUILDKIT     := 1
 export COMPOSE_DOCKER_CLI_BUILD := 1
 
-DOCK_COMP = docker-compose -p transcendence -f srcs/docker-compose.yml
+DOCK_COMP = docker compose -p transcendence -f srcs/docker-compose.yml
 
 all: build up
 
