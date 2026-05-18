@@ -274,6 +274,8 @@ react-i18next with three complete translation JSON files (English, French, Spani
 - *Challenge:* Nginx upstream DNS caching caused 502s after every container rebuild. Solved with `resolver` + `server ... resolve` + `valid=10s` for dynamic re-resolution.
 
 **sferrad — Product Owner**
+- Built the React 19 + TypeScript frontend: all pages, routing, component architecture (feature-based structure)
+- Added internationalisation with react-i18next (EN/FR/ES) and all translation files
 - Defined the product scope, feature list, and acceptance criteria for each module
 - Maintained the product backlog and prioritised work at weekly meetings
 - Wrote and validated the Privacy Policy and Terms of Service pages
@@ -282,12 +284,10 @@ react-i18next with three complete translation JSON files (English, French, Spani
 - *Challenge:* Keeping the scope realistic given the timeline while reaching 14 module points.
 
 **ilkaddou — Developer (Frontend & Gameplay)**
-- Built the React 19 + TypeScript frontend: all pages, routing, component architecture (feature-based structure)
 - Implemented the WebSocket client (Socket.IO singleton) for real-time chat and game events
 - Developed the full browser game engine: fixed-timestep loop, substepped physics, kick impulse with orbital angle, happenings system
 - Implemented the AI opponent (probabilistic, defend/attack modes, happening awareness)
 - Built the online game mode: matchmaking lobby, P1-authoritative synchronisation, reconnection and forfeit flows, seeded PRNG for deterministic state
-- Added internationalisation with react-i18next (EN/FR/ES) and all translation files
 - Implemented game customisation (themes, score, timer) and gamification UI (stats panel, XP bar, achievements, leaderboard)
 - *Challenge:* Keeping both clients in sync without a server-side simulation. Solved with a seeded Mulberry32 PRNG (same seed from server → same random sequence on both clients) and a P1-authoritative broadcast architecture.
 
